@@ -29,6 +29,7 @@
     "check:brand": "node scripts/sync-brand.mjs --check && node scripts/check-brand.mjs",
     "test:ui": "vitest run lib/theme.test.ts",
     "test:analytics": "vitest run lib/analytics/calculations.test.ts",
+    "test:parity": "vitest run lib/finance-parity-contract.test.ts",
     "test:settings": "vitest run lib/settings/security.test.ts",
     "test:session": "vitest run lib/supabase/session.test.ts"
   },
