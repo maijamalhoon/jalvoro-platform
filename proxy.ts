@@ -5,6 +5,17 @@ const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
   "/api/security/password-check",
 ]);
 
+function getBusinessDiscoveryRedirect(request: NextRequest) {
+  if (request.nextUrl.pathname !== "/login") return null;
+  if (request.nextUrl.searchParams.get("mode") !== "signup") return null;
+  if (request.nextUrl.searchParams.get("intent") === "business") return null;
+
+  const destination = request.nextUrl.clone();
+  destination.pathname = "/login/business";
+  destination.search = "";
+  return NextResponse.redirect(destination);
+}
+
 function getAIRewritePath(request: NextRequest) {
   if (request.nextUrl.pathname !== "/api/ai-insights") return null;
   if (request.method === "POST") return "/api/ai-insights/advanced";
@@ -13,6 +24,9 @@ function getAIRewritePath(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
+  const businessDiscoveryRedirect = getBusinessDiscoveryRedirect(request);
+  if (businessDiscoveryRedirect) return businessDiscoveryRedirect;
+
   if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
