@@ -51,18 +51,24 @@ jobs:
             --stacktrace 2>&1 | tee native-ci.log
 
       - name: Prepare physical-device test package
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           mkdir -p device-build
           cp \
             androidApp/build/outputs/apk/debug/androidApp-debug.apk \
-            "device-build/jalvoro-personal-device-test-${GITHUB_SHA:0:12}.apk"
-          sha256sum device-build/*.apk > device-build/SHA256SUMS.txt
+            "device-build/jalvoro-personal-device-test-${PR_HEAD_SHA:0:12}.apk"
+          (
+            cd device-build
+            sha256sum *.apk > SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
 
       - name: Upload physical-device test APK
         uses: actions/upload-artifact@v4
         with:
-          name: jalvoro-personal-device-test-${{ github.sha }}
+          name: jalvoro-personal-device-test-${{ github.event.pull_request.head.sha }}
           path: native/device-build/
           if-no-files-found: error
           retention-days: 3
