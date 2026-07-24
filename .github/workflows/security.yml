@@ -37,6 +37,8 @@ jobs:
 
       - name: Analyze
         uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
+        env:
+          CODEQL_ACTION_EXTRA_OPTIONS: '{"database":{"interpret-results":["--max-paths",1]}}'
         with:
           category: /language:javascript-typescript
 
