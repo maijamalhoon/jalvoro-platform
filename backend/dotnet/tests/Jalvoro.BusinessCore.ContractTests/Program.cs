@@ -20,18 +20,18 @@ var catalog = new BusinessModuleCatalog();
 var modules = catalog.GetAll();
 var requiredModules = new[]
 {
-    "platform.foundation",
-    "identity.organizations",
-    "finance.accounting",
-    "sales.crm",
-    "commerce.inventory",
-    "commerce.pos",
-    "hospitality.restaurant",
-    "operations.warehouse",
-    "people.workforce",
-    "operations.branches",
-    "enterprise.governance",
-    "integrations.platform",
+  "platform.foundation",
+  "identity.organizations",
+  "finance.accounting",
+  "sales.crm",
+  "commerce.inventory",
+  "commerce.pos",
+  "hospitality.restaurant",
+  "operations.warehouse",
+  "people.workforce",
+  "operations.branches",
+  "enterprise.governance",
+  "integrations.platform",
 };
 
 Check(BusinessCoreContract.ApiVersion == "v1", "The first public business-core API contract must remain v1.");
@@ -39,36 +39,36 @@ Check(BusinessCoreContract.Architecture == "modular-monolith", "The initial arch
 Check(BusinessCoreContract.RuntimeStatus == "foundation", "The new runtime must remain foundation-only until explicit activation.");
 Check(modules.Count >= requiredModules.Length, "The module catalog is missing required business foundations.");
 Check(
-    modules.Select(module => module.Id).Distinct(StringComparer.Ordinal).Count() == modules.Count,
-    "Business module IDs must be unique.");
+  modules.Select(module => module.Id).Distinct(StringComparer.Ordinal).Count() == modules.Count,
+  "Business module IDs must be unique.");
 Check(
-    modules.All(module => module.Lifecycle is not BusinessModuleLifecycle.Active),
-    "No business module may be marked active in the foundation node.");
+  modules.All(module => module.Lifecycle is not BusinessModuleLifecycle.Active),
+  "No business module may be marked active in the foundation node.");
 Check(
-    modules.All(module => !module.Id.Contains("personal", StringComparison.OrdinalIgnoreCase)),
-    "Personal Tracking must not be registered in the Business Core catalog.");
+  modules.All(module => !module.Id.Contains("personal", StringComparison.OrdinalIgnoreCase)),
+  "Personal Tracking must not be registered in the Business Core catalog.");
 Check(
-    modules.All(module => !module.Name.Contains("personal", StringComparison.OrdinalIgnoreCase)),
-    "Personal Tracking must not appear in Business Core module names.");
+  modules.All(module => !module.Name.Contains("personal", StringComparison.OrdinalIgnoreCase)),
+  "Personal Tracking must not appear in Business Core module names.");
 Check(
-    requiredModules.All(required => modules.Any(module => module.Id == required)),
-    "At least one required JALVORO business module is not registered.");
+  requiredModules.All(required => modules.Any(module => module.Id == required)),
+  "At least one required JALVORO business module is not registered.");
 Check(
-    modules.Where(module => module.RequiresHardwareIntegration)
-        .All(module => module.RequiresOfflineReadiness),
-    "Hardware-integrated modules must declare offline-readiness requirements.");
+  modules.Where(module => module.RequiresHardwareIntegration)
+    .All(module => module.RequiresOfflineReadiness),
+  "Hardware-integrated modules must declare offline-readiness requirements.");
 Check(
-    !BusinessTenantId.TryParse(null, out _),
-    "A null tenant ID must fail validation.");
+  !BusinessTenantId.TryParse(null, out _),
+  "A null tenant ID must fail validation.");
 Check(
-    !BusinessTenantId.TryParse(Guid.Empty.ToString(), out _),
-    "An empty tenant ID must fail validation.");
+  !BusinessTenantId.TryParse(Guid.Empty.ToString(), out _),
+  "An empty tenant ID must fail validation.");
 
 var expectedTenantId = Guid.NewGuid();
 Check(
-    BusinessTenantId.TryParse(expectedTenantId.ToString(), out var tenantId) &&
-    tenantId.Value == expectedTenantId,
-    "A valid tenant ID must round-trip without mutation.");
+  BusinessTenantId.TryParse(expectedTenantId.ToString(), out var tenantId) &&
+  tenantId.Value == expectedTenantId,
+  "A valid tenant ID must round-trip without mutation.");
 
 Check(!BusinessSubjectId.TryParse(null, out _), "A null business subject ID must fail validation.");
 Check(!BusinessSubjectId.TryParse(Guid.Empty.ToString(), out _), "An empty business subject ID must fail validation.");
@@ -99,24 +99,24 @@ mutablePermissions.Clear();
 
 var authorization = new FailClosedBusinessAuthorizationService();
 Check(
-    authorization.Evaluate(null, requiredTenant, BusinessPermissions.OrganizationRead).Code == AuthorizationDecisionCode.Unauthenticated,
-    "Missing authentication context must deny access.");
+  authorization.Evaluate(null, requiredTenant, BusinessPermissions.OrganizationRead).Code == AuthorizationDecisionCode.Unauthenticated,
+  "Missing authentication context must deny access.");
 Check(
-    authorization.Evaluate(accessContext, anotherTenant, BusinessPermissions.OrganizationRead).Code == AuthorizationDecisionCode.TenantMismatch,
-    "Cross-tenant authorization must be denied.");
+  authorization.Evaluate(accessContext, anotherTenant, BusinessPermissions.OrganizationRead).Code == AuthorizationDecisionCode.TenantMismatch,
+  "Cross-tenant authorization must be denied.");
 Check(
-    authorization.Evaluate(accessContext, requiredTenant, BusinessPermissions.OrganizationManage).Code == AuthorizationDecisionCode.MissingPermission,
-    "Missing exact permission must deny access.");
+  authorization.Evaluate(accessContext, requiredTenant, BusinessPermissions.OrganizationManage).Code == AuthorizationDecisionCode.MissingPermission,
+  "Missing exact permission must deny access.");
 Check(
-    authorization.Evaluate(accessContext, requiredTenant, BusinessPermissions.OrganizationRead).Allowed,
-    "Matching tenant and exact permission must allow access.");
+  authorization.Evaluate(accessContext, requiredTenant, BusinessPermissions.OrganizationRead).Allowed,
+  "Matching tenant and exact permission must allow access.");
 Check(
-    accessContext.Permissions.Contains(BusinessPermissions.OrganizationRead),
-    "Business access context permissions must be copied defensively.");
+  accessContext.Permissions.Contains(BusinessPermissions.OrganizationRead),
+  "Business access context permissions must be copied defensively.");
 var permissionCollection = accessContext.Permissions as ICollection<PermissionKey>;
 Check(
-    permissionCollection is null || permissionCollection.IsReadOnly,
-    "Business access context permissions must not expose a mutable collection.");
+  permissionCollection is null || permissionCollection.IsReadOnly,
+  "Business access context permissions must not expose a mutable collection.");
 
 var unavailableIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Unavailable);
 var duplicateIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Duplicate);
@@ -125,9 +125,11 @@ Check(!unavailableIdempotency.MayExecute, "Unavailable idempotency storage must 
 Check(!duplicateIdempotency.MayExecute, "Duplicate idempotency reservations must block execution.");
 Check(reservedIdempotency.MayExecute, "Only a reserved idempotency scope may execute.");
 
+await SupabaseIdentityContracts.RunAsync(Check);
+
 if (failures.Count == 0)
 {
-  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules and fail-closed organization security verified.");
+  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules, fail-closed organization security, and verified Supabase identity projection.");
   return 0;
 }
 
