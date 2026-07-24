@@ -1,0 +1,73 @@
+# Validates the additive JALVORO Business Core without modifying existing product systems.
+name: .NET Business Core
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "backend/dotnet/**"
+      - "docs/architecture/dotnet-business-core-foundation.md"
+      - ".github/workflows/dotnet-business-core.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/dotnet/**"
+      - "docs/architecture/dotnet-business-core-foundation.md"
+      - ".github/workflows/dotnet-business-core.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotnet-business-core-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate .NET foundation
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Display SDK information
+        run: dotnet --info
+
+      - name: Enforce dependency-free foundation
+        run: |
+          if grep -R --include='*.csproj' '<PackageReference' backend/dotnet; then
+            echo 'The first Business Core node must not introduce third-party NuGet packages.' >&2
+            exit 1
+          fi
+
+      - name: Restore
+        run: dotnet restore backend/dotnet/Jalvoro.BusinessCore.sln
+
+      - name: Verify formatting
+        run: dotnet format backend/dotnet/Jalvoro.BusinessCore.sln --verify-no-changes --no-restore
+
+      - name: Build with warnings as errors
+        run: dotnet build backend/dotnet/Jalvoro.BusinessCore.sln --configuration Release --no-restore
+
+      - name: Run architecture and preservation contracts
+        run: dotnet run --project backend/dotnet/tests/Jalvoro.BusinessCore.ContractTests/Jalvoro.BusinessCore.ContractTests.csproj --configuration Release --no-build
+
+      - name: Publish API artifact
+        run: dotnet publish backend/dotnet/src/Jalvoro.BusinessCore.Api/Jalvoro.BusinessCore.Api.csproj --configuration Release --no-build --output backend/dotnet/artifacts/publish
