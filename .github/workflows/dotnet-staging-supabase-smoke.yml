@@ -1,0 +1,65 @@
+# Manually verifies the read-only JALVORO Business Core path against the approved staging Supabase project.
+name: .NET Staging Supabase Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type STAGING_ONLY_READ_ONLY to confirm the protected target and read-only scope.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotnet-staging-supabase-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Verify staging Auth and tenant context
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      CI: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      JALVORO_SMOKE_ENVIRONMENT: staging
+      JALVORO_SMOKE_CONFIRMATION: STAGING_ONLY_READ_ONLY
+      JALVORO_SUPABASE_STAGING_URL: https://zqhdwjivyfzeoqvahjme.supabase.co
+      JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY: ${{ secrets.JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY }}
+      JALVORO_SUPABASE_STAGING_TEST_JWT: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_JWT }}
+      JALVORO_SUPABASE_STAGING_TEST_USER_ID: ${{ vars.JALVORO_SUPABASE_STAGING_TEST_USER_ID }}
+      JALVORO_SUPABASE_STAGING_TENANT_ID: ${{ vars.JALVORO_SUPABASE_STAGING_TENANT_ID }}
+      JALVORO_SUPABASE_STAGING_TIMEOUT_SECONDS: "5"
+    steps:
+      - name: Enforce explicit staging-only confirmation
+        shell: bash
+        run: |
+          if [ "${{ inputs.confirmation }}" != "STAGING_ONLY_READ_ONLY" ]; then
+            echo "The staging smoke run requires the exact STAGING_ONLY_READ_ONLY confirmation." >&2
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore staging smoke harness
+        run: dotnet restore backend/dotnet/tools/Jalvoro.BusinessCore.StagingSmoke/Jalvoro.BusinessCore.StagingSmoke.csproj
+
+      - name: Build staging smoke harness
+        run: dotnet build backend/dotnet/tools/Jalvoro.BusinessCore.StagingSmoke/Jalvoro.BusinessCore.StagingSmoke.csproj --configuration Release --no-restore
+
+      - name: Run read-only staging smoke
+        run: dotnet run --project backend/dotnet/tools/Jalvoro.BusinessCore.StagingSmoke/Jalvoro.BusinessCore.StagingSmoke.csproj --configuration Release --no-build
