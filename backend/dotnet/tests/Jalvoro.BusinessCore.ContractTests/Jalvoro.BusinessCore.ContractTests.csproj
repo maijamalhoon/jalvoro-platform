@@ -11,5 +11,6 @@
     <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Application\Jalvoro.BusinessCore.Application.csproj" />
     <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Domain\Jalvoro.BusinessCore.Domain.csproj" />
     <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Infrastructure\Jalvoro.BusinessCore.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\tools\Jalvoro.BusinessCore.StagingSmoke\Jalvoro.BusinessCore.StagingSmoke.csproj" />
   </ItemGroup>
 </Project>
