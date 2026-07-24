@@ -173,7 +173,7 @@ describe("Command Center organization foundation", () => {
       expect(migration).toContain(
         `alter table private.${table} enable row level security`,
       );
-      expect(migration).toContain(`private.${table}_deny_direct`);
+      expect(migration).toContain(`create policy ${table}_deny_direct`);
       expect(migration).toContain(
         `revoke all on table private.${table} from public, anon, authenticated`,
       );
