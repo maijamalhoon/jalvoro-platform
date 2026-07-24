@@ -1,0 +1,79 @@
+name: Finance parity contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "contracts/finance-parity/**"
+      - "lib/analytics/**"
+      - "lib/currency.ts"
+      - "lib/investments/**"
+      - "lib/planning/**"
+      - "lib/finance-parity-contract.test.ts"
+      - "native/shared/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/finance-parity-pr-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-parity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  website-and-native-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install website dependencies
+        run: npm ci --silent
+
+      - name: Run website finance parity contract
+        run: npm run test:parity
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Run native finance parity contract
+        working-directory: native
+        run: |
+          set -o pipefail
+          gradle :shared:testAndroidHostTest --stacktrace 2>&1 | tee finance-parity-native.log
+
+      - name: Upload parity diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-parity-log-${{ github.run_id }}
+          path: native/finance-parity-native.log
+          if-no-files-found: ignore
+          retention-days: 3
