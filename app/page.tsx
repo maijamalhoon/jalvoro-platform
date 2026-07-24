@@ -3,6 +3,7 @@ import LandingChartMotion from "@/components/landing/LandingChartMotion";
 import LandingScrollReveal from "@/components/landing/LandingScrollReveal";
 import MathSymbolField from "@/components/landing/MathSymbolField";
 import PremiumLandingPage from "@/components/landing/PremiumLandingPage";
+import PricingEntryLink from "@/components/pricing/PricingEntryLink";
 import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
 import "./landing-polish.css";
@@ -51,6 +52,7 @@ export default function HomePage() {
     <>
       <LandingScrollReveal />
       <PremiumLandingPage />
+      <PricingEntryLink />
       <LandingChartMotion />
       <MathSymbolField />
     </>
