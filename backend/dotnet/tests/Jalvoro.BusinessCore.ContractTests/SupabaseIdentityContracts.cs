@@ -13,6 +13,8 @@ using Microsoft.Extensions.Configuration;
 
 internal static class SupabaseIdentityContracts
 {
+  private static readonly string[] TeamViewPermissions = ["team.view"];
+
   public static async Task RunAsync(Action<bool, string> check)
   {
     ArgumentNullException.ThrowIfNull(check);
@@ -205,7 +207,7 @@ internal static class SupabaseIdentityContracts
             user_id = subjectId.Value,
             role = "manager",
             status = "active",
-            permissions = new[] { "team.view" },
+            permissions = TeamViewPermissions,
           },
         });
     });
