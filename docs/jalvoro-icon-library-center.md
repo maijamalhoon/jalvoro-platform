@@ -35,18 +35,21 @@ A category moves from `draft` to `master` only after it has:
 7. automated quality-gate tests;
 8. explicit isolation from product rollout.
 
-Four categories are currently mastered:
+Five categories are currently mastered:
 
 - Navigation — 12 icons, documented in `docs/jalvoro-navigation-master-set.md`;
 - Actions — 18 icons, documented in `docs/jalvoro-actions-master-set.md`;
 - Finance — 16 icons, documented in `docs/jalvoro-finance-master-set.md`;
-- Objects — 12 icons, documented in `docs/jalvoro-objects-master-set.md`.
+- Objects — 12 icons, documented in `docs/jalvoro-objects-master-set.md`;
+- Identity — 3 icons, documented in `docs/jalvoro-identity-master-set.md`.
 
 Actions enforce a strict operation-versus-status boundary and document true opposite pairs such as export/import, download/upload and undo/redo.
 
 Finance enforces global currency neutrality, separates financial objects from operations and destinations, and explicitly differentiates receipt/invoice, transfer/exchange and trend-up/trend-down.
 
 Objects enforce a thing-versus-action boundary, keep generic objects simpler than domain-specific derivatives, and explicitly distinguish file/invoice/report, calendar/calendar-money, pencil/edit and image/camera.
+
+Identity enforces neutral actor silhouettes, separates singular, plural and person-add meanings, and forbids demographic, emotional, role and account-status assumptions.
 
 ## Standard library model
 
