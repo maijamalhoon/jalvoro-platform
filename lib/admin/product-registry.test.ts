@@ -116,10 +116,13 @@ describe("JALVORO Command Center product registry", () => {
   it("keeps the navigation registry-driven and the shell officially named", () => {
     const navigation = read("components/admin/AdminSectionNav.tsx");
     const layout = read("app/admin/layout.tsx");
+    const registry = read("lib/admin/product-registry.ts");
 
     expect(navigation).toContain("getRegisteredCommandCenterNavigation");
     expect(navigation).not.toContain("const ADMIN_SECTIONS");
     expect(layout).toContain("JALVORO Command Center");
     expect(layout).toContain("Global Admin & Operations Control Center");
+    expect(registry).toContain("const productModule = modules.get");
+    expect(registry).not.toContain("const module = modules.get");
   });
 });
