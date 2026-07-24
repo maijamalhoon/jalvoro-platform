@@ -165,7 +165,8 @@ internal static class SupabaseIdentityContracts
           id = Guid.NewGuid(),
           aud = "authenticated",
           is_anonymous = true,
-        }))) { Timeout = Timeout.InfiniteTimeSpan },
+        })))
+      { Timeout = Timeout.InfiniteTimeSpan },
       CreateConfigurationState());
     var anonymousResult = await anonymousVerifier.VerifyAsync(
       CreateJwt(new { sub = Guid.NewGuid(), aud = "authenticated" }),
