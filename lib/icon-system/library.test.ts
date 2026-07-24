@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { JALVORO_ICON_NAMES } from "@/components/icons/jalvoro/manifest";
 import { JALVORO_ACTIONS_MASTER_NAMES } from "@/lib/icon-system/actions-master-set";
+import { JALVORO_FINANCE_MASTER_NAMES } from "@/lib/icon-system/finance-master-set";
 import { JALVORO_NAVIGATION_MASTER_NAMES } from "@/lib/icon-system/navigation-master-set";
 import {
   JALVORO_ICON_CATEGORY_META,
@@ -15,6 +16,7 @@ import {
 const MASTERED_ICON_NAMES = [
   ...JALVORO_NAVIGATION_MASTER_NAMES,
   ...JALVORO_ACTIONS_MASTER_NAMES,
+  ...JALVORO_FINANCE_MASTER_NAMES,
 ];
 
 describe("JALVORO icon library catalog", () => {
@@ -43,7 +45,8 @@ describe("JALVORO icon library catalog", () => {
 
     expect(JALVORO_ICON_CATEGORY_META.navigation.designStatus).toBe("master");
     expect(JALVORO_ICON_CATEGORY_META.actions.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.finance.designStatus).toBe("draft");
+    expect(JALVORO_ICON_CATEGORY_META.finance.designStatus).toBe("master");
+    expect(JALVORO_ICON_CATEGORY_META.objects.designStatus).toBe("draft");
   });
 
   it("creates predictable component names and clean usage snippets", () => {
@@ -62,13 +65,13 @@ describe("JALVORO icon library catalog", () => {
     expect(snippet).not.toContain("accent=");
   });
 
-  it("exposes mastered navigation and action review metadata without product rollout", () => {
+  it("exposes mastered navigation, action and finance metadata without product rollout", () => {
     const masteredEntries = JALVORO_ICON_LIBRARY_ENTRIES.filter(
       (entry) => entry.designStatus === "master",
     );
 
     expect(JALVORO_ICON_LIBRARY.masteredIconCount).toBe(MASTERED_ICON_NAMES.length);
-    expect(JALVORO_ICON_LIBRARY.masteredCategoryCount).toBe(2);
+    expect(JALVORO_ICON_LIBRARY.masteredCategoryCount).toBe(3);
     expect(masteredEntries.map((entry) => entry.name)).toEqual(MASTERED_ICON_NAMES);
 
     for (const entry of masteredEntries) {

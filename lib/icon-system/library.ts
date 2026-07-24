@@ -16,6 +16,11 @@ import {
   isJalvoroActionsMasterName,
 } from "@/lib/icon-system/actions-master-set";
 import {
+  JALVORO_FINANCE_MASTER_NAMES,
+  JALVORO_FINANCE_MASTER_SPEC,
+  isJalvoroFinanceMasterName,
+} from "@/lib/icon-system/finance-master-set";
+import {
   JALVORO_NAVIGATION_MASTER_NAMES,
   JALVORO_NAVIGATION_MASTER_SPEC,
   isJalvoroNavigationMasterName,
@@ -59,7 +64,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Finance",
     description: "Money, banking, planning, financial state and performance.",
     importPath: "@/components/icons/jalvoro/components/finance",
-    designStatus: "draft",
+    designStatus: "master",
   },
   objects: {
     label: "Objects",
@@ -102,8 +107,10 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
     "The foundational clean-outline library for JALVORO products, tools and future packages.",
   iconCount: JALVORO_ICON_NAMES.length,
   masteredIconCount:
-    JALVORO_NAVIGATION_MASTER_NAMES.length + JALVORO_ACTIONS_MASTER_NAMES.length,
-  masteredCategoryCount: 2,
+    JALVORO_NAVIGATION_MASTER_NAMES.length +
+    JALVORO_ACTIONS_MASTER_NAMES.length +
+    JALVORO_FINANCE_MASTER_NAMES.length,
+  masteredCategoryCount: 3,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -156,6 +163,10 @@ function getJalvoroMasterSpec(name: JalvoroIconName) {
     return JALVORO_ACTIONS_MASTER_SPEC[name];
   }
 
+  if (isJalvoroFinanceMasterName(name)) {
+    return JALVORO_FINANCE_MASTER_SPEC[name];
+  }
+
   return null;
 }
 
@@ -192,7 +203,7 @@ export function buildJalvoroIconImportSnippet(name: JalvoroIconName) {
   const entry = JALVORO_ICON_LIBRARY_ENTRIES.find((icon) => icon.name === name);
   if (!entry) return "";
 
-  return `import { ${entry.componentName} } from \"${entry.importPath}\";`;
+  return `import { ${entry.componentName} } from "${entry.importPath}";`;
 }
 
 export function buildJalvoroIconUsageSnippet(
@@ -203,7 +214,7 @@ export function buildJalvoroIconUsageSnippet(
   const entry = JALVORO_ICON_LIBRARY_ENTRIES.find((icon) => icon.name === name);
   if (!entry) return "";
 
-  return `<${entry.componentName}\n  size={${size}}\n  context=\"${context}\"\n  aria-hidden=\"true\"\n/>`;
+  return `<${entry.componentName}\n  size={${size}}\n  context="${context}"\n  aria-hidden="true"\n/>`;
 }
 
 export function buildJalvoroIconFullSnippet(
