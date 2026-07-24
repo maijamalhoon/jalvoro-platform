@@ -32,7 +32,6 @@ import com.jamalsfinance.shared.reports.ReportPeriod
 import com.jamalsfinance.shared.reports.ReportSelection
 import com.jamalsfinance.shared.reports.ReportsInsightsRepository
 import com.jamalsfinance.shared.reports.ReportsInsightsResult
-import com.jamalsfinance.shared.reports.ReportsInsightsSnapshot
 import com.jamalsfinance.shared.reports.ReportsInsightsState
 import com.jamalsfinance.shared.reports.reportSelection
 import java.text.SimpleDateFormat
@@ -243,6 +242,7 @@ fun JalvoroReportsInsightsDashboard(
                             selectedCurrency = currency,
                             loading = loading,
                             onCurrencyChange = ::selectCurrency,
+                            repository = repository,
                         )
                     }
                 }
