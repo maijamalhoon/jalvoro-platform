@@ -7,23 +7,83 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
   statuses: write
 
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
-      - name: Publish Actions probe status
+      - name: Create draft PR and publish result
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          PR_HEAD: agent/dotnet-staging-supabase-smoke-harness
+          PR_BASE: agent/dotnet-http-pipeline-integration-contracts
         shell: bash
         run: |
-          payload="$(jq -n \
-            --arg state "success" \
+          set +e
+          creation_status=0
+
+          existing="$(curl --fail-with-body --silent --show-error --connect-timeout 10 --max-time 30 \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}%3A${PR_HEAD}&base=${PR_BASE}")"
+          creation_status=$?
+
+          if [ "$creation_status" -eq 0 ] && [ "$(jq 'length' <<<"$existing")" -eq 0 ]; then
+            body="$(cat <<'EOF'
+## What changed
+
+Adds a protected, staging-only and read-only Supabase smoke harness on top of PR #120.
+
+- exact staging project allowlist and known production project hard-block
+- modern publishable-key-only validation
+- server-confirmed staging identity and exact tenant membership verification
+- read-only `business_members` schema readiness probe
+- exact Business Core ASP.NET Core loopback verification
+- manual-only protected GitHub `staging` environment workflow
+- no write endpoint, migration, deployment, or production traffic
+
+The approved staging project is healthy, but read-only metadata inspection found `public.business_members` and migrations `20260721173000`, `20260721174500`, and `20260722070300` absent. The harness reports `schema_not_ready` rather than a false pass. This PR does not apply migrations.
+
+Branch validation passed .NET 10 restore, canonical formatting, warnings-as-errors Release build, all staging safety and existing architecture/HTTP contracts, and API publish.
+
+`Preserve -> Extend -> Verify -> Migrate gradually -> Remove only after explicit approval`
+EOF
+)"
+            payload="$(jq -n \
+              --arg title "Add protected staging Supabase smoke harness" \
+              --arg head "$PR_HEAD" \
+              --arg base "$PR_BASE" \
+              --arg body "$body" \
+              '{title:$title,head:$head,base:$base,body:$body,draft:true,maintainer_can_modify:true}')"
+            curl --fail-with-body --silent --show-error --connect-timeout 10 --max-time 30 \
+              --request POST \
+              --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls" \
+              --data "$payload" \
+              | tee pr-creation-response.json \
+              | jq '{number,html_url,draft,state}'
+            creation_status=${PIPESTATUS[0]}
+          fi
+
+          if [ "$creation_status" -eq 0 ]; then
+            state=success
+            description="Stacked staging-smoke PR exists"
+          else
+            state=failure
+            description="Stacked staging-smoke PR creation failed"
+          fi
+
+          status_payload="$(jq -n \
+            --arg state "$state" \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            --arg description "Branch Actions trigger is operational" \
-            --arg context "jalvoro/actions-probe" \
+            --arg description "$description" \
+            --arg context "jalvoro/staging-smoke-pr-creation" \
             '{state:$state,target_url:$target_url,description:$description,context:$context}')"
           curl --fail-with-body --silent --show-error --connect-timeout 10 --max-time 30 \
             --request POST \
@@ -31,4 +91,6 @@ jobs:
             --header "Accept: application/vnd.github+json" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            --data "$payload"
+            --data "$status_payload"
+
+          exit "$creation_status"
