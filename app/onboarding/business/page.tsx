@@ -51,7 +51,10 @@ export default function BusinessAccountContinuationPage() {
         }
 
         const user = data.user;
-        const fullName = String(user.user_metadata?.full_name ?? "").trim();
+        const email = user.email?.trim() ?? "";
+        const metadataName = String(user.user_metadata?.full_name ?? "").trim();
+        const fallbackName = email.includes("@") ? email.split("@")[0] : "Business account";
+        const fullName = metadataName || fallbackName;
         const provider = String(user.app_metadata?.provider ?? "email");
         const now = new Date().toISOString();
 
@@ -59,8 +62,8 @@ export default function BusinessAccountContinuationPage() {
           .from("profiles")
           .upsert({
             id: user.id,
-            email: user.email ?? null,
-            full_name: fullName || null,
+            email,
+            full_name: fullName,
             provider,
             onboarding_completed: true,
             updated_at: now,
