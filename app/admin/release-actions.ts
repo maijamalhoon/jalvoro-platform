@@ -34,7 +34,7 @@ async function requireSignedInClient() {
   return supabase;
 }
 
-export async function approveCurrentAdminReleaseAction() {
+export async function approveCurrentAdminReleaseAction(_formData: FormData) {
   const runtime = getAdminReleaseRuntimeEvidence();
   if (
     !runtime.vercel ||
@@ -61,7 +61,15 @@ export async function approveCurrentAdminReleaseAction() {
   const compliance = parseAdminComplianceAuditSnapshot(data);
   const release = parseAdminReleaseReadinessSnapshot(data);
 
-  if (!snapshot || !billing || !access || !users || !incidents || !compliance || !release) {
+  if (
+    !snapshot ||
+    !billing ||
+    !access ||
+    !users ||
+    !incidents ||
+    !compliance ||
+    !release
+  ) {
     releaseRedirect("unavailable");
   }
 
@@ -98,7 +106,9 @@ export async function approveCurrentAdminReleaseAction() {
 export async function revokeAdminReleaseAction(formData: FormData) {
   const rawReleaseCode = formData.get("releaseCode");
   const releaseCode =
-    typeof rawReleaseCode === "string" ? rawReleaseCode.trim().toUpperCase() : null;
+    typeof rawReleaseCode === "string"
+      ? rawReleaseCode.trim().toUpperCase()
+      : null;
 
   if (!releaseCode?.match(RELEASE_CODE_PATTERN)) releaseRedirect("invalid");
 
