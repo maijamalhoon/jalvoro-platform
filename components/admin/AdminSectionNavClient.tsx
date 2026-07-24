@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { JalvoroGlobeIcon } from "@/components/icons/jalvoro/components/communication";
 import { JalvoroGridIcon } from "@/components/icons/jalvoro/components/interface";
 import { JalvoroDashboardIcon } from "@/components/icons/jalvoro/components/navigation";
 import type { JalvoroIconComponent } from "@/components/icons/jalvoro/types";
@@ -10,6 +11,7 @@ import type { ResolvedCommandCenterNavigationItem } from "@/lib/admin/command-ce
 
 const NAVIGATION_ICONS: Record<string, JalvoroIconComponent> = {
   dashboard: JalvoroDashboardIcon,
+  globe: JalvoroGlobeIcon,
   grid: JalvoroGridIcon,
 };
 
