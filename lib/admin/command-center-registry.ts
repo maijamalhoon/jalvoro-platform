@@ -107,7 +107,7 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
       },
     ],
   },
-} as const satisfies ProductManifestV1;
+} satisfies ProductManifestV1;
 
 export const COMMAND_CENTER_COMPATIBILITY_PERMISSIONS = new Set([
   "command-center:platform:view",
