@@ -75,7 +75,7 @@ describe("JALVORO Command Center product registry", () => {
           "command-center:overview:view",
         ]),
       }).map((item) => item.href),
-    ).toEqual(["/admin"]);
+    ).toEqual(["/admin", "/admin/global-operations"]);
 
     expect(
       buildCommandCenterNavigation([COMMAND_CENTER_PLATFORM_MANIFEST], {
@@ -107,7 +107,7 @@ describe("JALVORO Command Center product registry", () => {
         permissions: new Set(["*"]),
         includeUnreleased: true,
       }),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 
   it("keeps the shell officially named and the static manifest non-authoritative", () => {
