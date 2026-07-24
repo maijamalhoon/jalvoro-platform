@@ -81,6 +81,19 @@ class AndroidNativePreferences(context: Context) {
         mutableState.value = mutableState.value.copy(highContrast = value)
     }
 
+    fun resetAccessibilityDisplay() {
+        storage.edit()
+            .putString(KEY_THEME, NativeThemeMode.System.storageValue)
+            .putBoolean(KEY_COMPACT, false)
+            .putBoolean(KEY_HIGH_CONTRAST, false)
+            .apply()
+        mutableState.value = mutableState.value.copy(
+            themeMode = NativeThemeMode.System,
+            compactMode = false,
+            highContrast = false,
+        )
+    }
+
     fun setAppLockEnabled(value: Boolean) {
         storage.edit().putBoolean(KEY_APP_LOCK, value).apply()
         mutableState.value = mutableState.value.copy(appLockEnabled = value)
