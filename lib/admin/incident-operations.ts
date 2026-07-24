@@ -168,10 +168,10 @@ function readQueue(value: unknown): SecurityIncidentQueueItem[] | null {
     if (!isRecord(item)) return null;
 
     const incidentCode = readString(item.incidentCode, 16);
-    const sourceReference =
-      item.sourceReference === null
-        ? null
-        : readString(item.sourceReference, 16);
+    const sourceReferenceWasNull = item.sourceReference === null;
+    const sourceReference = sourceReferenceWasNull
+      ? null
+      : readString(item.sourceReference, 16);
     const createdAt = readDate(item.createdAt);
     const dueAt = readDate(item.dueAt, true);
 
@@ -186,6 +186,7 @@ function readQueue(value: unknown): SecurityIncidentQueueItem[] | null {
       !OPEN_STATUSES.has(item.status as SecurityIncidentQueueItem["status"]) ||
       typeof item.source !== "string" ||
       !SOURCES.has(item.source as SecurityIncidentSource) ||
+      (!sourceReferenceWasNull && sourceReference === null) ||
       (sourceReference !== null &&
         !sourceReference.match(/^(PRV|ADM|AIN|USR)-[A-F0-9]{12}$/)) ||
       !createdAt ||
