@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Jalvoro.BusinessCore.Domain.Security;
 using Jalvoro.BusinessCore.Domain.Tenancy;
 
@@ -5,7 +6,7 @@ namespace Jalvoro.BusinessCore.Application.Security;
 
 public sealed class BusinessAccessContext
 {
-  private readonly HashSet<PermissionKey> _permissions;
+  private readonly FrozenSet<PermissionKey> _permissions;
 
   public BusinessAccessContext(
     BusinessTenantId tenantId,
@@ -25,7 +26,7 @@ public sealed class BusinessAccessContext
     TenantId = tenantId;
     SubjectId = subjectId;
     AuthenticationMethod = authenticationMethod;
-    _permissions = new HashSet<PermissionKey>(permissions);
+    _permissions = permissions.ToFrozenSet();
   }
 
   public BusinessTenantId TenantId { get; }
