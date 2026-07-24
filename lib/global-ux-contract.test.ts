@@ -46,15 +46,17 @@ describe("global UI/UX and performance contracts", () => {
 
   it("provides keyboard skip navigation for private workspace shells", () => {
     const dashboard = read("app/dashboard/layout.tsx");
-    const admin = read("app/admin/layout.tsx");
+    const adminShell = read(
+      "components/admin/AdminCommandCenterShellClient.tsx",
+    );
 
     expect(dashboard).toContain('href="#dashboard-main"');
     expect(dashboard).toContain('id="dashboard-main"');
     expect(dashboard).toContain("tabIndex={-1}");
 
-    expect(admin).toContain('href="#admin-main"');
-    expect(admin).toContain('id="admin-main"');
-    expect(admin).toContain("tabIndex={-1}");
+    expect(adminShell).toContain('href="#admin-main"');
+    expect(adminShell).toContain('id="admin-main"');
+    expect(adminShell).toContain("tabIndex={-1}");
   });
 
   it("batches tooltip cleanup and preserves semantic SVG titles", () => {
