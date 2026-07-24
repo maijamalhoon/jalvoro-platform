@@ -57,7 +57,7 @@ The 16 finance icons use currency-neutral, professional silhouettes designed for
 
 ### Objects — master
 
-The 12 reusable object icons now use clean standalone silhouettes without inheriting action or domain-specific meaning.
+The 12 reusable object icons use clean standalone silhouettes without inheriting action or domain-specific meaning.
 
 - generic objects stay visually simpler than specialized derivatives
 - maximum five vector nodes per icon
@@ -72,8 +72,22 @@ The 12 reusable object icons now use clean standalone silhouettes without inheri
 - design brief: `docs/jalvoro-objects-master-set.md`
 - machine-readable specification: `lib/icon-system/objects-master-set.ts`
 
+### Identity — master
+
+The 3 identity icons use neutral, inclusive actor silhouettes without demographic, emotional, role or status assumptions.
+
+- single-user, multi-user and person-add meanings remain distinct
+- maximum four vector nodes per icon
+- no accent-placement geometry
+- no facial features, gendered styling, role clothing or profile-status badges
+- user-plus is reserved for person-specific addition rather than generic Add
+- automatic rendering checks run at 16, 20, 24 and 32 pixels
+
+- design brief: `docs/jalvoro-identity-master-set.md`
+- machine-readable specification: `lib/icon-system/identity-master-set.ts`
+
 ## Design status
 
 `master` means the icon has passed semantic, geometry, naming, size and clean-default gates inside the private Icon System library. It does not mean the icon has been approved for product rollout.
 
-Navigation, Actions, Finance and Objects are mastered. Identity, Communication, Interface and Status remain design drafts until they pass the same category-level review and automated quality gates.
+Navigation, Actions, Finance, Objects and Identity are mastered. Communication, Interface and Status remain design drafts until they pass the same category-level review and automated quality gates.
