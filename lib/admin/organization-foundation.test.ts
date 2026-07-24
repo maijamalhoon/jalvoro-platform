@@ -263,22 +263,28 @@ describe("Command Center organization foundation", () => {
     expect(migration).not.toContain("grant select on private.command_center_");
   });
 
-  it("registers a hidden internal module without adding navigation", () => {
+  it("publishes Organization Operations through scoped registry navigation", () => {
     const organizationModule = COMMAND_CENTER_PLATFORM_MANIFEST.modules.find(
       (entry) => entry.moduleKey === "organizations",
     );
+    const organizationNavigation =
+      COMMAND_CENTER_PLATFORM_MANIFEST.admin.navigation.find(
+        (entry) => entry.moduleKey === "organizations",
+      );
 
     expect(organizationModule).toMatchObject({
       moduleId: "mod_organizations",
-      lifecycleStatus: "internal_testing",
+      lifecycleStatus: "public_release",
       enabled: true,
       requiredPermissions: ["command-center:organizations:view"],
     });
-    expect(
-      COMMAND_CENTER_PLATFORM_MANIFEST.admin.navigation.some(
-        (entry) => entry.moduleKey === "organizations",
-      ),
-    ).toBe(false);
+    expect(organizationNavigation).toMatchObject({
+      navigationId: "organizations",
+      href: "/admin/organizations",
+      iconKey: "organizations",
+      order: 30,
+      requiredPermissions: ["command-center:organizations:view"],
+    });
   });
 
   it("keeps the current Global Operations parser stable until its UI cycle", () => {
