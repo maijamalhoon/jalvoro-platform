@@ -197,8 +197,10 @@ async function createBoundRecoveryMarker(
 
 async function verifyBoundRecoveryMarker(
   supabase: ReturnType<typeof createClient>,
-  rawMarker: string,
+  rawMarker: string | null,
 ): Promise<RecoveryOutcome> {
+  if (!rawMarker) return "invalid";
+
   let claimsResult: Awaited<ReturnType<typeof supabase.auth.getClaims>>;
 
   try {
@@ -442,20 +444,24 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      if (markerResult.marker) {
-        const rawMarker = markerResult.marker;
-        const verifyOperation = () =>
-          verifyBoundRecoveryMarker(supabase, rawMarker);
-        const markerOutcome = await verifyOperation();
-        if (cancelled) return;
+      const rawMarker = markerResult.marker;
+      const verifyOperation = () =>
+        verifyBoundRecoveryMarker(supabase, rawMarker);
+      const markerOutcome = await verifyOperation();
+      if (cancelled) return;
 
-        if (markerOutcome !== "invalid" || !code) {
-          applyMarkerOutcome(markerOutcome, "verification", verifyOperation);
-          return;
-        }
+      if (markerOutcome === "ready" || markerOutcome === "temporarily_unavailable") {
+        applyMarkerOutcome(markerOutcome, "verification", verifyOperation);
+        return;
+      }
 
+      if (rawMarker) {
         clearRecoveryRetry();
         clearRecoveryMarker();
+        if (!code) {
+          setRecoveryState("invalid");
+          return;
+        }
       }
 
       if (code) {
