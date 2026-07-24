@@ -1,9 +1,8 @@
 name: Global Operations typecheck diagnostic
 
 on:
-  push:
-    branches:
-      - agent/command-center-global-operations-overview
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
