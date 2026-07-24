@@ -56,7 +56,6 @@ type RecoveryState =
   | "success";
 type RecoveryField = "password" | "confirm";
 
-const RECOVERY_MARKER = "jamals-finance:password-recovery";
 type RecoveryOutcome = "ready" | "invalid" | "temporarily_unavailable";
 type RecoveryExchangeOutcome =
   | "confirmed_recovery"
@@ -71,7 +70,10 @@ type RecoverySignal = {
   resolve: () => void;
   wait: (timeoutMs: number) => Promise<boolean>;
 };
+type MarkerRetryKind = "binding" | "verification";
+type MarkerRetryOperation = () => Promise<RecoveryOutcome>;
 
+const RECOVERY_MARKER = "jamals-finance:password-recovery";
 const RECOVERY_EVENT_WAIT_MS = 2_000;
 const recoveryExchangeAttempts = new Map<
   string,
@@ -266,7 +268,9 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [recoveryState, setRecoveryState] = useState<RecoveryState>("checking");
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RecoveryField, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<RecoveryField, string>>
+  >({});
   const [formError, setFormError] = useState("");
   const [message, setMessage] = useState("");
   const [retrying, setRetrying] = useState(false);
@@ -278,9 +282,8 @@ export default function ResetPasswordPage() {
   const retryExchangeRef = useRef<
     (() => Promise<RecoveryExchangeOutcome>) | null
   >(null);
-  const retryMarkerBindingRef = useRef<
-    (() => Promise<RecoveryOutcome>) | null
-  >(null);
+  const retryMarkerOperationRef = useRef<MarkerRetryOperation | null>(null);
+  const retryMarkerKindRef = useRef<MarkerRetryKind | null>(null);
   const retryInFlight = useRef(false);
 
   const loading = recoveryState === "checking" || recoveryState === "updating";
@@ -288,32 +291,44 @@ export default function ResetPasswordPage() {
   const clearRecoveryRetry = useCallback(() => {
     retryIntentRef.current = "none";
     retryExchangeRef.current = null;
-    retryMarkerBindingRef.current = null;
+    retryMarkerOperationRef.current = null;
+    retryMarkerKindRef.current = null;
   }, []);
 
-  const prepareMarkerBindingRetry = useCallback(() => {
-    retryIntentRef.current = "retry_marker_binding";
-    retryExchangeRef.current = null;
-    retryMarkerBindingRef.current = () => createBoundRecoveryMarker(supabase);
-  }, [supabase]);
+  const prepareMarkerRetry = useCallback(
+    (kind: MarkerRetryKind, operation: MarkerRetryOperation) => {
+      retryIntentRef.current = "retry_marker_binding";
+      retryExchangeRef.current = null;
+      retryMarkerOperationRef.current = operation;
+      retryMarkerKindRef.current = kind;
+    },
+    [],
+  );
 
-  const applyMarkerOutcome = useCallback((outcome: RecoveryOutcome) => {
-    if (outcome === "ready") {
+  const applyMarkerOutcome = useCallback(
+    (
+      outcome: RecoveryOutcome,
+      retryKind: MarkerRetryKind,
+      retryOperation: MarkerRetryOperation,
+    ) => {
+      if (outcome === "ready") {
+        clearRecoveryRetry();
+        setRecoveryState("ready");
+        return;
+      }
+
+      if (outcome === "temporarily_unavailable") {
+        prepareMarkerRetry(retryKind, retryOperation);
+        setRecoveryState("temporarily_unavailable");
+        return;
+      }
+
       clearRecoveryRetry();
-      setRecoveryState("ready");
-      return;
-    }
-
-    if (outcome === "temporarily_unavailable") {
-      prepareMarkerBindingRetry();
-      setRecoveryState("temporarily_unavailable");
-      return;
-    }
-
-    clearRecoveryRetry();
-    clearRecoveryMarker();
-    setRecoveryState("invalid");
-  }, [clearRecoveryRetry, prepareMarkerBindingRetry]);
+      clearRecoveryMarker();
+      setRecoveryState("invalid");
+    },
+    [clearRecoveryRetry, prepareMarkerRetry],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -386,10 +401,10 @@ export default function ResetPasswordPage() {
     }
 
     async function bindConfirmedRecovery() {
-      prepareMarkerBindingRetry();
-      const markerOutcome = await createBoundRecoveryMarker(supabase);
+      const bindOperation = () => createBoundRecoveryMarker(supabase);
+      const markerOutcome = await bindOperation();
       if (cancelled) return;
-      applyMarkerOutcome(markerOutcome);
+      applyMarkerOutcome(markerOutcome, "binding", bindOperation);
     }
 
     async function guardResetRoute() {
@@ -412,10 +427,42 @@ export default function ResetPasswordPage() {
         return;
       }
 
+      if (hasSensitiveHash) {
+        clearRecoveryRetry();
+        clearRecoveryMarker();
+        removeRecoveryParameters();
+        if (!cancelled) setRecoveryState("invalid");
+        return;
+      }
+
+      const markerResult = readRecoveryMarker();
+      if (markerResult.failed) {
+        clearRecoveryRetry();
+        setRecoveryState("temporarily_unavailable");
+        return;
+      }
+
+      if (markerResult.marker) {
+        const rawMarker = markerResult.marker;
+        const verifyOperation = () =>
+          verifyBoundRecoveryMarker(supabase, rawMarker);
+        const markerOutcome = await verifyOperation();
+        if (cancelled) return;
+
+        if (markerOutcome !== "invalid" || !code) {
+          applyMarkerOutcome(markerOutcome, "verification", verifyOperation);
+          return;
+        }
+
+        clearRecoveryRetry();
+        clearRecoveryMarker();
+      }
+
       if (code) {
         retryIntentRef.current = "retry_exchange";
         retryExchangeRef.current = () => startRecoveryExchange(code);
-        retryMarkerBindingRef.current = null;
+        retryMarkerOperationRef.current = null;
+        retryMarkerKindRef.current = null;
         let outcome: RecoveryExchangeOutcome;
         try {
           outcome = await startRecoveryExchange(code);
@@ -442,31 +489,6 @@ export default function ResetPasswordPage() {
         clearRecoveryRetry();
         clearRecoveryMarker();
         setRecoveryState("invalid");
-        return;
-      }
-
-      if (hasSensitiveHash) {
-        clearRecoveryRetry();
-        clearRecoveryMarker();
-        removeRecoveryParameters();
-        if (!cancelled) setRecoveryState("invalid");
-        return;
-      }
-
-      const markerResult = readRecoveryMarker();
-      if (markerResult.failed) {
-        clearRecoveryRetry();
-        setRecoveryState("temporarily_unavailable");
-        return;
-      }
-
-      if (markerResult.marker) {
-        const outcome = await verifyBoundRecoveryMarker(
-          supabase,
-          markerResult.marker,
-        );
-        if (cancelled) return;
-        applyMarkerOutcome(outcome);
         return;
       }
 
@@ -499,7 +521,6 @@ export default function ResetPasswordPage() {
   }, [
     applyMarkerOutcome,
     clearRecoveryRetry,
-    prepareMarkerBindingRetry,
     router,
     supabase,
   ]);
@@ -528,9 +549,9 @@ export default function ResetPasswordPage() {
 
         const exchangeOutcome = await retryExchange();
         if (exchangeOutcome === "confirmed_recovery") {
-          prepareMarkerBindingRetry();
-          const markerOutcome = await createBoundRecoveryMarker(supabase);
-          applyMarkerOutcome(markerOutcome);
+          const bindOperation = () => createBoundRecoveryMarker(supabase);
+          const markerOutcome = await bindOperation();
+          applyMarkerOutcome(markerOutcome, "binding", bindOperation);
         } else if (exchangeOutcome === "temporarily_unavailable") {
           setRecoveryState("temporarily_unavailable");
         } else if (exchangeOutcome === "non_recovery") {
@@ -552,14 +573,19 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      const retryMarkerBinding = retryMarkerBindingRef.current;
-      if (!retryMarkerBinding) {
+      const retryMarkerOperation = retryMarkerOperationRef.current;
+      const retryMarkerKind = retryMarkerKindRef.current;
+      if (!retryMarkerOperation || !retryMarkerKind) {
         clearRecoveryRetry();
         setRecoveryState("invalid");
         return;
       }
 
-      applyMarkerOutcome(await retryMarkerBinding());
+      applyMarkerOutcome(
+        await retryMarkerOperation(),
+        retryMarkerKind,
+        retryMarkerOperation,
+      );
     } catch {
       setRecoveryState("temporarily_unavailable");
     } finally {
@@ -651,33 +677,43 @@ export default function ResetPasswordPage() {
       ? {
           eyebrow: "Checking link",
           title: "Verifying your recovery link",
-          description: "Please wait while the existing recovery checks confirm this request.",
+          description:
+            "Please wait while the existing recovery checks confirm this request.",
           icon: LoaderCircle,
         }
       : recoveryState === "invalid"
         ? {
             eyebrow: "Link unavailable",
             title: "Request a new recovery link",
-            description: "This link is invalid, expired, or no longer eligible for password recovery.",
+            description:
+              "This link is invalid, expired, or no longer eligible for password recovery.",
             icon: XCircle,
           }
         : recoveryState === "temporarily_unavailable"
           ? {
               eyebrow: "Temporary interruption",
               title: "Recovery could not be verified",
-              description: "Authentication is temporarily unavailable. Your link has not been treated as valid or invalid.",
+              description:
+                "Authentication is temporarily unavailable. Your link has not been treated as valid or invalid.",
               icon: AlertTriangle,
             }
           : recoveryState === "success"
             ? {
                 eyebrow: "Password updated",
                 title: "Your new password is ready",
-                description: "Continue to your dashboard with the updated account password.",
+                description:
+                  "Continue to your dashboard with the updated account password.",
                 icon: CheckCircle2,
               }
             : {
-                eyebrow: recoveryState === "updating" ? "Saving securely" : "Password recovery",
-                title: recoveryState === "updating" ? "Updating your password" : "Choose a new password",
+                eyebrow:
+                  recoveryState === "updating"
+                    ? "Saving securely"
+                    : "Password recovery",
+                title:
+                  recoveryState === "updating"
+                    ? "Updating your password"
+                    : "Choose a new password",
                 description: `Use at least ${PASSWORD_MIN_LENGTH} characters. Known breached passwords are rejected before the update.`,
                 icon: LockKeyhole,
               };
@@ -695,7 +731,10 @@ export default function ResetPasswordPage() {
         <div aria-busy="true">
           <AuthFeedback tone="info">
             <span className="inline-flex items-center gap-2">
-              <LoaderCircle className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <LoaderCircle
+                className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
               Verifying your recovery link…
             </span>
           </AuthFeedback>
@@ -706,9 +745,15 @@ export default function ResetPasswordPage() {
       {recoveryState === "invalid" ? (
         <div className="space-y-4">
           <AuthFeedback tone="danger">
-            This reset link is expired, invalid, or has already been used. Request a new link to continue.
+            This reset link is expired, invalid, or has already been used.
+            Request a new link to continue.
           </AuthFeedback>
-          <Button type="button" size="lg" onClick={() => router.replace("/login?mode=forgot")} className="w-full">
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => router.replace("/login?mode=forgot")}
+            className="w-full"
+          >
             Request a new link <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
@@ -717,7 +762,8 @@ export default function ResetPasswordPage() {
       {recoveryState === "temporarily_unavailable" ? (
         <div className="space-y-4">
           <AuthFeedback tone="warning" role="alert">
-            Authentication is temporarily unavailable. This interruption does not mean the link is invalid.
+            Authentication is temporarily unavailable. This interruption does
+            not mean the link is invalid.
           </AuthFeedback>
           <Button
             type="button"
@@ -737,14 +783,24 @@ export default function ResetPasswordPage() {
           <AuthFeedback tone="success">
             {message || "Password updated successfully."}
           </AuthFeedback>
-          <Button type="button" size="lg" onClick={() => router.push("/dashboard")} className="w-full">
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => router.push("/dashboard")}
+            className="w-full"
+          >
             Continue to dashboard <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       ) : null}
 
       {recoveryState === "ready" || recoveryState === "updating" ? (
-        <form onSubmit={handleReset} noValidate className="space-y-1" aria-busy={loading}>
+        <form
+          onSubmit={handleReset}
+          noValidate
+          className="space-y-1"
+          aria-busy={loading}
+        >
           <AuthPasswordField
             id="new-password"
             name="new_password"
@@ -781,7 +837,9 @@ export default function ResetPasswordPage() {
           />
 
           <div className="auth-feedback-slot">
-            {formError ? <AuthFeedback tone="danger">{formError}</AuthFeedback> : null}
+            {formError ? (
+              <AuthFeedback tone="danger">{formError}</AuthFeedback>
+            ) : null}
           </div>
 
           <AuthSubmitAction
