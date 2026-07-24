@@ -119,18 +119,23 @@ No unfinished POS, ERP, CRM, accounting, inventory, payroll, personal-user, mobi
 
 ## Verification status
 
-The control plane was applied and tested on the isolated `jamals-finance-load-test-staging` Supabase project.
+The complete lifecycle was first applied and tested on the isolated `jamals-finance-load-test-staging` Supabase project. Transactional staging records used for submit, validate, approve, activate, grant, revoke, and audit verification were rolled back.
+
+The same control-plane schema, validator, lifecycle functions, authorization RPCs, bootstrap records, and covering indexes were then applied to `jalvoro-production` before the web-shell integration was merged.
 
 Verified behavior includes:
 
-- RLS and direct-access denial on every registry table
-- Existing two-item Command Center navigation for an authenticated Owner
-- Submit, validate, approve, activate, grant, revoke, and audit lifecycle
-- Permission-gated navigation appearance and removal
-- External-route rejection
-- Sensitive-field rejection
-- Non-Owner approval denial
-- Append-only audit enforcement
-- Complete covering indexes for new foreign keys
+- RLS and direct-access denial on all 16 registry tables
+- One bootstrapped product, two modules, two navigation entries, one activated manifest, one validation result, twelve role-permission rows, and one bootstrap audit event
+- Existing two-item production Command Center navigation for the active Owner
+- Submit, validate, approve, activate, grant, revoke, and audit lifecycle in staging
+- Permission-gated navigation appearance and removal in staging
+- External-route rejection in staging and production
+- Sensitive-field rejection in staging and production
+- Non-Owner approval denial in staging
+- Append-only audit enforcement in staging
+- Complete covering indexes for every new foreign key
+- No new Command Center security-advisor warning
+- No missing-index advisor warning for the Command Center registry
 
-Transactional lifecycle test records were rolled back. The production Supabase project was not changed during this verification cycle.
+Production verification used read-only checks after the idempotent bootstrap. No customer finance, accounting, payroll, inventory, billing, authentication, or business records were read into the registry or modified by verification.
