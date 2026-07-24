@@ -114,7 +114,7 @@ export const JALVORO_LIBRARY_ROADMAP = Object.freeze([
 
 const definitionByName = Object.fromEntries(
   JALVORO_ICON_DEFINITIONS.map((definition) => [definition.name, definition]),
-) as Readonly<Record<JalvoroIconName, JalvoroIconDefinition>>;
+) as unknown as Readonly<Record<JalvoroIconName, JalvoroIconDefinition>>;
 
 export function toJalvoroIconComponentName(name: JalvoroIconName) {
   const pascalName = name
