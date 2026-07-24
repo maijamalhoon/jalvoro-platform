@@ -29,6 +29,8 @@ jobs:
           status=0
 
           existing="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
             --header "Authorization: Bearer ${GITHUB_TOKEN}" \
             --header "Accept: application/vnd.github+json" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
@@ -93,6 +95,8 @@ EOF
               '{title:$title,head:$head,base:$base,body:$body,draft:true,maintainer_can_modify:true}')"
 
             curl --fail-with-body --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
               --request POST \
               --header "Authorization: Bearer ${GITHUB_TOKEN}" \
               --header "Accept: application/vnd.github+json" \
@@ -131,6 +135,8 @@ EOF
             '{state:$state,target_url:$target_url,description:$description,context:$context}')"
 
           curl --fail-with-body --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
             --request POST \
             --header "Authorization: Bearer ${GITHUB_TOKEN}" \
             --header "Accept: application/vnd.github+json" \
