@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Jalvoro.BusinessCore.StagingSmoke</AssemblyName>
+    <RootNamespace>Jalvoro.BusinessCore.StagingSmoke</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Api\Jalvoro.BusinessCore.Api.csproj" />
+    <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Domain\Jalvoro.BusinessCore.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Infrastructure\Jalvoro.BusinessCore.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
