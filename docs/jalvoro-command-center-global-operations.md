@@ -43,7 +43,9 @@ Country and region signals are coarse approved telemetry fields. The contract re
 - The private global-operations function verifies an active `private.platform_admins` record.
 - Direct execution on the private function is revoked from `PUBLIC`, `anon`, and `authenticated`.
 - Navigation remains server-resolved through the Product and Module Registry.
-- The module reuses `command-center:overview:view`; no browser-side permission calculation is introduced.
+- The module reuses `command-center:overview:view` through explicit `global-operations` module-scoped mappings for Owner, Admin, Analyst, and Support.
+- The permission is not made product-wide, environment-wide, or global, and no management permission is introduced.
+- No browser-side permission calculation is introduced.
 
 ## Operational contract
 
@@ -56,6 +58,17 @@ The response is grouped into:
 - `platformAnalytics`
 
 The UI is server-rendered, has truthful empty states, and does not load a chart library, poll the database, or query Supabase from the browser.
+
+## Production verification
+
+The production migration and manifest lifecycle were completed before the application merge:
+
+- Command Center manifest version 2 passed submission, validation, 24-hour Owner approval, SHA-256 verification, and activation;
+- four append-only audit events were recorded for submission, validation, approval, and activation;
+- the registry contains three enabled modules and two registered services;
+- the active Owner resolves `/admin`, `/admin/global-operations`, and `/admin/icon-system` in production;
+- the aggregate response reports `rawIpStored: false`, `sessionReplayEnabled: false`, and organization source `not_registered`;
+- Supabase advisors reported no new Command Center security or missing-index finding.
 
 ## Known staging drift
 
