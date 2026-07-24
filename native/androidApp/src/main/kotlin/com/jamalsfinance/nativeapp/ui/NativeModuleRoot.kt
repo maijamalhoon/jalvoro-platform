@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,7 +49,7 @@ import com.jamalsfinance.shared.reports.ReportsInsightsRepository
 import kotlinx.coroutines.launch
 
 private enum class NativeWorkspace {
-    Launcher,
+    Overview,
     AccountsTransactions,
     GoalsPayables,
     InvestmentsAnalytics,
@@ -56,6 +57,7 @@ private enum class NativeWorkspace {
     PersonalPlatform,
     PrivacySecurity,
     AccessibilityDisplay,
+    More,
 }
 
 private data class NativeModuleItem(
@@ -76,14 +78,58 @@ fun NativeModuleRootShell(
     nativePreferences: AndroidNativePreferences,
     onSignOut: suspend () -> Unit,
 ) {
-    var workspace by remember { mutableStateOf(NativeWorkspace.Launcher) }
-    BackHandler(enabled = workspace != NativeWorkspace.Launcher) {
-        workspace = NativeWorkspace.Launcher
+    var workspace by remember { mutableStateOf(NativeWorkspace.Overview) }
+    BackHandler(enabled = workspace != NativeWorkspace.Overview) {
+        workspace = NativeWorkspace.Overview
     }
 
     when (workspace) {
-        NativeWorkspace.Launcher -> NativeModuleLauncher(
+        NativeWorkspace.Overview -> NativeOverviewDashboard(
             email = email,
+            financeRepository = financeRepository,
+            goalsPayablesRepository = goalsPayablesRepository,
+            investmentsAnalyticsRepository = investmentsAnalyticsRepository,
+            onOpenFinance = { workspace = NativeWorkspace.AccountsTransactions },
+            onOpenPlanning = { workspace = NativeWorkspace.GoalsPayables },
+            onOpenInvestments = { workspace = NativeWorkspace.InvestmentsAnalytics },
+            onOpenReports = { workspace = NativeWorkspace.ReportsInsights },
+            onOpenSettings = { workspace = NativeWorkspace.PersonalPlatform },
+            onOpenMore = { workspace = NativeWorkspace.More },
+        )
+        NativeWorkspace.AccountsTransactions -> NativeDashboardShell(
+            email = email,
+            financeRepository = financeRepository,
+            onSignOut = onSignOut,
+        )
+        NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
+            repository = goalsPayablesRepository,
+            onBack = { workspace = NativeWorkspace.Overview },
+        )
+        NativeWorkspace.InvestmentsAnalytics -> InvestmentsAnalyticsDashboard(
+            repository = investmentsAnalyticsRepository,
+            onBack = { workspace = NativeWorkspace.Overview },
+        )
+        NativeWorkspace.ReportsInsights -> ReportsInsightsDashboard(
+            repository = reportsInsightsRepository,
+            onBack = { workspace = NativeWorkspace.Overview },
+        )
+        NativeWorkspace.PersonalPlatform -> PersonalPlatformDashboard(
+            repository = personalPlatformRepository,
+            preferences = nativePreferences,
+            onBack = { workspace = NativeWorkspace.Overview },
+            onSignOut = onSignOut,
+        )
+        NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
+            preferences = nativePreferences,
+            onBack = { workspace = NativeWorkspace.Overview },
+        )
+        NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
+            preferences = nativePreferences,
+            onBack = { workspace = NativeWorkspace.Overview },
+        )
+        NativeWorkspace.More -> NativeModuleLauncher(
+            email = email,
+            onOverview = { workspace = NativeWorkspace.Overview },
             onAccountsTransactions = { workspace = NativeWorkspace.AccountsTransactions },
             onGoalsPayables = { workspace = NativeWorkspace.GoalsPayables },
             onInvestmentsAnalytics = { workspace = NativeWorkspace.InvestmentsAnalytics },
@@ -93,37 +139,6 @@ fun NativeModuleRootShell(
             onAccessibilityDisplay = { workspace = NativeWorkspace.AccessibilityDisplay },
             onSignOut = onSignOut,
         )
-        NativeWorkspace.AccountsTransactions -> NativeDashboardShell(
-            email = email,
-            financeRepository = financeRepository,
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
-            repository = goalsPayablesRepository,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.InvestmentsAnalytics -> InvestmentsAnalyticsDashboard(
-            repository = investmentsAnalyticsRepository,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.ReportsInsights -> ReportsInsightsDashboard(
-            repository = reportsInsightsRepository,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.PersonalPlatform -> PersonalPlatformDashboard(
-            repository = personalPlatformRepository,
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Launcher },
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
     }
 }
 
@@ -131,6 +146,7 @@ fun NativeModuleRootShell(
 @Composable
 private fun NativeModuleLauncher(
     email: String,
+    onOverview: () -> Unit,
     onAccountsTransactions: () -> Unit,
     onGoalsPayables: () -> Unit,
     onInvestmentsAnalytics: () -> Unit,
@@ -189,15 +205,20 @@ private fun NativeModuleLauncher(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    TextButton(onClick = onOverview) {
+                        Text("Overview")
+                    }
+                },
                 title = {
                     Column {
                         Text(
-                            "Jamal's Finance",
+                            "More",
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.semantics { heading() },
                         )
                         Text(
-                            "Native personal finance",
+                            "All personal finance workspaces",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -235,17 +256,22 @@ private fun NativeModuleLauncher(
                     Text(
                         email,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { contentDescription = "Signed in as $email" },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Signed in as $email"
+                        },
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Choose a personal finance workspace. Business software is intentionally separate.",
+                        "Every workspace uses your real Supabase-backed finance data. Business software stays separate.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                items(moduleRows, key = { row -> row.joinToString("|") { it.title } }) { row ->
+                items(
+                    items = moduleRows,
+                    key = { row -> row.joinToString("|") { it.title } },
+                ) { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -269,7 +295,7 @@ private fun NativeModuleLauncher(
                     OutlinedButton(
                         onClick = { scope.launch { onSignOut() } },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(16.dp),
                     ) {
                         Text("Sign out")
                     }
@@ -292,13 +318,15 @@ private fun ModuleCard(
         modifier = modifier.semantics(mergeDescendants = true) {
             contentDescription = "$title. $description. $action"
         },
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
     ) {
-        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Text(
                 title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() },
             )
@@ -308,7 +336,7 @@ private fun ModuleCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
                 action,
                 color = MaterialTheme.colorScheme.primary,
