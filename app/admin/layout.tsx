@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import AdminCommandCenterShell from "@/components/admin/AdminCommandCenterShell";
 
 import "./command-center-world.css";
+import "./organization-operations.css";
+import "./organization-operations-detail.css";
 
 export const metadata: Metadata = {
   title: {
