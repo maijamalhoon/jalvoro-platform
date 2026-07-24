@@ -1,7 +1,7 @@
 {
   "name": "JALVORO",
   "short_name": "Jalvoro",
-  "description": "One connected platform for personal finance, shops, teams, and business operations.",
+  "description": "A complete connected business operating ecosystem for one-person businesses, shops, restaurants, growing companies, multi-branch organizations, franchises, and enterprises.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
