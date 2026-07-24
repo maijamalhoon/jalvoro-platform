@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Jalvoro.BusinessCore.Domain.Security;
 
 public sealed record PermissionKey
@@ -23,7 +25,9 @@ public sealed record PermissionKey
     return permission;
   }
 
-  public static bool TryParse(string? value, out PermissionKey? permission)
+  public static bool TryParse(
+    string? value,
+    [NotNullWhen(true)] out PermissionKey? permission)
   {
     permission = null;
     if (string.IsNullOrWhiteSpace(value) || value.Length > MaximumLength)
