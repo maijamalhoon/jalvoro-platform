@@ -35,14 +35,15 @@ A category moves from `draft` to `master` only after it has:
 7. automated quality-gate tests;
 8. explicit isolation from product rollout.
 
-Six categories are currently mastered:
+Seven categories are currently mastered:
 
 - Navigation — 12 icons, documented in `docs/jalvoro-navigation-master-set.md`;
 - Actions — 18 icons, documented in `docs/jalvoro-actions-master-set.md`;
 - Finance — 16 icons, documented in `docs/jalvoro-finance-master-set.md`;
 - Objects — 12 icons, documented in `docs/jalvoro-objects-master-set.md`;
 - Identity — 3 icons, documented in `docs/jalvoro-identity-master-set.md`;
-- Communication — 5 icons, documented in `docs/jalvoro-communication-master-set.md`.
+- Communication — 5 icons, documented in `docs/jalvoro-communication-master-set.md`;
+- Interface — 10 icons, documented in `docs/jalvoro-interface-master-set.md`.
 
 Actions enforce a strict operation-versus-status boundary and document true opposite pairs such as export/import, download/upload and undo/redo.
 
@@ -53,6 +54,8 @@ Objects enforce a thing-versus-action boundary, keep generic objects simpler tha
 Identity enforces neutral actor silhouettes, separates singular, plural and person-add meanings, and forbids demographic, emotional, role and account-status assumptions.
 
 Communication separates written, voice, delivery and global-reach concepts; it explicitly distinguishes mail/chat, send/share/export and worldwide communication from location or browser metaphors.
+
+Interface separates controls from destinations and domain actions; it explicitly distinguishes grid/list view modes, eye/eye-off visibility, chevron disclosure, arrow movement and undo/send/export operations.
 
 ## Standard library model
 

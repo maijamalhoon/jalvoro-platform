@@ -31,6 +31,11 @@ import {
   isJalvoroIdentityMasterName,
 } from "@/lib/icon-system/identity-master-set";
 import {
+  JALVORO_INTERFACE_MASTER_NAMES,
+  JALVORO_INTERFACE_MASTER_SPEC,
+  isJalvoroInterfaceMasterName,
+} from "@/lib/icon-system/interface-master-set";
+import {
   JALVORO_NAVIGATION_MASTER_NAMES,
   JALVORO_NAVIGATION_MASTER_SPEC,
   isJalvoroNavigationMasterName,
@@ -103,7 +108,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Interface",
     description: "Layout, visibility, direction and interface controls.",
     importPath: "@/components/icons/jalvoro/components/interface",
-    designStatus: "draft",
+    designStatus: "master",
   },
   status: {
     label: "Status",
@@ -127,8 +132,9 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
     JALVORO_FINANCE_MASTER_NAMES.length +
     JALVORO_OBJECTS_MASTER_NAMES.length +
     JALVORO_IDENTITY_MASTER_NAMES.length +
-    JALVORO_COMMUNICATION_MASTER_NAMES.length,
-  masteredCategoryCount: 6,
+    JALVORO_COMMUNICATION_MASTER_NAMES.length +
+    JALVORO_INTERFACE_MASTER_NAMES.length,
+  masteredCategoryCount: 7,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -195,6 +201,10 @@ function getJalvoroMasterSpec(name: JalvoroIconName) {
 
   if (isJalvoroCommunicationMasterName(name)) {
     return JALVORO_COMMUNICATION_MASTER_SPEC[name];
+  }
+
+  if (isJalvoroInterfaceMasterName(name)) {
+    return JALVORO_INTERFACE_MASTER_SPEC[name];
   }
 
   return null;
