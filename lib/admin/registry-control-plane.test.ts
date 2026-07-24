@@ -53,7 +53,7 @@ describe("Command Center registry database control plane", () => {
     expect(migration).toContain("command_center_manifest_digest_mismatch");
     expect(migration).toContain("command_center_manifest_validation_stale");
     expect(migration).toContain("expires_at <= approved_at + interval '24 hours'");
-    expect(migration).toContain("status='consumed'");
+    expect(migration).toMatch(/status\s*=\s*'consumed'/);
   });
 
   it("keeps registry audit append-only and sensitive business data out of the schema", () => {
@@ -61,7 +61,9 @@ describe("Command Center registry database control plane", () => {
 
     expect(migration).toContain("command_center_registry_audit_append_only");
     expect(migration).toContain("reject_platform_audit_update");
-    expect(migration).toContain("expires_at timestamptz not null default (now() + interval '24 months')");
+    expect(migration).toContain(
+      "expires_at timestamptz not null default (now() + interval '24 months')",
+    );
     expect(migration).toContain("forbidden_sensitive_field");
     expect(migration).not.toMatch(/card_number\s+(text|jsonb|numeric)/i);
     expect(migration).not.toMatch(/cvv\s+(text|jsonb|numeric)/i);
@@ -83,7 +85,9 @@ describe("Command Center registry database control plane", () => {
     expect(migration).toContain("region_key text");
     expect(migration).toContain("get_command_center_navigation");
     expect(migration).toContain("g.revoked_at is null");
-    expect(migration).toContain("g.expires_at is null or g.expires_at>now()");
+    expect(migration).toMatch(
+      /g\.expires_at\s+is\s+null\s+or\s+g\.expires_at\s*>\s*now\(\)/,
+    );
     expect(serverNavigation).toContain('rpc("get_command_center_navigation"');
     expect(clientNavigation).not.toContain("createClient");
     expect(clientNavigation).not.toContain("supabase");
