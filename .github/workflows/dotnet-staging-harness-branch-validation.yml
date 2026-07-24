@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: dotnet-staging-harness-branch-validation
@@ -34,24 +35,102 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Enforce dependency-free foundation
+      - name: Run complete branch validation
+        id: validate
+        shell: bash
         run: |
+          set +e
+          exec > >(tee staging-harness-validation.log) 2>&1
+
+          status=0
+          stage=dependency-policy
           if grep -R --include='*.csproj' '<PackageReference' backend/dotnet; then
             echo 'The Business Core foundation must not introduce third-party NuGet packages.' >&2
-            exit 1
+            status=1
           fi
 
-      - name: Restore
-        run: dotnet restore backend/dotnet/Jalvoro.BusinessCore.sln
+          if [ "$status" -eq 0 ]; then
+            stage=restore
+            dotnet restore backend/dotnet/Jalvoro.BusinessCore.sln
+            status=$?
+          fi
 
-      - name: Verify formatting
-        run: dotnet format backend/dotnet/Jalvoro.BusinessCore.sln --verify-no-changes --no-restore
+          if [ "$status" -eq 0 ]; then
+            stage=format
+            dotnet format backend/dotnet/Jalvoro.BusinessCore.sln --verify-no-changes --no-restore
+            status=$?
+          fi
 
-      - name: Build with warnings as errors
-        run: dotnet build backend/dotnet/Jalvoro.BusinessCore.sln --configuration Release --no-restore
+          if [ "$status" -eq 0 ]; then
+            stage=build
+            dotnet build backend/dotnet/Jalvoro.BusinessCore.sln --configuration Release --no-restore
+            status=$?
+          fi
 
-      - name: Run architecture and preservation contracts
-        run: dotnet run --project backend/dotnet/tests/Jalvoro.BusinessCore.ContractTests/Jalvoro.BusinessCore.ContractTests.csproj --configuration Release --no-build
+          if [ "$status" -eq 0 ]; then
+            stage=contracts
+            dotnet run --project backend/dotnet/tests/Jalvoro.BusinessCore.ContractTests/Jalvoro.BusinessCore.ContractTests.csproj --configuration Release --no-build
+            status=$?
+          fi
 
-      - name: Publish API artifact
-        run: dotnet publish backend/dotnet/src/Jalvoro.BusinessCore.Api/Jalvoro.BusinessCore.Api.csproj --configuration Release --no-build --output backend/dotnet/artifacts/publish
+          if [ "$status" -eq 0 ]; then
+            stage=publish
+            dotnet publish backend/dotnet/src/Jalvoro.BusinessCore.Api/Jalvoro.BusinessCore.Api.csproj --configuration Release --no-build --output backend/dotnet/artifacts/publish
+            status=$?
+          fi
+
+          if [ "$status" -eq 0 ]; then
+            stage=complete
+          fi
+
+          printf 'exit_code=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          printf 'stage=%s\n' "$stage" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload branch validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: staging-harness-validation-${{ github.sha }}
+          path: staging-harness-validation.log
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Publish branch validation status
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VALIDATION_EXIT_CODE: ${{ steps.validate.outputs.exit_code }}
+          VALIDATION_STAGE: ${{ steps.validate.outputs.stage }}
+        shell: bash
+        run: |
+          if [ "$VALIDATION_EXIT_CODE" = "0" ]; then
+            state=success
+            description="Staging harness validation passed"
+          else
+            state=failure
+            description="Staging harness failed at ${VALIDATION_STAGE:-unknown}"
+          fi
+
+          target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          payload="$(jq -n \
+            --arg state "$state" \
+            --arg target_url "$target_url" \
+            --arg description "$description" \
+            --arg context "jalvoro/staging-harness-validation" \
+            '{state:$state,target_url:$target_url,description:$description,context:$context}')"
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --data "$payload"
+
+      - name: Enforce validation result
+        if: always()
+        env:
+          VALIDATION_EXIT_CODE: ${{ steps.validate.outputs.exit_code }}
+        shell: bash
+        run: exit "${VALIDATION_EXIT_CODE:-1}"
