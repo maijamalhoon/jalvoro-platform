@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import AdminOrganizationOperationsPanel from "@/components/admin/AdminOrganizationOperationsPanel";
-import { parseAdminOrganizationOperationsSnapshot } from "@/lib/admin/organization-operations";
+import { parseAdminOrganizationOperationsSnapshot } from "@/lib/admin/organization-operations-guard";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -47,7 +47,8 @@ export default async function OrganizationOperationsPage({
   searchParams,
 }: OrganizationPageProps) {
   const params = await searchParams;
-  const organizationValue = readSingle(params.organization)?.toUpperCase() ?? null;
+  const organizationValue =
+    readSingle(params.organization)?.toUpperCase() ?? null;
   const organizationCode = organizationValue?.match(ORGANIZATION_CODE_PATTERN)
     ? organizationValue
     : null;
