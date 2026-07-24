@@ -133,7 +133,7 @@ public static class BusinessCoreApiApplication
       .WithName("GetBusinessCoreSecurityContract");
 
     app.MapGet(
-          "/api/v1/context/{tenantId:guid}",
+          "/api/v1/context/{tenantId}",
           async (IBusinessContextResolver resolver, CancellationToken cancellationToken) =>
           {
             var resolution = await resolver.ResolveCurrentAsync(cancellationToken);
