@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Api\Jalvoro.BusinessCore.Api.csproj" />
     <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Application\Jalvoro.BusinessCore.Application.csproj" />
     <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Domain\Jalvoro.BusinessCore.Domain.csproj" />
     <ProjectReference Include="..\..\src\Jalvoro.BusinessCore.Infrastructure\Jalvoro.BusinessCore.Infrastructure.csproj" />

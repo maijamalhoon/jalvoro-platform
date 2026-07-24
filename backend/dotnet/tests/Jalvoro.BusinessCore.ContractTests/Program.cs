@@ -126,10 +126,11 @@ Check(!duplicateIdempotency.MayExecute, "Duplicate idempotency reservations must
 Check(reservedIdempotency.MayExecute, "Only a reserved idempotency scope may execute.");
 
 await SupabaseIdentityContracts.RunAsync(Check);
+await BusinessCoreHttpPipelineContracts.RunAsync(Check);
 
 if (failures.Count == 0)
 {
-  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules, fail-closed organization security, and verified Supabase identity projection.");
+  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules, fail-closed organization security, verified Supabase identity projection, and full HTTP pipeline behavior.");
   return 0;
 }
 
