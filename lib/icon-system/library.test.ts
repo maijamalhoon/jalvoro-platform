@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { JALVORO_ICON_NAMES } from "@/components/icons/jalvoro/manifest";
+import { JALVORO_NAVIGATION_MASTER_NAMES } from "@/lib/icon-system/navigation-master-set";
 import {
   JALVORO_ICON_CATEGORY_META,
   JALVORO_ICON_CATEGORY_ORDER,
@@ -46,6 +47,26 @@ describe("JALVORO icon library catalog", () => {
     expect(snippet).toContain("size={20}");
     expect(snippet).toContain('context="compact"');
     expect(snippet).not.toContain("accent=");
+  });
+
+  it("exposes mastered navigation review metadata without approving product rollout", () => {
+    const masteredEntries = JALVORO_ICON_LIBRARY_ENTRIES.filter(
+      (entry) => entry.designStatus === "master",
+    );
+
+    expect(JALVORO_ICON_LIBRARY.masteredIconCount).toBe(
+      JALVORO_NAVIGATION_MASTER_NAMES.length,
+    );
+    expect(masteredEntries.map((entry) => entry.name)).toEqual(
+      JALVORO_NAVIGATION_MASTER_NAMES,
+    );
+
+    for (const entry of masteredEntries) {
+      expect(entry.semanticIntent).not.toBeNull();
+      expect(entry.silhouette).not.toBeNull();
+      expect(entry.primaryCue).not.toBeNull();
+      expect(entry.avoid.length).toBeGreaterThanOrEqual(3);
+    }
   });
 
   it("keeps the core library versioned for future package extraction", () => {
