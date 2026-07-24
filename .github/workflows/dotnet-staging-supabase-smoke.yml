@@ -27,6 +27,7 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      JALVORO_WORKFLOW_CONFIRMATION: ${{ inputs.confirmation }}
       JALVORO_SMOKE_ENVIRONMENT: staging
       JALVORO_SMOKE_CONFIRMATION: STAGING_ONLY_READ_ONLY
       JALVORO_SUPABASE_STAGING_URL: https://zqhdwjivyfzeoqvahjme.supabase.co
@@ -39,7 +40,7 @@ jobs:
       - name: Enforce explicit staging-only confirmation
         shell: bash
         run: |
-          if [ "${{ inputs.confirmation }}" != "STAGING_ONLY_READ_ONLY" ]; then
+          if [ "$JALVORO_WORKFLOW_CONFIRMATION" != "STAGING_ONLY_READ_ONLY" ]; then
             echo "The staging smoke run requires the exact STAGING_ONLY_READ_ONLY confirmation." >&2
             exit 1
           fi
