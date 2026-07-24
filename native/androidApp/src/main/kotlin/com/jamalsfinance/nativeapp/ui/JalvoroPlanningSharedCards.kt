@@ -20,8 +20,12 @@ internal fun PlanningHeroCard(
     detail: String,
     progress: Double,
 ) {
+    val animatedProgress = rememberJalvoroAnimatedProgress(
+        target = progress.coerceIn(0.0, 1.0).toFloat(),
+        label = "$eyebrow-hero-progress",
+    )
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -35,11 +39,26 @@ internal fun PlanningHeroCard(
                 Spacer(Modifier.size(9.dp))
                 Text(eyebrow, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             }
-            Text(primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-            Text(secondary, style = MaterialTheme.typography.bodyMedium)
-            Text(detail, style = MaterialTheme.typography.bodySmall)
+            JalvoroAnimatedSwap(
+                targetState = primary,
+                label = "$eyebrow-primary-value",
+            ) { value ->
+                Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+            }
+            JalvoroAnimatedSwap(
+                targetState = secondary,
+                label = "$eyebrow-secondary-value",
+            ) { value ->
+                Text(value, style = MaterialTheme.typography.bodyMedium)
+            }
+            JalvoroAnimatedSwap(
+                targetState = detail,
+                label = "$eyebrow-detail-value",
+            ) { value ->
+                Text(value, style = MaterialTheme.typography.bodySmall)
+            }
             LinearProgressIndicator(
-                progress = { progress.coerceIn(0.0, 1.0).toFloat() },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -63,16 +82,22 @@ internal fun PlanningStatusPill(text: String, tone: PlanningTone) {
         PlanningTone.Danger -> MaterialTheme.colorScheme.onErrorContainer
     }
     Surface(
+        modifier = Modifier.jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(999.dp),
         color = container,
         contentColor = content,
     ) {
-        Text(
-            text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
+        JalvoroAnimatedSwap(
+            targetState = text,
+            label = "planning-status-pill",
+        ) { currentText ->
+            Text(
+                currentText,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -95,7 +120,12 @@ internal fun PlanningIconTile(icon: ImageVector) {
 internal fun PlanningMetric(label: String, value: String, endAligned: Boolean = false) {
     Column(horizontalAlignment = if (endAligned) Alignment.End else Alignment.Start) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontWeight = FontWeight.Bold)
+        JalvoroAnimatedSwap(
+            targetState = value,
+            label = "$label-planning-metric",
+        ) { currentValue ->
+            Text(currentValue, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -109,7 +139,7 @@ internal fun PlanningHistoryRow(
     onRemove: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
@@ -120,7 +150,12 @@ internal fun PlanningHistoryRow(
         ) {
             Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f)) {
-                Text(amount, fontWeight = FontWeight.Bold)
+                JalvoroAnimatedSwap(
+                    targetState = amount,
+                    label = "planning-history-amount",
+                ) { currentAmount ->
+                    Text(currentAmount, fontWeight = FontWeight.Bold)
+                }
                 Text(metadata, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 note?.takeIf { it.isNotBlank() }?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall)
