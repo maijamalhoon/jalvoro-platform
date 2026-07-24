@@ -1,0 +1,57 @@
+name: Global Operations typecheck diagnostic
+
+on:
+  push:
+    branches:
+      - agent/command-center-global-operations-overview
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder
+      NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 24
+          cache: npm
+          package-manager-cache: true
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Capture compiler output
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          exit_code=$?
+          {
+            echo "exit_code=${exit_code}"
+            echo
+            grep -n -E "error TS|Type error|Cannot find|is not assignable|does not exist" typecheck.log || true
+          } > typecheck-diagnostic.txt
+          exit 0
+
+      - name: Upload compiler diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-operations-typecheck-diagnostic
+          path: typecheck-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
