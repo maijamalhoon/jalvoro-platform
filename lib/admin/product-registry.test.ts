@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import {
-  COMMAND_CENTER_PLATFORM_MANIFEST,
-  getRegisteredCommandCenterNavigation,
-} from "./command-center-registry";
+import { COMMAND_CENTER_PLATFORM_MANIFEST } from "./command-center-registry";
 import {
   buildCommandCenterNavigation,
   type ProductManifestV1,
@@ -71,7 +68,7 @@ describe("JALVORO Command Center product registry", () => {
 
   it("exposes only active, released, environment-safe and permitted modules", () => {
     expect(
-      getRegisteredCommandCenterNavigation({
+      buildCommandCenterNavigation([COMMAND_CENTER_PLATFORM_MANIFEST], {
         environment: "production",
         permissions: new Set([
           "command-center:platform:view",
@@ -81,7 +78,7 @@ describe("JALVORO Command Center product registry", () => {
     ).toEqual(["/admin"]);
 
     expect(
-      getRegisteredCommandCenterNavigation({
+      buildCommandCenterNavigation([COMMAND_CENTER_PLATFORM_MANIFEST], {
         environment: "production",
         permissions: new Set(["command-center:platform:view"]),
       }),
@@ -113,16 +110,22 @@ describe("JALVORO Command Center product registry", () => {
     ).toHaveLength(2);
   });
 
-  it("keeps the navigation registry-driven and the shell officially named", () => {
+  it("keeps the shell officially named and the static manifest non-authoritative", () => {
     const navigation = read("components/admin/AdminSectionNav.tsx");
+    const client = read("components/admin/AdminSectionNavClient.tsx");
     const layout = read("app/admin/layout.tsx");
-    const registry = read("lib/admin/product-registry.ts");
+    const registry = read("lib/admin/command-center-registry.ts");
+    const validator = read("lib/admin/product-registry.ts");
 
-    expect(navigation).toContain("getRegisteredCommandCenterNavigation");
-    expect(navigation).not.toContain("const ADMIN_SECTIONS");
+    expect(navigation).toContain('rpc("get_command_center_navigation"');
+    expect(navigation).not.toContain('"use client"');
+    expect(client).toContain('"use client"');
+    expect(client).not.toContain("COMMAND_CENTER_COMPATIBILITY_PERMISSIONS");
+    expect(registry).not.toContain("COMMAND_CENTER_COMPATIBILITY_PERMISSIONS");
+    expect(registry).not.toContain("getRegisteredCommandCenterNavigation");
     expect(layout).toContain("JALVORO Command Center");
     expect(layout).toContain("Global Admin & Operations Control Center");
-    expect(registry).toContain("const productModule = modules.get");
-    expect(registry).not.toContain("const module = modules.get");
+    expect(validator).toContain("const productModule = modules.get");
+    expect(validator).not.toContain("const module = modules.get");
   });
 });
