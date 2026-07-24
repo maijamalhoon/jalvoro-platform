@@ -84,66 +84,71 @@ fun NativeModuleRootShell(
         workspace = NativeWorkspace.Overview
     }
 
-    when (workspace) {
-        NativeWorkspace.Overview -> JalvoroOverviewDashboard(
-            email = email,
-            financeRepository = financeRepository,
-            goalsPayablesRepository = goalsPayablesRepository,
-            investmentsAnalyticsRepository = investmentsAnalyticsRepository,
-            onOpenFinance = { workspace = NativeWorkspace.AccountsTransactions },
-            onOpenPlanning = { workspace = NativeWorkspace.GoalsPayables },
-            onOpenInvestments = { workspace = NativeWorkspace.InvestmentsAnalytics },
-            onOpenReports = { workspace = NativeWorkspace.ReportsInsights },
-            onOpenSettings = { workspace = NativeWorkspace.PersonalPlatform },
-            onOpenMore = { workspace = NativeWorkspace.More },
-        )
-        NativeWorkspace.AccountsTransactions -> JalvoroFinanceDashboard(
-            email = email,
-            financeRepository = financeRepository,
-            onBack = { workspace = NativeWorkspace.Overview },
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
-            repository = goalsPayablesRepository,
-            onBack = { workspace = NativeWorkspace.Overview },
-        )
-        NativeWorkspace.InvestmentsAnalytics -> JalvoroInvestmentsAnalyticsDashboard(
-            repository = investmentsAnalyticsRepository,
-            onBack = { workspace = NativeWorkspace.Overview },
-        )
-        NativeWorkspace.ReportsInsights -> ReportsInsightsDashboard(
-            repository = reportsInsightsRepository,
-            onBack = { workspace = NativeWorkspace.Overview },
-        )
-        NativeWorkspace.PersonalPlatform -> PersonalPlatformDashboard(
-            repository = personalPlatformRepository,
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Overview },
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
-            email = email,
-            repository = personalPlatformRepository,
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Overview },
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Overview },
-        )
-        NativeWorkspace.More -> NativeModuleLauncher(
-            email = email,
-            onOverview = { workspace = NativeWorkspace.Overview },
-            onAccountsTransactions = { workspace = NativeWorkspace.AccountsTransactions },
-            onGoalsPayables = { workspace = NativeWorkspace.GoalsPayables },
-            onInvestmentsAnalytics = { workspace = NativeWorkspace.InvestmentsAnalytics },
-            onReportsInsights = { workspace = NativeWorkspace.ReportsInsights },
-            onPersonalPlatform = { workspace = NativeWorkspace.PersonalPlatform },
-            onPrivacySecurity = { workspace = NativeWorkspace.PrivacySecurity },
-            onAccessibilityDisplay = { workspace = NativeWorkspace.AccessibilityDisplay },
-            onSignOut = onSignOut,
-        )
+    JalvoroAnimatedWorkspace(
+        targetState = workspace,
+        modifier = Modifier.fillMaxSize(),
+    ) { currentWorkspace ->
+        when (currentWorkspace) {
+            NativeWorkspace.Overview -> JalvoroOverviewDashboard(
+                email = email,
+                financeRepository = financeRepository,
+                goalsPayablesRepository = goalsPayablesRepository,
+                investmentsAnalyticsRepository = investmentsAnalyticsRepository,
+                onOpenFinance = { workspace = NativeWorkspace.AccountsTransactions },
+                onOpenPlanning = { workspace = NativeWorkspace.GoalsPayables },
+                onOpenInvestments = { workspace = NativeWorkspace.InvestmentsAnalytics },
+                onOpenReports = { workspace = NativeWorkspace.ReportsInsights },
+                onOpenSettings = { workspace = NativeWorkspace.PersonalPlatform },
+                onOpenMore = { workspace = NativeWorkspace.More },
+            )
+            NativeWorkspace.AccountsTransactions -> JalvoroFinanceDashboard(
+                email = email,
+                financeRepository = financeRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+                onSignOut = onSignOut,
+            )
+            NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
+                repository = goalsPayablesRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.InvestmentsAnalytics -> JalvoroInvestmentsAnalyticsDashboard(
+                repository = investmentsAnalyticsRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.ReportsInsights -> ReportsInsightsDashboard(
+                repository = reportsInsightsRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.PersonalPlatform -> PersonalPlatformDashboard(
+                repository = personalPlatformRepository,
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.Overview },
+                onSignOut = onSignOut,
+            )
+            NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
+                email = email,
+                repository = personalPlatformRepository,
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.Overview },
+                onSignOut = onSignOut,
+            )
+            NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.More -> NativeModuleLauncher(
+                email = email,
+                onOverview = { workspace = NativeWorkspace.Overview },
+                onAccountsTransactions = { workspace = NativeWorkspace.AccountsTransactions },
+                onGoalsPayables = { workspace = NativeWorkspace.GoalsPayables },
+                onInvestmentsAnalytics = { workspace = NativeWorkspace.InvestmentsAnalytics },
+                onReportsInsights = { workspace = NativeWorkspace.ReportsInsights },
+                onPersonalPlatform = { workspace = NativeWorkspace.PersonalPlatform },
+                onPrivacySecurity = { workspace = NativeWorkspace.PrivacySecurity },
+                onAccessibilityDisplay = { workspace = NativeWorkspace.AccessibilityDisplay },
+                onSignOut = onSignOut,
+            )
+        }
     }
 }
 
@@ -262,25 +267,27 @@ private fun NativeModuleLauncher(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(
-                            text = "More",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                        Text(
-                            text = "Signed in as $email",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Signed in as $email"
-                            },
-                        )
-                        Text(
-                            text = "Every workspace uses real owner-scoped finance data. Business software remains separate from Jalvoro Personal.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    JalvoroEntrance(index = 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(
+                                text = "More",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                text = "Signed in as $email",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Signed in as $email"
+                                },
+                            )
+                            Text(
+                                text = "Every workspace uses real owner-scoped finance data. Business software remains separate from Jalvoro Personal.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
 
@@ -288,35 +295,39 @@ private fun NativeModuleLauncher(
                     items = moduleRows,
                     key = { row -> row.joinToString("|") { it.title } },
                 ) { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        row.forEach { item ->
-                            ModuleCard(
-                                item = item,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        if (row.size == 1 && layout == PersonalAdaptiveLayout.TwoColumn) {
-                            Spacer(Modifier.weight(1f))
+                    JalvoroEntrance(index = moduleRows.indexOf(row) + 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            row.forEach { item ->
+                                ModuleCard(
+                                    item = item,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (row.size == 1 && layout == PersonalAdaptiveLayout.TwoColumn) {
+                                Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
                 }
 
                 item {
-                    OutlinedButton(
-                        onClick = { scope.launch { onSignOut() } },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                    ) {
-                        Icon(
-                            imageVector = JalvoroIcons.SignOut,
-                            contentDescription = null,
-                            modifier = Modifier.size(19.dp),
-                        )
-                        Spacer(Modifier.size(8.dp))
-                        Text("Sign out")
+                    JalvoroEntrance(index = moduleRows.size + 1) {
+                        OutlinedButton(
+                            onClick = { scope.launch { onSignOut() } },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Icon(
+                                imageVector = JalvoroIcons.SignOut,
+                                contentDescription = null,
+                                modifier = Modifier.size(19.dp),
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text("Sign out")
+                        }
                     }
                 }
             }
