@@ -21,6 +21,11 @@ import {
   isJalvoroFinanceMasterName,
 } from "@/lib/icon-system/finance-master-set";
 import {
+  JALVORO_IDENTITY_MASTER_NAMES,
+  JALVORO_IDENTITY_MASTER_SPEC,
+  isJalvoroIdentityMasterName,
+} from "@/lib/icon-system/identity-master-set";
+import {
   JALVORO_NAVIGATION_MASTER_NAMES,
   JALVORO_NAVIGATION_MASTER_SPEC,
   isJalvoroNavigationMasterName,
@@ -81,7 +86,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Identity",
     description: "People, profiles, teams and account actors.",
     importPath: "@/components/icons/jalvoro/components/identity",
-    designStatus: "draft",
+    designStatus: "master",
   },
   communication: {
     label: "Communication",
@@ -115,8 +120,9 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
     JALVORO_NAVIGATION_MASTER_NAMES.length +
     JALVORO_ACTIONS_MASTER_NAMES.length +
     JALVORO_FINANCE_MASTER_NAMES.length +
-    JALVORO_OBJECTS_MASTER_NAMES.length,
-  masteredCategoryCount: 4,
+    JALVORO_OBJECTS_MASTER_NAMES.length +
+    JALVORO_IDENTITY_MASTER_NAMES.length,
+  masteredCategoryCount: 5,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -175,6 +181,10 @@ function getJalvoroMasterSpec(name: JalvoroIconName) {
 
   if (isJalvoroObjectsMasterName(name)) {
     return JALVORO_OBJECTS_MASTER_SPEC[name];
+  }
+
+  if (isJalvoroIdentityMasterName(name)) {
+    return JALVORO_IDENTITY_MASTER_SPEC[name];
   }
 
   return null;
