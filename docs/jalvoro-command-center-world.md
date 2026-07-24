@@ -89,6 +89,20 @@ No organization is seeded by the migration.
 - Unknown modules do not break the shell.
 - The shell and Organization Operations styles are scoped to `/admin`.
 
+## Production verification
+
+The database and registry prerequisites were deployed before the application merge:
+
+- Command Center manifest version 4 passed submission, validation, Owner approval, digest verification, and activation.
+- The active registry contains four public-release modules and the exact routes `/admin`, `/admin/global-operations`, `/admin/organizations`, and `/admin/icon-system`.
+- The real active Owner resolves all four routes through the server-side navigation RPC.
+- The identity-minimised organization snapshot returns an Owner-operable empty state with direct table access disabled.
+- `anon` cannot execute the organization snapshot, while authenticated administrators use the public invoker RPC.
+- Authenticated direct `SELECT` access remains denied on organization, membership, and organization-audit tables.
+- A rollback-only production lifecycle verified creation, activation, a second membership, an organization-scoped grant, selected detail, two opaque members, one opaque administrator grant, five audit events, and protected-field exclusion.
+- The rollback left zero organizations, memberships, organization audit events, and tenant-scoped grants in production.
+- Supabase advisors reported no new Command Center security or missing-index finding. Remaining advisor notices are pre-existing project-wide configuration and informational unused-index reports.
+
 ## Current non-goals
 
 This cycle does not modify:
