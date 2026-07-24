@@ -1,0 +1,96 @@
+# Temporary branch-scoped fallback for creating the stacked draft PR while the connector endpoint is unavailable.
+name: Create Staging Smoke Draft PR
+
+on:
+  push:
+    branches:
+      - agent/dotnet-staging-supabase-smoke-harness
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create stacked draft PR when absent
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_HEAD: agent/dotnet-staging-supabase-smoke-harness
+          PR_BASE: agent/dotnet-http-pipeline-integration-contracts
+          PR_TITLE: Add protected staging Supabase smoke harness
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          existing="$(curl --fail-with-body --silent --show-error \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}%3A${PR_HEAD}&base=${PR_BASE}")"
+
+          if [ "$(jq 'length' <<<"$existing")" -gt 0 ]; then
+            echo "The stacked PR already exists; no duplicate was created."
+            exit 0
+          fi
+
+          body="$(cat <<'EOF'
+## What changed
+
+Adds a staging-only, read-only Supabase smoke harness on top of PR #120.
+
+### Safety contract
+
+- allows only `jamals-finance-load-test-staging` (`zqhdwjivyfzeoqvahjme`)
+- hard-blocks `jalvoro-production` (`tdagzmgcgjlyqzegmizg`) and every unapproved host
+- requires `staging` plus exact `STAGING_ONLY_READ_ONLY` confirmation
+- requires modern `sb_publishable_...` credentials
+- rejects secret/service-role style keys and legacy anon JWT keys
+- validates the test JWT, expected subject UUID, tenant UUID, and 1–10 second timeout before any remote call
+
+### Read-only live verification
+
+- verifies the test JWT through Supabase Auth `/auth/v1/user`
+- probes `public.business_members` through read-only Data API `GET`
+- starts the exact Business Core ASP.NET Core application on loopback Kestrel
+- calls `GET /api/v1/context/{tenantId}`
+- requires exact tenant/subject, conservative permissions, no-store, and `readOnly = true`
+- confirms no active writes and no service-role usage
+
+### Manual workflow
+
+The smoke workflow is `workflow_dispatch` only and uses the protected GitHub `staging` environment. Runtime secrets and test identity values are not committed.
+
+### Live staging readiness
+
+A read-only metadata inspection found the staging project healthy but missing `public.business_members` and migrations `20260721173000`, `20260721174500`, and `20260722070300`. The harness reports `schema_not_ready` rather than a false pass. This PR does not apply migrations.
+
+### Validation
+
+The branch passed .NET 10 restore, canonical formatting, warnings-as-errors Release build, staging safety contracts, all existing architecture/HTTP contracts, and API publish.
+
+## Preservation
+
+No production request, database migration, DDL, row mutation, Auth user/session creation, service-role key, write endpoint, deployment, production traffic, or Personal Tracking change.
+
+`Preserve -> Extend -> Verify -> Migrate gradually -> Remove only after explicit approval`
+EOF
+)"
+
+          payload="$(jq -n \
+            --arg title "$PR_TITLE" \
+            --arg head "$PR_HEAD" \
+            --arg base "$PR_BASE" \
+            --arg body "$body" \
+            '{title:$title,head:$head,base:$base,body:$body,draft:true,maintainer_can_modify:true}')"
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls" \
+            --data "$payload" \
+            | jq '{number,html_url,draft,state}'
