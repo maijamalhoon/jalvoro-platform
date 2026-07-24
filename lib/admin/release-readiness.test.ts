@@ -32,8 +32,8 @@ function releaseFixture() {
       runtimeSecretsStored: false,
       freeTextStored: false,
       database: {
-        requiredMigrationsApplied: 11,
-        requiredMigrationsTotal: 11,
+        requiredMigrationsApplied: 12,
+        requiredMigrationsTotal: 12,
         rlsTablesProtected: 11,
         rlsTablesTotal: 11,
         directAccessDenied: 11,
@@ -135,7 +135,7 @@ describe("Admin release readiness", () => {
     const parsed = parseAdminReleaseReadinessSnapshot(releaseFixture());
 
     expect(parsed).not.toBeNull();
-    expect(parsed?.database.requiredMigrationsApplied).toBe(11);
+    expect(parsed?.database.requiredMigrationsApplied).toBe(12);
     expect(parsed?.approvals[0]?.releaseCode).toBe("REL-A1B2C3D4E5F6");
   });
 
@@ -156,7 +156,7 @@ describe("Admin release readiness", () => {
 
   it("rejects impossible database control counts", () => {
     const invalid = releaseFixture();
-    invalid.releaseReadiness.database.requiredMigrationsApplied = 12;
+    invalid.releaseReadiness.database.requiredMigrationsApplied = 13;
     expect(parseAdminReleaseReadinessSnapshot(invalid)).toBeNull();
   });
 
@@ -187,7 +187,7 @@ describe("Admin release readiness", () => {
     expect(page).toContain("parseAdminReleaseReadinessSnapshot");
     expect(page).toContain("AdminReleaseReadinessPanel");
     expect(panel).not.toContain('"use client"');
-    expect(panel).toContain("No additional client polling");
+    expect(panel).toMatch(/No\s+additional client polling/);
     expect(actions).toContain('"use server"');
     expect(actions).toContain("approve_admin_release");
   });
@@ -202,6 +202,25 @@ describe("Admin release readiness", () => {
     expect(migration).toContain("admin_release_approval_audit_append_only");
     expect(migration).toContain("release_readiness_blocked");
     expect(migration).toContain("interval '24 hours'");
+  });
+
+  it("supports canonical and staging migration aliases", () => {
+    const aliasMigration = read(
+      "supabase/migrations/20260724114500_harden_admin_release_migration_aliases.sql",
+    );
+
+    expect(aliasMigration).toContain("admin_user_account_operations");
+    expect(aliasMigration).toContain("admin_user_account_operations_backfill");
+    expect(aliasMigration).toContain("requiredMigrationsTotal");
+  });
+
+  it("indexes the release approval reviewer foreign key", () => {
+    const indexMigration = read(
+      "supabase/migrations/20260724115500_index_admin_release_approval_foreign_keys.sql",
+    );
+
+    expect(indexMigration).toContain("admin_release_approvals_approved_by_idx");
+    expect(indexMigration).toContain("approved_by, approved_at desc");
   });
 
   it("does not introduce free-text or sensitive release fields", () => {
