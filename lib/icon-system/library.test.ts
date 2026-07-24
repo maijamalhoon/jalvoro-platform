@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { JALVORO_ICON_NAMES } from "@/components/icons/jalvoro/manifest";
 import { JALVORO_ACTIONS_MASTER_NAMES } from "@/lib/icon-system/actions-master-set";
 import { JALVORO_FINANCE_MASTER_NAMES } from "@/lib/icon-system/finance-master-set";
+import { JALVORO_IDENTITY_MASTER_NAMES } from "@/lib/icon-system/identity-master-set";
 import { JALVORO_NAVIGATION_MASTER_NAMES } from "@/lib/icon-system/navigation-master-set";
 import { JALVORO_OBJECTS_MASTER_NAMES } from "@/lib/icon-system/objects-master-set";
 import {
@@ -19,6 +20,7 @@ const MASTERED_ICON_NAMES = [
   ...JALVORO_ACTIONS_MASTER_NAMES,
   ...JALVORO_FINANCE_MASTER_NAMES,
   ...JALVORO_OBJECTS_MASTER_NAMES,
+  ...JALVORO_IDENTITY_MASTER_NAMES,
 ];
 
 describe("JALVORO icon library catalog", () => {
@@ -49,7 +51,8 @@ describe("JALVORO icon library catalog", () => {
     expect(JALVORO_ICON_CATEGORY_META.actions.designStatus).toBe("master");
     expect(JALVORO_ICON_CATEGORY_META.finance.designStatus).toBe("master");
     expect(JALVORO_ICON_CATEGORY_META.objects.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.identity.designStatus).toBe("draft");
+    expect(JALVORO_ICON_CATEGORY_META.identity.designStatus).toBe("master");
+    expect(JALVORO_ICON_CATEGORY_META.communication.designStatus).toBe("draft");
   });
 
   it("creates predictable component names and clean usage snippets", () => {
@@ -68,13 +71,13 @@ describe("JALVORO icon library catalog", () => {
     expect(snippet).not.toContain("accent=");
   });
 
-  it("exposes mastered navigation, action, finance and object metadata without product rollout", () => {
+  it("exposes mastered navigation, action, finance, object and identity metadata without product rollout", () => {
     const masteredEntries = JALVORO_ICON_LIBRARY_ENTRIES.filter(
       (entry) => entry.designStatus === "master",
     );
 
     expect(JALVORO_ICON_LIBRARY.masteredIconCount).toBe(MASTERED_ICON_NAMES.length);
-    expect(JALVORO_ICON_LIBRARY.masteredCategoryCount).toBe(4);
+    expect(JALVORO_ICON_LIBRARY.masteredCategoryCount).toBe(5);
     expect(masteredEntries.map((entry) => entry.name)).toEqual(MASTERED_ICON_NAMES);
 
     for (const entry of masteredEntries) {
