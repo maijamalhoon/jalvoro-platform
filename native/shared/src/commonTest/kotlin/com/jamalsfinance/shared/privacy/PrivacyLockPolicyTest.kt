@@ -17,6 +17,17 @@ class PrivacyLockPolicyTest {
     }
 
     @Test
+    fun disabledLockIgnoresMalformedBackgroundTimestamp() {
+        assertFalse(
+            shouldRequirePrivacyUnlock(
+                settings = PrivacyLockSettings(enabled = false),
+                lastBackgroundAtMillis = -1L,
+                nowMillis = 10_000L,
+            ),
+        )
+    }
+
+    @Test
     fun enabledLockRequiresUnlockAfterFreshProcessStart() {
         assertTrue(
             shouldRequirePrivacyUnlock(
@@ -60,6 +71,20 @@ class PrivacyLockPolicyTest {
                 settings = settings,
                 lastBackgroundAtMillis = 1_000L,
                 nowMillis = 301_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun negativeBackgroundTimestampLocksFailClosed() {
+        assertTrue(
+            shouldRequirePrivacyUnlock(
+                settings = PrivacyLockSettings(
+                    enabled = true,
+                    timeout = PrivacyLockTimeout.ThirtyMinutes,
+                ),
+                lastBackgroundAtMillis = -1L,
+                nowMillis = 10_000L,
             ),
         )
     }
