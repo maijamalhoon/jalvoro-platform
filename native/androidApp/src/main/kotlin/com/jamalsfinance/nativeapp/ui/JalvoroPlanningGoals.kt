@@ -43,33 +43,44 @@ internal fun GoalsScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            PlanningHeroCard(
-                icon = JalvoroIcons.Target,
-                eyebrow = "Savings progress",
-                primary = formatPkr(snapshot.totalGoalSaved),
-                secondary = "Saved of ${formatPkr(snapshot.totalGoalTarget)}",
-                detail = "${snapshot.completedGoals} of ${snapshot.goals.size} goals completed",
-                progress = if (snapshot.totalGoalTarget > 0) snapshot.totalGoalSaved / snapshot.totalGoalTarget else 0.0,
-            )
+            JalvoroEntrance(index = 0, key = "goals-hero") {
+                PlanningHeroCard(
+                    icon = JalvoroIcons.Target,
+                    eyebrow = "Savings progress",
+                    primary = formatPkr(snapshot.totalGoalSaved),
+                    secondary = "Saved of ${formatPkr(snapshot.totalGoalTarget)}",
+                    detail = "${snapshot.completedGoals} of ${snapshot.goals.size} goals completed",
+                    progress = if (snapshot.totalGoalTarget > 0) snapshot.totalGoalSaved / snapshot.totalGoalTarget else 0.0,
+                )
+            }
         }
         if (snapshot.goals.isEmpty()) {
             item {
-                PlanningEmpty(
-                    icon = JalvoroIcons.Target,
-                    title = "No goals yet",
-                    body = "Create a savings target and track every real contribution.",
-                )
+                JalvoroEntrance(index = 1, key = "goals-empty") {
+                    PlanningEmpty(
+                        icon = JalvoroIcons.Target,
+                        title = "No goals yet",
+                        body = "Create a savings target and track every real contribution.",
+                    )
+                }
             }
         } else {
             items(snapshot.goals.size, key = { index -> snapshot.goals[index].row.id }) { index ->
-                GoalCard(
-                    goal = snapshot.goals[index],
-                    accounts = snapshot.accounts,
-                    onEdit = onEdit,
-                    onContribute = onContribute,
-                    onDelete = onDelete,
-                    onDeleteContribution = onDeleteContribution,
-                )
+                val goal = snapshot.goals[index]
+                JalvoroEntrance(
+                    index = (index + 1).coerceAtMost(12),
+                    key = goal.row.id,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    GoalCard(
+                        goal = goal,
+                        accounts = snapshot.accounts,
+                        onEdit = onEdit,
+                        onContribute = onContribute,
+                        onDelete = onDelete,
+                        onDeleteContribution = onDeleteContribution,
+                    )
+                }
             }
         }
     }
@@ -85,6 +96,10 @@ internal fun GoalCard(
     onDeleteContribution: (GoalContribution) -> Unit,
 ) {
     var historyVisible by remember(goal.row.id) { mutableStateOf(false) }
+    val animatedProgress = rememberJalvoroAnimatedProgress(
+        target = goal.progress.toFloat(),
+        label = "goal-${goal.row.id}-progress",
+    )
     JalvoroSurfaceCard {
         Column(
             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -122,7 +137,7 @@ internal fun GoalCard(
             }
 
             LinearProgressIndicator(
-                progress = { goal.progress.toFloat() },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -185,7 +200,7 @@ internal fun GoalCard(
                     Spacer(Modifier.size(7.dp))
                     Text(if (historyVisible) "Hide contribution history" else "Contribution history (${goal.contributions.size})")
                 }
-                if (historyVisible) {
+                JalvoroAnimatedReveal(visible = historyVisible) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         goal.contributions.forEach { contribution ->
                             val accountName = contribution.accountId?.let { id ->
