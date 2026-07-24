@@ -114,6 +114,8 @@ import "./mobile-search-inline-stability.css";
 import "./data-transfer-overlay.css";
 // Final proximity-style motion layer is presentation-only and must win over the legacy water effect.
 import "./data-transfer-airdrop-polish.css";
+// Successful imports use a cardless full-screen flash before exposing refreshed data.
+import "./data-transfer-flash-override.css";
 // Physical left-edge lock stays absolutely last so generic sheet/dialog rules cannot recenter the drawer.
 import "./mobile-sidebar-edge-lock.css";
 
