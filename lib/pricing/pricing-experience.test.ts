@@ -77,7 +77,7 @@ describe("frontend-only global pricing experience", () => {
     expect(pricing).toContain("/pricing/personal/");
     expect(pricing).toContain("/pricing/business/");
     expect(detail).toContain("generateStaticParams");
-    expect(selection).toContain("No real payment is collected");
+    expect(selection).toContain("cannot charge a card");
   });
 
   it("contains no provider secret or payment API integration in pricing frontend", () => {
