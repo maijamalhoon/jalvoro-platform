@@ -126,9 +126,9 @@ export async function createOrganizationAction(formData: FormData) {
   const regionValue = readOptionalText(formData, "regionKey", 64);
   const classification = readText(formData, "dataClassification", 16)?.toLowerCase();
   const primaryCountryCode =
-    typeof countryValue === "string" ? countryValue.toUpperCase() : countryValue;
+    typeof countryValue === "string" ? countryValue.toUpperCase() : null;
   const regionKey =
-    typeof regionValue === "string" ? regionValue.toLowerCase() : regionValue;
+    typeof regionValue === "string" ? regionValue.toLowerCase() : null;
 
   if (
     !organizationKey ||
@@ -235,7 +235,7 @@ export async function transitionOrganizationMemberAction(formData: FormData) {
   const membershipCode = readText(formData, "membershipCode", 16)?.toUpperCase();
   const action = readText(formData, "action", 24)?.toLowerCase();
   const roleValue = readOptionalText(formData, "role", 32);
-  const role = typeof roleValue === "string" ? roleValue.toLowerCase() : roleValue;
+  const role = typeof roleValue === "string" ? roleValue.toLowerCase() : null;
 
   if (
     !organizationCode?.match(ORGANIZATION_CODE_PATTERN) ||
