@@ -8,6 +8,7 @@ import { JALVORO_IDENTITY_MASTER_NAMES } from "@/lib/icon-system/identity-master
 import { JALVORO_INTERFACE_MASTER_NAMES } from "@/lib/icon-system/interface-master-set";
 import { JALVORO_NAVIGATION_MASTER_NAMES } from "@/lib/icon-system/navigation-master-set";
 import { JALVORO_OBJECTS_MASTER_NAMES } from "@/lib/icon-system/objects-master-set";
+import { JALVORO_STATUS_MASTER_NAMES } from "@/lib/icon-system/status-master-set";
 import {
   JALVORO_ICON_CATEGORY_META,
   JALVORO_ICON_CATEGORY_ORDER,
@@ -25,6 +26,7 @@ const MASTERED_ICON_NAMES = [
   ...JALVORO_IDENTITY_MASTER_NAMES,
   ...JALVORO_COMMUNICATION_MASTER_NAMES,
   ...JALVORO_INTERFACE_MASTER_NAMES,
+  ...JALVORO_STATUS_MASTER_NAMES,
 ];
 
 describe("JALVORO icon library catalog", () => {
@@ -38,7 +40,7 @@ describe("JALVORO icon library catalog", () => {
     );
   });
 
-  it("provides standard metadata and design status for every category", () => {
+  it("marks every canonical category as internally mastered", () => {
     expect(JALVORO_ICON_CATEGORY_ORDER).toHaveLength(8);
     for (const category of JALVORO_ICON_CATEGORY_ORDER) {
       expect(JALVORO_ICON_CATEGORY_META[category].label.length).toBeGreaterThan(0);
@@ -46,19 +48,8 @@ describe("JALVORO icon library catalog", () => {
       expect(JALVORO_ICON_CATEGORY_META[category].importPath).toContain(
         `/components/${category}`,
       );
-      expect(["master", "draft"]).toContain(
-        JALVORO_ICON_CATEGORY_META[category].designStatus,
-      );
+      expect(JALVORO_ICON_CATEGORY_META[category].designStatus).toBe("master");
     }
-
-    expect(JALVORO_ICON_CATEGORY_META.navigation.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.actions.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.finance.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.objects.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.identity.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.communication.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.interface.designStatus).toBe("master");
-    expect(JALVORO_ICON_CATEGORY_META.status.designStatus).toBe("draft");
   });
 
   it("creates predictable component names and clean usage snippets", () => {
@@ -77,14 +68,18 @@ describe("JALVORO icon library catalog", () => {
     expect(snippet).not.toContain("accent=");
   });
 
-  it("exposes mastered metadata without product rollout", () => {
+  it("exposes master metadata for all 82 icons without approving product rollout", () => {
     const masteredEntries = JALVORO_ICON_LIBRARY_ENTRIES.filter(
       (entry) => entry.designStatus === "master",
     );
 
+    expect(JALVORO_ICON_LIBRARY.iconCount).toBe(82);
     expect(JALVORO_ICON_LIBRARY.masteredIconCount).toBe(MASTERED_ICON_NAMES.length);
-    expect(JALVORO_ICON_LIBRARY.masteredCategoryCount).toBe(7);
+    expect(JALVORO_ICON_LIBRARY.masteredIconCount).toBe(JALVORO_ICON_LIBRARY.iconCount);
+    expect(JALVORO_ICON_LIBRARY.masteredCategoryCount).toBe(8);
     expect(masteredEntries.map((entry) => entry.name)).toEqual(MASTERED_ICON_NAMES);
+    expect(JALVORO_ICON_LIBRARY.status).toBe("master");
+    expect(JALVORO_ICON_LIBRARY.productRolloutStatus).toBe("not-approved");
 
     for (const entry of masteredEntries) {
       expect(entry.semanticIntent).not.toBeNull();

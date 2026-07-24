@@ -117,8 +117,24 @@ The 10 interface icons use clear control, view-mode, visibility and direction si
 - design brief: `docs/jalvoro-interface-master-set.md`
 - machine-readable specification: `lib/icon-system/interface-master-set.ts`
 
+### Status — master
+
+The 6 status icons communicate resulting conditions and capability states without relying on severity colors or decorative fallback marks.
+
+- success and error remain enclosed states rather than Check or Close actions
+- warning remains caution rather than confirmed failure
+- info remains neutral context rather than Help or Warning
+- pending uses an hourglass rather than duplicating Clock or Refresh
+- spark is reserved for explicit AI-enhanced, new or special capability meaning
+- maximum three vector nodes per icon
+- no accent-placement geometry
+- automatic rendering checks run at 16, 20, 24 and 32 pixels
+
+- design brief: `docs/jalvoro-status-master-set.md`
+- machine-readable specification: `lib/icon-system/status-master-set.ts`
+
 ## Design status
 
 `master` means the icon has passed semantic, geometry, naming, size and clean-default gates inside the private Icon System library. It does not mean the icon has been approved for product rollout.
 
-Navigation, Actions, Finance, Objects, Identity, Communication and Interface are mastered. Status remains a design draft until it passes the same category-level review and automated quality gates.
+All 8 JALVORO Core categories and all 82 canonical icons are internally mastered. Product rollout remains explicitly not approved and requires later icon-by-icon visual approval.

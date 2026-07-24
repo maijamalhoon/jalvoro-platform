@@ -45,6 +45,11 @@ import {
   JALVORO_OBJECTS_MASTER_SPEC,
   isJalvoroObjectsMasterName,
 } from "@/lib/icon-system/objects-master-set";
+import {
+  JALVORO_STATUS_MASTER_NAMES,
+  JALVORO_STATUS_MASTER_SPEC,
+  isJalvoroStatusMasterName,
+} from "@/lib/icon-system/status-master-set";
 
 export const JALVORO_ICON_CATEGORY_ORDER = [
   "navigation",
@@ -114,7 +119,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Status",
     description: "Success, warning, errors, progress and intelligence states.",
     importPath: "@/components/icons/jalvoro/components/status",
-    designStatus: "draft",
+    designStatus: "master",
   },
 };
 
@@ -122,7 +127,8 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
   id: "jalvoro-core",
   name: "JALVORO Core",
   version: JALVORO_ICON_SYSTEM_VERSION,
-  status: "design" as const,
+  status: "master" as const,
+  productRolloutStatus: "not-approved" as const,
   description:
     "The foundational clean-outline library for JALVORO products, tools and future packages.",
   iconCount: JALVORO_ICON_NAMES.length,
@@ -133,8 +139,9 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
     JALVORO_OBJECTS_MASTER_NAMES.length +
     JALVORO_IDENTITY_MASTER_NAMES.length +
     JALVORO_COMMUNICATION_MASTER_NAMES.length +
-    JALVORO_INTERFACE_MASTER_NAMES.length,
-  masteredCategoryCount: 7,
+    JALVORO_INTERFACE_MASTER_NAMES.length +
+    JALVORO_STATUS_MASTER_NAMES.length,
+  masteredCategoryCount: 8,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -205,6 +212,10 @@ function getJalvoroMasterSpec(name: JalvoroIconName) {
 
   if (isJalvoroInterfaceMasterName(name)) {
     return JALVORO_INTERFACE_MASTER_SPEC[name];
+  }
+
+  if (isJalvoroStatusMasterName(name)) {
+    return JALVORO_STATUS_MASTER_SPEC[name];
   }
 
   return null;
