@@ -46,7 +46,7 @@ jobs:
           exit 0
 
       - name: Upload diagnostic tail
-        uses: actions/upload-artifact@6027e3aa1e9c4e248c5baf25c4c6084e9e8d1d70
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: admin-incident-test-tail
           path: full-test-tail.log
