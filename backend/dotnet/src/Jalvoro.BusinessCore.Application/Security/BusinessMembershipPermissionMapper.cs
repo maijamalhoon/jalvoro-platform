@@ -6,6 +6,29 @@ namespace Jalvoro.BusinessCore.Application.Security;
 
 public sealed class BusinessMembershipPermissionMapper
 {
+  private readonly FrozenDictionary<string, PermissionKey[]> _rolePermissions;
+
+  public BusinessMembershipPermissionMapper()
+  {
+    _rolePermissions = new Dictionary<string, PermissionKey[]>(StringComparer.Ordinal)
+    {
+      ["owner"] =
+      [
+        BusinessPermissions.OrganizationManage,
+        BusinessPermissions.MembershipRead,
+        BusinessPermissions.MembershipManage,
+      ],
+      ["admin"] =
+      [
+        BusinessPermissions.MembershipRead,
+        BusinessPermissions.MembershipManage,
+      ],
+      ["accountant"] = [BusinessPermissions.MembershipRead],
+      ["manager"] = [BusinessPermissions.MembershipRead],
+      ["viewer"] = [BusinessPermissions.MembershipRead],
+    }.ToFrozenDictionary(StringComparer.Ordinal);
+  }
+
   public IReadOnlySet<PermissionKey> Map(BusinessMembershipProjection membership)
   {
     ArgumentNullException.ThrowIfNull(membership);
@@ -15,23 +38,12 @@ public sealed class BusinessMembershipPermissionMapper
       BusinessPermissions.OrganizationRead,
     };
 
-    if (membership.Role.Is("owner"))
+    if (_rolePermissions.TryGetValue(membership.Role.Value, out var rolePermissions))
     {
-      permissions.Add(BusinessPermissions.OrganizationManage);
-      permissions.Add(BusinessPermissions.MembershipRead);
-      permissions.Add(BusinessPermissions.MembershipManage);
-    }
-    else if (membership.Role.Is("admin"))
-    {
-      permissions.Add(BusinessPermissions.MembershipRead);
-      permissions.Add(BusinessPermissions.MembershipManage);
-    }
-    else if (
-      membership.Role.Is("accountant") ||
-      membership.Role.Is("manager") ||
-      membership.Role.Is("viewer"))
-    {
-      permissions.Add(BusinessPermissions.MembershipRead);
+      foreach (var permission in rolePermissions)
+      {
+        permissions.Add(permission);
+      }
     }
 
     if (
