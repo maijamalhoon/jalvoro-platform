@@ -58,6 +58,7 @@ export function parseResolvedCommandCenterNavigation(
       href.includes("?") ||
       href.includes("#") ||
       !isNonEmptyString(iconKey) ||
+      typeof order !== "number" ||
       !Number.isInteger(order) ||
       order < 0 ||
       order > 100_000
@@ -94,7 +95,10 @@ export function resolveCommandCenterEnvironment(): CommandCenterEnvironment {
     process.env.VERCEL_ENV ?? process.env.NEXT_PUBLIC_VERCEL_ENV;
 
   if (vercelEnvironment === "preview") return "preview";
-  if (vercelEnvironment === "production" || process.env.NODE_ENV === "production") {
+  if (
+    vercelEnvironment === "production" ||
+    process.env.NODE_ENV === "production"
+  ) {
     return "production";
   }
   return "development";
