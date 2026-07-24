@@ -212,13 +212,11 @@ describe("Command Center global operations", () => {
     expect(migration).toContain("security definer");
     expect(migration).toContain("v_admin_user_id uuid := auth.uid()");
     expect(migration).toContain("raise exception 'admin_access_required'");
-    expect(migration).toContain(
-      "from public, anon, authenticated",
-    );
+    expect(migration).toContain("from public, anon, authenticated");
     expect(migration).toContain("count(distinct subject_id)");
     expect(migration).toContain("'rawIpStored', false");
     expect(migration).toContain("'sessionReplayEnabled', false");
-    expect(migration).not.toMatch(/jsonb_build_object\([^;]*'email'/is);
+    expect(migration).not.toMatch(/jsonb_build_object\([\s\S]*'email'/i);
     expect(migration).not.toMatch(/'userId'\s*,/i);
     expect(migration).not.toMatch(/'subjectId'\s*,/i);
     expect(migration).not.toMatch(/'sessionId'\s*,/i);
