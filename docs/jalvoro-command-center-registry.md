@@ -1,4 +1,4 @@
-# JALVORO Command Center Registry Foundation
+# JALVORO Command Center Registry
 
 ## Official identity
 
@@ -6,115 +6,19 @@
 - **Full product name:** JALVORO Global Admin & Operations Control Center
 - **Technical description:** Central internal administration, analytics, observability, security, billing, support, governance, configuration, and operational-control platform for the entire JALVORO ecosystem.
 
-The Command Center is one shared internal platform. Product-specific operational areas must register with this platform instead of creating disconnected admin systems.
+The Command Center is one shared internal platform. Product-specific operational areas register with this platform instead of creating disconnected administration systems.
 
-## Scope of this foundation
+## Implemented foundations
 
-This first registry cycle introduces a versioned, fail-closed TypeScript manifest contract and converts the existing Command Center navigation from a fixed component array to validated registry output.
+### Phase 1: application manifest contract
 
-The current registry contains only real, already implemented internal areas:
+`ProductManifestV1` defines stable product, family, category, application, module, lifecycle, environment, permission, telemetry-reference, governance, retention, residency, ownership, documentation, and navigation metadata.
 
-- Global Overview
-- JALVORO Icon System
+The application validator rejects malformed identities, duplicate keys, unknown modules, external routes, query strings, fragments, routes outside `/admin`, invalid permission keys, invalid environments, invalid versions, missing governance, and unsafe documentation references.
 
-No unfinished POS, ERP, CRM, accounting, inventory, personal-user, mobile, desktop, partner, or developer product is activated by this foundation.
+### Phase 2: private database control plane
 
-## Product manifest contract
-
-`ProductManifestV1` records:
-
-- Stable product, family, and category identifiers
-- Product name, description, and JALVORO icon key
-- Lifecycle and registration status
-- Environment, country, region, currency, language, and platform availability
-- Applications and current versions
-- Modules and their permission requirements
-- Service dependencies
-- Subscription-plan references
-- Analytics metric references
-- Event-schema references
-- Health-check references
-- Error-source references
-- Feature-flag references
-- Support-category references
-- Security-policy references
-- Data classification, retention, and residency metadata
-- Responsible internal team and repository documentation
-- Command Center navigation entries
-
-References use stable keys rather than executing arbitrary code or trusting arbitrary URLs.
-
-## Controlled registration lifecycle
-
-A product manifest may use these registration states:
-
-1. `draft`
-2. `validation_pending`
-3. `approved`
-4. `active`
-5. `suspended`
-6. `rejected`
-
-Only `active` manifests can contribute navigation.
-
-Lifecycle visibility is also enforced. Concept, internal-development, internal-testing, alpha, and beta products are hidden by default. An explicit internal context is required to include unreleased products.
-
-## Validation boundaries
-
-`validateProductManifest` rejects malformed or unsafe registration data, including:
-
-- Unsupported schema versions
-- Invalid or unstable identifiers
-- Duplicate product application, module, navigation, or reference keys
-- Navigation to an unknown module
-- External URLs
-- Query strings and fragments in registered admin routes
-- Routes outside `/admin`
-- Invalid permission keys
-- Invalid environments and platforms
-- Invalid country and currency codes
-- Invalid versions
-- Missing ownership or governance metadata
-- Invalid retention periods
-- Documentation references outside repository `docs/*.md` files
-
-Invalid manifests fail closed and contribute no Command Center navigation.
-
-## Navigation exposure rules
-
-`buildCommandCenterNavigation` exposes an entry only when all of the following are true:
-
-- The manifest passes schema validation
-- Product registration status is `active`
-- Product lifecycle is permitted for the current context
-- Product is available in the current environment
-- Administrator has the product permission
-- Referenced module exists and is enabled
-- Administrator has the module permission
-- Administrator has the navigation-entry permission
-- Navigation entry is available in the current environment
-
-Navigation is then sorted deterministically by order, product, and label.
-
-## Current compatibility boundary
-
-The existing Admin system currently exposes broad roles: Owner, Admin, Analyst, and Support. Product-, region-, environment-, organization-, action-, and data-classification-scoped grants are not yet stored in the database.
-
-For this first migration-safe cycle, `COMMAND_CENTER_COMPATIBILITY_PERMISSIONS` maps the already accessible Command Center areas into the registry. This preserves current access behavior while removing hard-coded navigation structure.
-
-This compatibility set is temporary. It must be replaced by server-resolved scoped permissions during Phase 2 before newly registered product areas are activated.
-
-## Security and privacy rules
-
-The registry controls discoverability, not backend authorization.
-
-Every page, server action, RPC, API endpoint, export, refund, suspension, configuration change, permission change, and privileged operation must continue to verify authorization independently on the server.
-
-A manifest must never grant access to customer private data. Registration metadata must not include passwords, tokens, card details, bank credentials, raw request bodies, customer messages, accounting contents, payroll contents, inventory contents, or private financial records.
-
-## Next implementation cycle
-
-The next controlled foundation cycle should add migration-safe private registry entities for:
+The database now models:
 
 - Product families
 - Products
@@ -123,10 +27,110 @@ The next controlled foundation cycle should add migration-safe private registry 
 - Services
 - Environments
 - Regions
-- Manifest versions
+- Product environment and region availability
+- Navigation registrations
+- Versioned submitted manifests
 - Validation results
-- Approval records
+- Short-lived Owner approvals
+- Role permission defaults
 - Scoped administrator grants
 - Append-only registry audit events
 
-Database activation must remain approval-controlled, RLS-protected, server-authorized, and fully audited. No product should become visible merely because a row or arbitrary manifest was submitted.
+All registry entities live in the private schema, have row-level security enabled, deny direct anonymous and authenticated table access, and are accessed through server-authorized functions only.
+
+## Controlled registration lifecycle
+
+A submitted product manifest follows this sequence:
+
+1. Owner or Admin submits a complete manifest.
+2. The database validates the manifest independently from the application validator.
+3. Failed manifests are stored as failed validation evidence and cannot be approved.
+4. An Owner approves a passed manifest for no more than 24 hours.
+5. Activation verifies the stored SHA-256 digest and reruns validation.
+6. The approved version is normalized into product, application, module, service, environment, region, and navigation entities.
+7. The approval is consumed atomically.
+8. The product becomes discoverable only when registration and lifecycle controls permit it.
+
+A product may use these registration states:
+
+- `draft`
+- `validation_pending`
+- `approved`
+- `active`
+- `suspended`
+- `rejected`
+
+Only active products with released lifecycle states can contribute normal Command Center navigation.
+
+## Scoped authorization
+
+The current Admin roles remain:
+
+- Owner
+- Admin
+- Analyst
+- Support
+
+The former browser compatibility permission set has been removed. Current-area compatibility is represented by server-side role permission rows, while exceptional grants may be scoped by:
+
+- User
+- Permission
+- Product
+- Module
+- Environment
+- Region
+- Organization
+- Data classification
+- Expiration time
+
+Grant creation and revocation are Owner-only and append structured audit events. Revoked and expired grants do not authorize navigation.
+
+## Server-resolved navigation
+
+`public.get_command_center_navigation(environment)` is the navigation authority. It returns only entries whose product, module, environment, lifecycle, role permissions, and active scoped grants permit visibility.
+
+The shared web shell calls this RPC in a server component. The browser receives only validated navigation presentation fields:
+
+- Product key and name
+- Navigation and module keys
+- Label
+- Internal `/admin` route
+- JALVORO icon key
+- Display order
+
+Registry visibility does not replace authorization on pages, server actions, RPCs, APIs, exports, billing operations, user operations, or configuration changes.
+
+## Audit and privacy boundaries
+
+Validation evidence and registry audit rows are append-only. Registry audit records retain structured identifiers and state transitions for 24 months.
+
+Manifest validation rejects sensitive field names including passwords, tokens, secrets, card numbers, CVV, bank credentials, raw IP addresses, customer messages, financial content, payroll content, and inventory content.
+
+The registry must never store customer finance records, accounting ledgers, payroll entries, invoices, payment credentials, private communications, or arbitrary raw request payloads.
+
+## Current registered product
+
+Only the already implemented JALVORO Command Center is bootstrapped:
+
+- Global Overview
+- JALVORO Icon System
+
+No unfinished POS, ERP, CRM, accounting, inventory, payroll, personal-user, mobile, desktop, partner, or developer product is activated by this foundation.
+
+## Verification status
+
+The control plane was applied and tested on the isolated `jamals-finance-load-test-staging` Supabase project.
+
+Verified behavior includes:
+
+- RLS and direct-access denial on every registry table
+- Existing two-item Command Center navigation for an authenticated Owner
+- Submit, validate, approve, activate, grant, revoke, and audit lifecycle
+- Permission-gated navigation appearance and removal
+- External-route rejection
+- Sensitive-field rejection
+- Non-Owner approval denial
+- Append-only audit enforcement
+- Complete covering indexes for new foreign keys
+
+Transactional lifecycle test records were rolled back. The production Supabase project was not changed during this verification cycle.
