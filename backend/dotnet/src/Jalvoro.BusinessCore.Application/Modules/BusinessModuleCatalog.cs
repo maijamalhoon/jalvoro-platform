@@ -2,10 +2,10 @@ namespace Jalvoro.BusinessCore.Application.Modules;
 
 public sealed class BusinessModuleCatalog : IBusinessModuleCatalog
 {
-    private static readonly IReadOnlyList<BusinessModuleDescriptor> Modules =
-        Array.AsReadOnly(
-        [
-            new(
+  private static readonly IReadOnlyList<BusinessModuleDescriptor> Modules =
+      Array.AsReadOnly(
+      [
+          new(
                 "platform.foundation",
                 "Platform foundation",
                 "Shared contracts, tenancy, health, security, observability, and module registration.",
@@ -71,7 +71,7 @@ public sealed class BusinessModuleCatalog : IBusinessModuleCatalog
                 "Integration platform",
                 "Versioned APIs, webhooks, imports, exports, connectors, events, and external system boundaries.",
                 BusinessModuleLifecycle.Planned),
-        ]);
+      ]);
 
-    public IReadOnlyList<BusinessModuleDescriptor> GetAll() => Modules;
+  public IReadOnlyList<BusinessModuleDescriptor> GetAll() => Modules;
 }
