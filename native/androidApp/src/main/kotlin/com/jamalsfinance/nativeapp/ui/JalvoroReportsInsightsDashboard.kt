@@ -162,15 +162,20 @@ fun JalvoroReportsInsightsDashboard(
                         label = "Back to overview",
                         onClick = onBack,
                     )
-                    JalvoroBrandLockup(
+                    JalvoroAnimatedSwap(
+                        targetState = destination,
                         modifier = Modifier.weight(1f),
-                        subtitle = if (destination == JalvoroReportsDestination.Reports) {
-                            "Reports"
-                        } else {
-                            "Financial insights"
-                        },
-                        compact = true,
-                    )
+                        label = "reports-header-destination",
+                    ) { currentDestination ->
+                        JalvoroBrandLockup(
+                            subtitle = if (currentDestination == JalvoroReportsDestination.Reports) {
+                                "Reports"
+                            } else {
+                                "Financial insights"
+                            },
+                            compact = true,
+                        )
+                    }
                     JalvoroIconAction(
                         icon = JalvoroIcons.Refresh,
                         label = "Refresh reports and insights",
@@ -210,40 +215,47 @@ fun JalvoroReportsInsightsDashboard(
                 )
                 snapshot == null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else -> Column(Modifier.fillMaxSize()) {
-                    failure?.let {
-                        JalvoroFeedbackCard(
-                            message = it,
-                            tone = JalvoroFeedbackTone.Danger,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
+                    JalvoroAnimatedReveal(visible = failure != null) {
+                        failure?.let {
+                            JalvoroFeedbackCard(
+                                message = it,
+                                tone = JalvoroFeedbackTone.Danger,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
                     }
-                    when (destination) {
-                        JalvoroReportsDestination.Reports -> JalvoroReportsScreen(
-                            snapshot = snapshot,
-                            period = period,
-                            customStart = customStart,
-                            customEnd = customEnd,
-                            selectedCurrency = currency,
-                            loading = loading,
-                            onPeriodChange = ::selectPeriod,
-                            onCustomStartChange = { customStart = it.take(10) },
-                            onCustomEndChange = { customEnd = it.take(10) },
-                            onApplyCustom = { refresh(selection = selectionFor(ReportPeriod.Custom)) },
-                            onCurrencyChange = ::selectCurrency,
-                            onExport = {
-                                pendingCsv = snapshot.csv(currency)
-                                exportLauncher.launch(
-                                    "jalvoro-personal-$currency-${snapshot.report.selection.start}-to-${snapshot.report.selection.end}.csv",
-                                )
-                            },
-                        )
-                        JalvoroReportsDestination.Insights -> JalvoroInsightsScreen(
-                            snapshot = snapshot,
-                            selectedCurrency = currency,
-                            loading = loading,
-                            onCurrencyChange = ::selectCurrency,
-                            repository = repository,
-                        )
+                    JalvoroAnimatedWorkspace(
+                        targetState = destination,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { currentDestination ->
+                        when (currentDestination) {
+                            JalvoroReportsDestination.Reports -> JalvoroReportsScreen(
+                                snapshot = snapshot,
+                                period = period,
+                                customStart = customStart,
+                                customEnd = customEnd,
+                                selectedCurrency = currency,
+                                loading = loading,
+                                onPeriodChange = ::selectPeriod,
+                                onCustomStartChange = { customStart = it.take(10) },
+                                onCustomEndChange = { customEnd = it.take(10) },
+                                onApplyCustom = { refresh(selection = selectionFor(ReportPeriod.Custom)) },
+                                onCurrencyChange = ::selectCurrency,
+                                onExport = {
+                                    pendingCsv = snapshot.csv(currency)
+                                    exportLauncher.launch(
+                                        "jalvoro-personal-$currency-${snapshot.report.selection.start}-to-${snapshot.report.selection.end}.csv",
+                                    )
+                                },
+                            )
+                            JalvoroReportsDestination.Insights -> JalvoroInsightsScreen(
+                                snapshot = snapshot,
+                                selectedCurrency = currency,
+                                loading = loading,
+                                onCurrencyChange = ::selectCurrency,
+                                repository = repository,
+                            )
+                        }
                     }
                 }
             }
