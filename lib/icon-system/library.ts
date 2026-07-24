@@ -10,6 +10,11 @@ import type {
   JalvoroIconContext,
   JalvoroIconDefinition,
 } from "@/components/icons/jalvoro/types";
+import {
+  JALVORO_NAVIGATION_MASTER_NAMES,
+  JALVORO_NAVIGATION_MASTER_SPEC,
+  isJalvoroNavigationMasterName,
+} from "@/lib/icon-system/navigation-master-set";
 
 export const JALVORO_ICON_CATEGORY_ORDER = [
   "navigation",
@@ -82,6 +87,7 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
   description:
     "The foundational clean-outline library for JALVORO products, tools and future packages.",
   iconCount: JALVORO_ICON_NAMES.length,
+  masteredIconCount: JALVORO_NAVIGATION_MASTER_NAMES.length,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -129,6 +135,9 @@ export const JALVORO_ICON_LIBRARY_ENTRIES = Object.freeze(
   JALVORO_ICON_NAMES.map((name) => {
     const definition = definitionByName[name];
     const manifest = JALVORO_ICON_MANIFEST[name];
+    const masterSpec = isJalvoroNavigationMasterName(name)
+      ? JALVORO_NAVIGATION_MASTER_SPEC[name]
+      : null;
 
     return Object.freeze({
       name,
@@ -140,6 +149,12 @@ export const JALVORO_ICON_LIBRARY_ENTRIES = Object.freeze(
       aliases: Object.freeze([...(definition.aliases ?? [])]),
       componentName: toJalvoroIconComponentName(name),
       importPath: JALVORO_ICON_CATEGORY_META[manifest.category].importPath,
+      designStatus: masterSpec?.status ?? ("draft" as const),
+      semanticIntent: masterSpec?.semanticIntent ?? null,
+      silhouette: masterSpec?.silhouette ?? null,
+      primaryCue: masterSpec?.primaryCue ?? null,
+      relationship: masterSpec?.relationship ?? null,
+      avoid: Object.freeze([...(masterSpec?.avoid ?? [])]),
     });
   }),
 );
