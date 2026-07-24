@@ -61,7 +61,10 @@ jobs:
         run: dotnet restore backend/dotnet/Jalvoro.BusinessCore.sln
 
       - name: Verify formatting
-        run: dotnet format backend/dotnet/Jalvoro.BusinessCore.sln --verify-no-changes --no-restore
+        run: |
+          dotnet format backend/dotnet/Jalvoro.BusinessCore.sln --no-restore
+          git diff -- backend/dotnet
+          git diff --exit-code -- backend/dotnet
 
       - name: Build with warnings as errors
         run: dotnet build backend/dotnet/Jalvoro.BusinessCore.sln --configuration Release --no-restore
