@@ -26,14 +26,16 @@ describe("password recovery fail-closed state machine", () => {
     );
   });
 
-  it("verifies an existing session-bound marker before a URL code is considered", () => {
+  it("verifies the session-bound marker unconditionally before a URL code is considered", () => {
     const guardSource = getGuardSource();
 
     expect(guardSource.indexOf("readRecoveryMarker()"))
       .toBeLessThan(guardSource.indexOf("if (code)"));
     expect(guardSource.indexOf("verifyBoundRecoveryMarker("))
       .toBeLessThan(guardSource.indexOf("if (code)"));
-    expect(guardSource).toContain('if (markerOutcome !== "invalid" || !code)');
+    expect(guardSource).toContain("const markerOutcome = await verifyOperation();");
+    expect(guardSource).not.toContain("if (markerResult.marker)");
+    expect(resetPasswordSource).toContain("if (!rawMarker) return \"invalid\";");
   });
 
   it("keeps marker verification retries distinct from marker binding retries", () => {
