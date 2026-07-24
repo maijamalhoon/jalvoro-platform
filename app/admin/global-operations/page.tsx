@@ -6,6 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+function readGlobalOperationsPayload(value: unknown) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  return (value as Record<string, unknown>).globalOperations;
+}
+
 export default async function AdminGlobalOperationsPage() {
   const supabase = await createClient();
   const {
@@ -24,10 +32,14 @@ export default async function AdminGlobalOperationsPage() {
   }
 
   if (error) {
-    throw new Error(`Global operations snapshot unavailable: ${error.code ?? "unknown"}`);
+    throw new Error(
+      `Global operations snapshot unavailable: ${error.code ?? "unknown"}`,
+    );
   }
 
-  const operations = parseAdminGlobalOperationsSnapshot(data?.globalOperations);
+  const operations = parseAdminGlobalOperationsSnapshot(
+    readGlobalOperationsPayload(data),
+  );
   if (!operations) {
     throw new Error("Global operations snapshot returned an invalid contract.");
   }
