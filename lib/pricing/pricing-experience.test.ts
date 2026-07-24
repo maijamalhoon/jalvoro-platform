@@ -80,6 +80,13 @@ describe("frontend-only global pricing experience", () => {
     expect(selection).toContain("cannot charge a card");
   });
 
+  it("keeps every pricing page public without weakening protected app routes", () => {
+    const rootProxy = read("proxy.ts");
+
+    expect(rootProxy).toContain("pricing(?:/|$)");
+    expect(rootProxy).toContain("updateSession(request)");
+  });
+
   it("contains no provider secret or payment API integration in pricing frontend", () => {
     const files = [
       read("components/pricing/PricingExperience.tsx"),
