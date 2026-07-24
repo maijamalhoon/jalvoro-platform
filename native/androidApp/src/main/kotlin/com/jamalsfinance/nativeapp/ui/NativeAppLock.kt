@@ -166,13 +166,13 @@ internal fun NativeAppLockGate(
                 unlocking = true
                 message = null
                 val cancellation = authenticator.authenticate(
-                    onSuccess = {
+                    {
                         cancelAuthentication = null
                         preferences.clearBackgroundTimestamp()
                         unlocking = false
                         unlocked = true
                     },
-                    onFailure = {
+                    {
                         cancelAuthentication = null
                         unlocking = false
                         message = it
@@ -463,15 +463,14 @@ private fun nativeAuthenticationCallback(
 @RequiresApi(Build.VERSION_CODES.P)
 private fun authenticationErrorMessage(errorCode: Int, errString: CharSequence): String = when (errorCode) {
     BiometricPrompt.BIOMETRIC_ERROR_CANCELED,
-    BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
-    BiometricPrompt.BIOMETRIC_ERROR_NEGATIVE_BUTTON,
-    -> "Unlock cancelled. Your finance data remains locked."
+    BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED ->
+        "Unlock cancelled. Your finance data remains locked."
     BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT,
-    BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT,
-    -> "Too many unsuccessful attempts. Use your Android screen lock or try again later."
+    BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT ->
+        "Too many unsuccessful attempts. Use your Android screen lock or try again later."
     BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE,
-    BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT,
-    -> "Device authentication is temporarily unavailable. Try again or use your screen lock."
+    BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT ->
+        "Device authentication is temporarily unavailable. Try again or use your screen lock."
     BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS ->
         "No biometric is enrolled. Use your Android PIN, pattern or password."
     else -> errString.toString().takeIf { it.isNotBlank() } ?: "Identity verification failed."
