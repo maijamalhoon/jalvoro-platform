@@ -3,7 +3,6 @@ package com.jamalsfinance.nativeapp.ui
 import android.animation.ValueAnimator
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
@@ -101,7 +100,7 @@ internal fun <T> JalvoroAnimatedWorkspace(
     targetState: T,
     modifier: Modifier = Modifier,
     contentKey: (T) -> Any? = { it },
-    content: @Composable AnimatedContentScope.(T) -> Unit,
+    content: @Composable (T) -> Unit,
 ) {
     val motion = LocalJalvoroMotion.current
     val offsetPx = with(LocalDensity.current) { 8.dp.roundToPx() }
@@ -145,8 +144,9 @@ internal fun <T> JalvoroAnimatedWorkspace(
             enter togetherWith exit
         },
         label = "jalvoro-workspace-transition",
-        content = content,
-    )
+    ) { state ->
+        content(state)
+    }
 }
 
 @Composable
