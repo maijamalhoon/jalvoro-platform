@@ -33,7 +33,7 @@ export default function AdminLayout({
       data-admin-shell
       className="min-h-dvh bg-background text-foreground"
     >
-      <a className="jf-skip-link" href="#command-center-main">
+      <a className="jf-skip-link" href="#admin-main">
         Skip to Command Center content
       </a>
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/88 backdrop-blur-xl">
@@ -79,7 +79,7 @@ export default function AdminLayout({
       </header>
 
       <main
-        id="command-center-main"
+        id="admin-main"
         tabIndex={-1}
         aria-label="JALVORO Global Admin & Operations Control Center content"
         className="px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8"
