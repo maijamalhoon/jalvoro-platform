@@ -75,11 +75,11 @@ android {
         getByName("debug") {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-debug"
-            resValue("string", "app_name", "Jamal’s Finance Native Dev")
+            resValue("string", "app_name", "JALVORO Personal Dev")
         }
         getByName("release") {
             applicationIdSuffix = ".rc"
-            resValue("string", "app_name", "Jamal’s Finance RC")
+            resValue("string", "app_name", "JALVORO Personal RC")
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
