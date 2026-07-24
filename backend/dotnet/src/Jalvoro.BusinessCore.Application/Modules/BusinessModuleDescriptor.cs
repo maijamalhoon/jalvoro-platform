@@ -2,11 +2,11 @@ namespace Jalvoro.BusinessCore.Application.Modules;
 
 public enum BusinessModuleLifecycle
 {
-    Foundation,
-    Planned,
-    Preview,
-    Active,
-    Retired,
+  Foundation,
+  Planned,
+  Preview,
+  Active,
+  Retired,
 }
 
 public sealed record BusinessModuleDescriptor(
@@ -19,5 +19,5 @@ public sealed record BusinessModuleDescriptor(
 
 public interface IBusinessModuleCatalog
 {
-    IReadOnlyList<BusinessModuleDescriptor> GetAll();
+  IReadOnlyList<BusinessModuleDescriptor> GetAll();
 }
