@@ -6,10 +6,10 @@ var failures = new List<string>();
 
 void Check(bool condition, string message)
 {
-    if (!condition)
-    {
-        failures.Add(message);
-    }
+  if (!condition)
+  {
+    failures.Add(message);
+  }
 }
 
 var catalog = new BusinessModuleCatalog();
@@ -68,14 +68,14 @@ Check(
 
 if (failures.Count == 0)
 {
-    Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules verified.");
-    return 0;
+  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules verified.");
+  return 0;
 }
 
 Console.Error.WriteLine("JALVORO Business Core contract failures:");
 foreach (var failure in failures)
 {
-    Console.Error.WriteLine($"- {failure}");
+  Console.Error.WriteLine($"- {failure}");
 }
 
 return 1;
