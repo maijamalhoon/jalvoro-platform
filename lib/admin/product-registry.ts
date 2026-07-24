@@ -585,10 +585,10 @@ export function buildCommandCenterNavigation(
     );
 
     for (const entry of manifest.admin.navigation) {
-      const module = modules.get(entry.moduleKey);
-      if (!module?.enabled) continue;
+      const productModule = modules.get(entry.moduleKey);
+      if (!productModule?.enabled) continue;
       if (!entry.environments.includes(context.environment)) continue;
-      if (!hasPermissions(context.permissions, module.requiredPermissions)) continue;
+      if (!hasPermissions(context.permissions, productModule.requiredPermissions)) continue;
       if (!hasPermissions(context.permissions, entry.requiredPermissions)) continue;
 
       navigation.push({
