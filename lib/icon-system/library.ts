@@ -8,6 +8,7 @@ import { JALVORO_ICON_SYSTEM_VERSION } from "@/components/icons/jalvoro/tokens";
 import type {
   JalvoroIconCategory,
   JalvoroIconContext,
+  JalvoroIconDefinition,
 } from "@/components/icons/jalvoro/types";
 
 export const JALVORO_ICON_CATEGORY_ORDER = [
@@ -113,7 +114,7 @@ export const JALVORO_LIBRARY_ROADMAP = Object.freeze([
 
 const definitionByName = Object.fromEntries(
   JALVORO_ICON_DEFINITIONS.map((definition) => [definition.name, definition]),
-);
+) as Readonly<Record<JalvoroIconName, JalvoroIconDefinition>>;
 
 export function toJalvoroIconComponentName(name: JalvoroIconName) {
   const pascalName = name
@@ -128,10 +129,6 @@ export const JALVORO_ICON_LIBRARY_ENTRIES = Object.freeze(
   JALVORO_ICON_NAMES.map((name) => {
     const definition = definitionByName[name];
     const manifest = JALVORO_ICON_MANIFEST[name];
-
-    if (!definition) {
-      throw new Error(`Missing JALVORO icon definition for ${name}.`);
-    }
 
     return Object.freeze({
       name,
