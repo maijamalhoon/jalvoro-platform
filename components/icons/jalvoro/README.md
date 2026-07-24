@@ -100,8 +100,25 @@ The 5 communication icons use distinct channel, delivery and global-reach silhou
 - design brief: `docs/jalvoro-communication-master-set.md`
 - machine-readable specification: `lib/icon-system/communication-master-set.ts`
 
+### Interface — master
+
+The 10 interface icons use clear control, view-mode, visibility and direction silhouettes without inheriting product-destination or domain-action meaning.
+
+- menu remains a control rather than a Navigation destination
+- grid and list remain paired view modes
+- eye and eye-off communicate visibility rather than authorization or security status
+- chevrons communicate disclosure or hierarchy while arrows communicate movement
+- arrow-left remains distinct from undo
+- arrow-right remains distinct from send, share and export
+- maximum four vector nodes per icon
+- no accent-placement geometry
+- automatic rendering checks run at 16, 20, 24 and 32 pixels
+
+- design brief: `docs/jalvoro-interface-master-set.md`
+- machine-readable specification: `lib/icon-system/interface-master-set.ts`
+
 ## Design status
 
 `master` means the icon has passed semantic, geometry, naming, size and clean-default gates inside the private Icon System library. It does not mean the icon has been approved for product rollout.
 
-Navigation, Actions, Finance, Objects, Identity and Communication are mastered. Interface and Status remain design drafts until they pass the same category-level review and automated quality gates.
+Navigation, Actions, Finance, Objects, Identity, Communication and Interface are mastered. Status remains a design draft until it passes the same category-level review and automated quality gates.
