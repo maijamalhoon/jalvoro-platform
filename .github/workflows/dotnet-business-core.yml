@@ -63,8 +63,28 @@ jobs:
       - name: Verify formatting
         run: dotnet format backend/dotnet/Jalvoro.BusinessCore.sln --verify-no-changes --no-restore
 
-      - name: Build with warnings as errors
-        run: dotnet build backend/dotnet/Jalvoro.BusinessCore.sln --configuration Release --no-restore
+      - name: Capture warnings-as-errors build
+        run: |
+          set +e
+          dotnet build backend/dotnet/Jalvoro.BusinessCore.sln --configuration Release --no-restore > dotnet-build.log 2>&1
+          status=$?
+          set -e
+          printf '%s' "$status" > dotnet-build.exitcode
+
+      - name: Upload build diagnostics
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dotnet-build-log
+          path: |
+            dotnet-build.log
+            dotnet-build.exitcode
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Enforce warnings-as-errors build
+        run: |
+          cat dotnet-build.log
+          exit "$(cat dotnet-build.exitcode)"
 
       - name: Run architecture and preservation contracts
         run: dotnet run --project backend/dotnet/tests/Jalvoro.BusinessCore.ContractTests/Jalvoro.BusinessCore.ContractTests.csproj --configuration Release --no-build
