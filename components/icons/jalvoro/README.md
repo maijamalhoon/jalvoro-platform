@@ -20,19 +20,28 @@ Micro-accents remain available only through an explicit prop in isolated design 
 
 ### Navigation — master
 
-The 12 navigation icons are the first category to pass the complete master process:
+The 12 navigation icons passed the complete master process with unique semantic silhouettes, no accent-placement geometry, documented intent and automated size, color and complexity checks.
 
-- unique semantic silhouettes
+- design brief: `docs/jalvoro-navigation-master-set.md`
+- machine-readable specification: `lib/icon-system/navigation-master-set.ts`
+
+### Actions — master
+
+The 18 action icons passed the same master process with an additional operation-versus-status boundary and strict paired-action rules.
+
+- every icon communicates one immediate operation
+- maximum five vector nodes per icon
 - no accent-placement geometry
-- maximum six vector nodes per icon
-- documented intent, primary cue, rejection list, relationships, and aliases
-- automatic rendering checks at 16, 20, 24, and 32 pixels
-- stable naming and import rules
+- true opposite pairs use matched geometry only where meaning requires it
+- export/import, download/upload and undo/redo are explicitly documented pairs
+- check and close remain bare action marks rather than status badges
+- automatic rendering checks run at 16, 20, 24 and 32 pixels
 
-The canonical design brief lives in `docs/jalvoro-navigation-master-set.md`. Machine-readable review metadata lives in `lib/icon-system/navigation-master-set.ts`.
+- design brief: `docs/jalvoro-actions-master-set.md`
+- machine-readable specification: `lib/icon-system/actions-master-set.ts`
 
 ## Design status
 
-`master` means the icon has passed semantic, geometry, naming, size, and clean-default gates inside the private Icon System library. It does not mean the icon has been approved for product rollout.
+`master` means the icon has passed semantic, geometry, naming, size and clean-default gates inside the private Icon System library. It does not mean the icon has been approved for product rollout.
 
-All non-master categories remain design drafts until they receive the same category-level review and automated quality gates.
+Navigation and Actions are mastered. Finance, Objects, Identity, Communication, Interface and Status remain design drafts until they pass the same category-level review and automated quality gates.

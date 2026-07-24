@@ -35,7 +35,12 @@ A category moves from `draft` to `master` only after it has:
 7. automated quality-gate tests;
 8. explicit isolation from product rollout.
 
-Navigation is the first mastered category. Its 12 icons and complete design contract are documented in `docs/jalvoro-navigation-master-set.md`.
+Two categories are currently mastered:
+
+- Navigation — 12 icons, documented in `docs/jalvoro-navigation-master-set.md`;
+- Actions — 18 icons, documented in `docs/jalvoro-actions-master-set.md`.
+
+Actions additionally enforce a strict operation-versus-status boundary and document true opposite pairs such as export/import, download/upload and undo/redo.
 
 ## Standard library model
 

@@ -11,6 +11,11 @@ import type {
   JalvoroIconDefinition,
 } from "@/components/icons/jalvoro/types";
 import {
+  JALVORO_ACTIONS_MASTER_NAMES,
+  JALVORO_ACTIONS_MASTER_SPEC,
+  isJalvoroActionsMasterName,
+} from "@/lib/icon-system/actions-master-set";
+import {
   JALVORO_NAVIGATION_MASTER_NAMES,
   JALVORO_NAVIGATION_MASTER_SPEC,
   isJalvoroNavigationMasterName,
@@ -34,6 +39,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
       label: string;
       description: string;
       importPath: string;
+      designStatus: "master" | "draft";
     }
   >
 > = {
@@ -41,41 +47,49 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Navigation",
     description: "Primary routes, workspace destinations and product movement.",
     importPath: "@/components/icons/jalvoro/components/navigation",
+    designStatus: "master",
   },
   actions: {
     label: "Actions",
     description: "Direct operations such as add, edit, delete, search and share.",
     importPath: "@/components/icons/jalvoro/components/actions",
+    designStatus: "master",
   },
   finance: {
     label: "Finance",
     description: "Money, banking, planning, financial state and performance.",
     importPath: "@/components/icons/jalvoro/components/finance",
+    designStatus: "draft",
   },
   objects: {
     label: "Objects",
     description: "Reusable physical and digital objects used across products.",
     importPath: "@/components/icons/jalvoro/components/objects",
+    designStatus: "draft",
   },
   identity: {
     label: "Identity",
     description: "People, profiles, teams and account actors.",
     importPath: "@/components/icons/jalvoro/components/identity",
+    designStatus: "draft",
   },
   communication: {
     label: "Communication",
     description: "Messages, contact, sending and global presence.",
     importPath: "@/components/icons/jalvoro/components/communication",
+    designStatus: "draft",
   },
   interface: {
     label: "Interface",
     description: "Layout, visibility, direction and interface controls.",
     importPath: "@/components/icons/jalvoro/components/interface",
+    designStatus: "draft",
   },
   status: {
     label: "Status",
     description: "Success, warning, errors, progress and intelligence states.",
     importPath: "@/components/icons/jalvoro/components/status",
+    designStatus: "draft",
   },
 };
 
@@ -87,7 +101,9 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
   description:
     "The foundational clean-outline library for JALVORO products, tools and future packages.",
   iconCount: JALVORO_ICON_NAMES.length,
-  masteredIconCount: JALVORO_NAVIGATION_MASTER_NAMES.length,
+  masteredIconCount:
+    JALVORO_NAVIGATION_MASTER_NAMES.length + JALVORO_ACTIONS_MASTER_NAMES.length,
+  masteredCategoryCount: 2,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -131,13 +147,23 @@ export function toJalvoroIconComponentName(name: JalvoroIconName) {
   return `Jalvoro${pascalName}Icon`;
 }
 
+function getJalvoroMasterSpec(name: JalvoroIconName) {
+  if (isJalvoroNavigationMasterName(name)) {
+    return JALVORO_NAVIGATION_MASTER_SPEC[name];
+  }
+
+  if (isJalvoroActionsMasterName(name)) {
+    return JALVORO_ACTIONS_MASTER_SPEC[name];
+  }
+
+  return null;
+}
+
 export const JALVORO_ICON_LIBRARY_ENTRIES = Object.freeze(
   JALVORO_ICON_NAMES.map((name) => {
     const definition = definitionByName[name];
     const manifest = JALVORO_ICON_MANIFEST[name];
-    const masterSpec = isJalvoroNavigationMasterName(name)
-      ? JALVORO_NAVIGATION_MASTER_SPEC[name]
-      : null;
+    const masterSpec = getJalvoroMasterSpec(name);
 
     return Object.freeze({
       name,
