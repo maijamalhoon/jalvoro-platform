@@ -35,27 +35,10 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
 
-      - name: Analyze without upload
-        id: codeql-analysis
+      - name: Analyze
         uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
-        env:
-          CODEQL_ACTION_EXTRA_OPTIONS: '{"database":{"interpret-results":["--max-paths",1]}}'
         with:
           category: /language:javascript-typescript
-          upload: never
-          output: codeql-results
-          post-processed-sarif-path: codeql-post-processed
-
-      - name: Upload CodeQL diagnostic results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: codeql-sarif-diagnostics
-          path: |
-            codeql-results
-            codeql-post-processed
-          retention-days: 1
-          if-no-files-found: warn
 
   dependency-review:
     name: Dependency Review
