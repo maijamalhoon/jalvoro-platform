@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import AdminControlCenter from "@/components/admin/AdminControlCenter";
+import AdminIncidentOperationsPanel from "@/components/admin/AdminIncidentOperationsPanel";
 import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePanel";
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
@@ -10,6 +11,7 @@ import PrivacyRequestOperations from "@/components/admin/PrivacyRequestOperation
 import { parseAdminAccessSnapshot } from "@/lib/admin/access-operations";
 import { parseBillingOperationsSnapshot } from "@/lib/admin/billing-operations";
 import { parseAdminControlCenterSnapshot } from "@/lib/admin/control-center";
+import { parseAdminIncidentOperationsSnapshot } from "@/lib/admin/incident-operations";
 import { deriveAdminSecurityPosture } from "@/lib/admin/security-posture";
 import { parseAdminUserOperationsSnapshot } from "@/lib/admin/user-operations";
 import { createClient } from "@/lib/supabase/server";
@@ -35,6 +37,15 @@ const ACCESS_ACTION_RESULTS = new Set([
   "updated",
   "revoked",
   "accepted",
+  "invalid",
+  "forbidden",
+  "missing",
+  "unavailable",
+]);
+
+const INCIDENT_ACTION_RESULTS = new Set([
+  "created",
+  "updated",
   "invalid",
   "forbidden",
   "missing",
@@ -70,11 +81,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const billingOperations = parseBillingOperationsSnapshot(data);
   const accessOperations = parseAdminAccessSnapshot(data);
   const userOperations = parseAdminUserOperationsSnapshot(data);
+  const incidentOperations = parseAdminIncidentOperationsSnapshot(data);
   if (
     !snapshot ||
     !billingOperations ||
     !accessOperations ||
-    !userOperations
+    !userOperations ||
+    !incidentOperations
   ) {
     throw new Error("Admin snapshot returned an invalid contract.");
   }
@@ -124,10 +137,27 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           | "unavailable")
       : null;
 
+  const rawIncidentActionResult = resolvedSearchParams.incidentAction;
+  const incidentActionResult =
+    typeof rawIncidentActionResult === "string" &&
+    INCIDENT_ACTION_RESULTS.has(rawIncidentActionResult)
+      ? (rawIncidentActionResult as
+          | "created"
+          | "updated"
+          | "invalid"
+          | "forbidden"
+          | "missing"
+          | "unavailable")
+      : null;
+
   return (
     <>
       <AdminControlCenter snapshot={snapshot} />
       <AdminSecurityPosturePanel posture={securityPosture} />
+      <AdminIncidentOperationsPanel
+        incidents={incidentOperations}
+        actionResult={incidentActionResult}
+      />
       <section className="mx-auto w-full max-w-[1500px] pb-12">
         <AdminTeamAccessPanel
           access={accessOperations}
