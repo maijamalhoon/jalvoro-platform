@@ -142,11 +142,17 @@ internal fun PlanningProgress() {
     }
 }
 
-internal fun formatPkr(value: Double): String = NumberFormat.getCurrencyInstance(Locale("en", "PK")).apply {
-    currency = java.util.Currency.getInstance("PKR")
-    maximumFractionDigits = 2
-}.format(if (value.isFinite()) value else 0.0)
+internal fun formatPkr(value: Number): String {
+    val amount = value.toDouble()
+    return NumberFormat.getCurrencyInstance(Locale("en", "PK")).apply {
+        currency = java.util.Currency.getInstance("PKR")
+        maximumFractionDigits = 2
+    }.format(if (amount.isFinite()) amount else 0.0)
+}
 
-internal fun Double.editable(): String = if (!isFinite()) "" else toString().removeSuffix(".0")
+internal fun Number.editable(): String {
+    val value = toDouble()
+    return if (!value.isFinite()) "" else value.toString().removeSuffix(".0")
+}
 
 internal fun todayIso(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
