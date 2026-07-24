@@ -9,21 +9,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -64,6 +64,7 @@ private data class NativeModuleItem(
     val title: String,
     val description: String,
     val action: String,
+    val icon: ImageVector,
     val onClick: () -> Unit,
 )
 
@@ -84,7 +85,7 @@ fun NativeModuleRootShell(
     }
 
     when (workspace) {
-        NativeWorkspace.Overview -> NativeOverviewDashboard(
+        NativeWorkspace.Overview -> JalvoroOverviewDashboard(
             email = email,
             financeRepository = financeRepository,
             goalsPayablesRepository = goalsPayablesRepository,
@@ -142,7 +143,6 @@ fun NativeModuleRootShell(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NativeModuleLauncher(
     email: String,
@@ -159,72 +159,78 @@ private fun NativeModuleLauncher(
     val scope = rememberCoroutineScope()
     val modules = listOf(
         NativeModuleItem(
-            title = "Accounts & Transactions",
+            title = "Accounts & transactions",
             description = "Accounts, balances, income, expenses, transfers, search and deleted history.",
             action = "Open core finance",
+            icon = JalvoroIcons.Transactions,
             onClick = onAccountsTransactions,
         ),
         NativeModuleItem(
-            title = "Goals & Payables",
+            title = "Goals & payables",
             description = "Savings goals, contribution history, payables, repayments and due-status tracking.",
-            action = "Open goals & payables",
+            action = "Open planning",
+            icon = JalvoroIcons.Target,
             onClick = onGoalsPayables,
         ),
         NativeModuleItem(
-            title = "Investments & Analytics",
+            title = "Investments & analytics",
             description = "Portfolio lots, live market prices, profit/loss, cash out, cash-flow and spending intelligence.",
-            action = "Open investments & analytics",
+            action = "Open growth",
+            icon = JalvoroIcons.Investments,
             onClick = onInvestmentsAnalytics,
         ),
         NativeModuleItem(
-            title = "Reports & AI Insights",
+            title = "Reports & AI insights",
             description = "Date-range reports, native CSV export, financial health, secure insights and finance chat.",
-            action = "Open reports & AI insights",
+            action = "Open intelligence",
+            icon = JalvoroIcons.Reports,
             onClick = onReportsInsights,
         ),
         NativeModuleItem(
-            title = "Profile, Alerts & Data",
-            description = "Profile image and name, currency, theme, deadline alerts, password and complete backup/restore.",
-            action = "Open personal settings",
+            title = "Profile, alerts & data",
+            description = "Profile, currency, theme, deadline alerts, password and complete backup or restore.",
+            action = "Open settings",
+            icon = JalvoroIcons.Settings,
             onClick = onPersonalPlatform,
         ),
         NativeModuleItem(
-            title = "Privacy & App Lock",
-            description = "Biometric or device-credential lock, auto-lock timing, secure screenshots and recent-app protection.",
-            action = "Open privacy protection",
+            title = "Privacy & app lock",
+            description = "Biometric or device-credential lock, auto-lock timing, screenshots and recent-app protection.",
+            action = "Open privacy",
+            icon = JalvoroIcons.Privacy,
             onClick = onPrivacySecurity,
         ),
         NativeModuleItem(
-            title = "Accessibility & Display",
+            title = "Accessibility & display",
             description = "High contrast, adaptive tablet layout, large-text protection and Android accessibility controls.",
-            action = "Open accessibility settings",
+            action = "Open accessibility",
+            icon = JalvoroIcons.Accessibility,
             onClick = onAccessibilityDisplay,
         ),
     )
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    TextButton(onClick = onOverview) {
-                        Text("Overview")
-                    }
-                },
-                title = {
-                    Column {
-                        Text(
-                            "More",
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                        Text(
-                            "All personal finance workspaces",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-            )
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shadowElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    JalvoroIconAction(
+                        icon = JalvoroIcons.ArrowLeft,
+                        label = "Back to overview",
+                        onClick = onOverview,
+                    )
+                    JalvoroBrandLockup(
+                        modifier = Modifier.weight(1f),
+                        subtitle = "All personal workspaces",
+                        compact = true,
+                    )
+                }
+            }
         },
     ) { padding ->
         BoxWithConstraints(
@@ -246,26 +252,32 @@ private fun NativeModuleLauncher(
                 contentPadding = PaddingValues(
                     start = horizontalPadding,
                     end = horizontalPadding,
-                    top = 16.dp,
+                    top = 18.dp,
                     bottom = 28.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
-                    Text("Signed in as", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        email,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Signed in as $email"
-                        },
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Every workspace uses your real Supabase-backed finance data. Business software stays separate.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(
+                            text = "More",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                        Text(
+                            text = "Signed in as $email",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Signed in as $email"
+                            },
+                        )
+                        Text(
+                            text = "Every workspace uses real owner-scoped finance data. Business software remains separate from Jalvoro Personal.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 items(
@@ -278,10 +290,7 @@ private fun NativeModuleLauncher(
                     ) {
                         row.forEach { item ->
                             ModuleCard(
-                                title = item.title,
-                                description = item.description,
-                                action = item.action,
-                                onClick = item.onClick,
+                                item = item,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -295,8 +304,14 @@ private fun NativeModuleLauncher(
                     OutlinedButton(
                         onClick = { scope.launch { onSignOut() } },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(14.dp),
                     ) {
+                        Icon(
+                            imageVector = JalvoroIcons.SignOut,
+                            contentDescription = null,
+                            modifier = Modifier.size(19.dp),
+                        )
+                        Spacer(Modifier.size(8.dp))
                         Text("Sign out")
                     }
                 }
@@ -307,42 +322,61 @@ private fun NativeModuleLauncher(
 
 @Composable
 private fun ModuleCard(
-    title: String,
-    description: String,
-    action: String,
-    onClick: () -> Unit,
+    item: NativeModuleItem,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        onClick = onClick,
+        onClick = item.onClick,
         modifier = modifier.semantics(mergeDescendants = true) {
-            contentDescription = "$title. $description. $action"
+            contentDescription = "${item.title}. ${item.description}. ${item.action}"
         },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(13.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.primary,
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(10.dp).size(22.dp),
+                )
+            }
             Text(
-                title,
+                text = item.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() },
             )
-            Spacer(Modifier.height(8.dp))
             Text(
-                description,
+                text = item.description,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                action,
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.action,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.size(6.dp))
+                Icon(
+                    imageVector = JalvoroIcons.ArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }
