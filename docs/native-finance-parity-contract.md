@@ -79,3 +79,5 @@ Whenever a website or app change introduces a new financial rule:
 - Missing or invalid data must remain partial/unavailable rather than becoming a fabricated zero.
 - Authentication, RLS and owner-scoped reads remain separate security gates.
 - Live exchange rates and market prices require their own availability and freshness handling; deterministic fixtures test the conversion and valuation formulas, not provider uptime.
+- Screen transitions, card entrances, progress reveals, expandable histories and value crossfades consume already-calculated presentation values. Motion code must never calculate, normalize, round, persist or silently substitute financial data.
+- Standard, Fast and No animations modes render the same semantic labels and final values. Disabling animations must not skip validation, loading truthfulness, authentication feedback or destructive-action confirmation.
