@@ -16,6 +16,11 @@ import {
   isJalvoroActionsMasterName,
 } from "@/lib/icon-system/actions-master-set";
 import {
+  JALVORO_COMMUNICATION_MASTER_NAMES,
+  JALVORO_COMMUNICATION_MASTER_SPEC,
+  isJalvoroCommunicationMasterName,
+} from "@/lib/icon-system/communication-master-set";
+import {
   JALVORO_FINANCE_MASTER_NAMES,
   JALVORO_FINANCE_MASTER_SPEC,
   isJalvoroFinanceMasterName,
@@ -92,7 +97,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Communication",
     description: "Messages, contact, sending and global presence.",
     importPath: "@/components/icons/jalvoro/components/communication",
-    designStatus: "draft",
+    designStatus: "master",
   },
   interface: {
     label: "Interface",
@@ -121,8 +126,9 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
     JALVORO_ACTIONS_MASTER_NAMES.length +
     JALVORO_FINANCE_MASTER_NAMES.length +
     JALVORO_OBJECTS_MASTER_NAMES.length +
-    JALVORO_IDENTITY_MASTER_NAMES.length,
-  masteredCategoryCount: 5,
+    JALVORO_IDENTITY_MASTER_NAMES.length +
+    JALVORO_COMMUNICATION_MASTER_NAMES.length,
+  masteredCategoryCount: 6,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -185,6 +191,10 @@ function getJalvoroMasterSpec(name: JalvoroIconName) {
 
   if (isJalvoroIdentityMasterName(name)) {
     return JALVORO_IDENTITY_MASTER_SPEC[name];
+  }
+
+  if (isJalvoroCommunicationMasterName(name)) {
+    return JALVORO_COMMUNICATION_MASTER_SPEC[name];
   }
 
   return null;

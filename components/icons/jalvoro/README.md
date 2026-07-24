@@ -86,8 +86,22 @@ The 3 identity icons use neutral, inclusive actor silhouettes without demographi
 - design brief: `docs/jalvoro-identity-master-set.md`
 - machine-readable specification: `lib/icon-system/identity-master-set.ts`
 
+### Communication — master
+
+The 5 communication icons use distinct channel, delivery and global-reach silhouettes without notification or motion decoration.
+
+- mail, chat and phone remain clearly different communication channels
+- maximum four vector nodes per icon
+- no accent-placement geometry
+- send is communication-scoped delivery rather than share or export
+- globe means international communication or language reach rather than location or browser navigation
+- automatic rendering checks run at 16, 20, 24 and 32 pixels
+
+- design brief: `docs/jalvoro-communication-master-set.md`
+- machine-readable specification: `lib/icon-system/communication-master-set.ts`
+
 ## Design status
 
 `master` means the icon has passed semantic, geometry, naming, size and clean-default gates inside the private Icon System library. It does not mean the icon has been approved for product rollout.
 
-Navigation, Actions, Finance, Objects and Identity are mastered. Communication, Interface and Status remain design drafts until they pass the same category-level review and automated quality gates.
+Navigation, Actions, Finance, Objects, Identity and Communication are mastered. Interface and Status remain design drafts until they pass the same category-level review and automated quality gates.
