@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const ORGANIZATION_CODE_PATTERN = /^ORG-[A-F0-9]{12}$/;
-const ACTION_RESULTS = new Set([
+const ACTION_RESULTS = [
   "created",
   "updated",
   "member-added",
@@ -27,7 +27,11 @@ const ACTION_RESULTS = new Set([
   "conflict",
   "blocked",
   "unavailable",
-]);
+] as const;
+
+type ActionResult = (typeof ACTION_RESULTS)[number];
+
+const ACTION_RESULT_SET = new Set<string>(ACTION_RESULTS);
 
 type OrganizationPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -43,6 +47,11 @@ function readPage(value: string | null) {
   return Number.isSafeInteger(page) && page >= 1 && page <= 2001 ? page : 1;
 }
 
+function readActionResult(value: string | null): ActionResult | null {
+  if (!value || !ACTION_RESULT_SET.has(value)) return null;
+  return value as ActionResult;
+}
+
 export default async function OrganizationOperationsPage({
   searchParams,
 }: OrganizationPageProps) {
@@ -55,9 +64,7 @@ export default async function OrganizationOperationsPage({
   const page = readPage(readSingle(params.page));
   const limit = 50;
   const offset = (page - 1) * limit;
-  const actionValue = readSingle(params.result);
-  const actionResult =
-    actionValue && ACTION_RESULTS.has(actionValue) ? actionValue : null;
+  const actionResult = readActionResult(readSingle(params.result));
 
   const supabase = await createClient();
   const {
