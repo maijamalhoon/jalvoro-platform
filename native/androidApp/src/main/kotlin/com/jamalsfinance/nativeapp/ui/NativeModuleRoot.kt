@@ -57,6 +57,7 @@ private enum class NativeWorkspace {
     PersonalPlatform,
     PrivacySecurity,
     AccessibilityDisplay,
+    MotionInteractions,
     More,
 }
 
@@ -81,7 +82,11 @@ fun NativeModuleRootShell(
 ) {
     var workspace by remember { mutableStateOf(NativeWorkspace.Overview) }
     BackHandler(enabled = workspace != NativeWorkspace.Overview) {
-        workspace = NativeWorkspace.Overview
+        workspace = if (workspace == NativeWorkspace.MotionInteractions) {
+            NativeWorkspace.More
+        } else {
+            NativeWorkspace.Overview
+        }
     }
 
     JalvoroAnimatedWorkspace(
@@ -136,6 +141,10 @@ fun NativeModuleRootShell(
                 preferences = nativePreferences,
                 onBack = { workspace = NativeWorkspace.Overview },
             )
+            NativeWorkspace.MotionInteractions -> JalvoroMotionSettingsDashboard(
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.More },
+            )
             NativeWorkspace.More -> NativeModuleLauncher(
                 email = email,
                 onOverview = { workspace = NativeWorkspace.Overview },
@@ -146,6 +155,7 @@ fun NativeModuleRootShell(
                 onPersonalPlatform = { workspace = NativeWorkspace.PersonalPlatform },
                 onPrivacySecurity = { workspace = NativeWorkspace.PrivacySecurity },
                 onAccessibilityDisplay = { workspace = NativeWorkspace.AccessibilityDisplay },
+                onMotionInteractions = { workspace = NativeWorkspace.MotionInteractions },
                 onSignOut = onSignOut,
             )
         }
@@ -163,6 +173,7 @@ private fun NativeModuleLauncher(
     onPersonalPlatform: () -> Unit,
     onPrivacySecurity: () -> Unit,
     onAccessibilityDisplay: () -> Unit,
+    onMotionInteractions: () -> Unit,
     onSignOut: suspend () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -215,6 +226,13 @@ private fun NativeModuleLauncher(
             action = "Open accessibility",
             icon = JalvoroIcons.Accessibility,
             onClick = onAccessibilityDisplay,
+        ),
+        NativeModuleItem(
+            title = "Motion & interactions",
+            description = "Website-equivalent transitions, progress reveals, fast motion and a no-animation accessibility mode.",
+            action = "Open motion settings",
+            icon = JalvoroIcons.Refresh,
+            onClick = onMotionInteractions,
         ),
     )
 
