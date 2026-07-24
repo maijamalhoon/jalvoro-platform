@@ -1,5 +1,8 @@
 package com.jamalsfinance.nativeapp.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +22,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -27,6 +31,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -142,7 +147,7 @@ fun JalvoroSurfaceCard(
     content: @Composable () -> Unit,
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -200,16 +205,21 @@ fun JalvoroFeedbackCard(
         JalvoroFeedbackTone.Danger -> MaterialTheme.colorScheme.onErrorContainer
     }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(14.dp),
         color = container,
         contentColor = contentColor,
     ) {
-        Text(
-            text = message,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        JalvoroAnimatedSwap(
+            targetState = message,
+            label = "jalvoro-feedback-message",
+        ) { currentMessage ->
+            Text(
+                text = currentMessage,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 
@@ -225,12 +235,25 @@ fun JalvoroNavigationBar(
     destinations: List<JalvoroNavigationDestination>,
     modifier: Modifier = Modifier,
 ) {
+    val motion = LocalJalvoroMotion.current
     NavigationBar(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 0.dp,
     ) {
         destinations.forEach { destination ->
+            val iconScale by animateFloatAsState(
+                targetValue = if (destination.selected) 1f else 0.94f,
+                animationSpec = if (motion.enabled) {
+                    tween(
+                        durationMillis = motion.fastMillis,
+                        easing = JalvoroMotionEasing,
+                    )
+                } else {
+                    snap()
+                },
+                label = "${destination.label}-navigation-scale",
+            )
             NavigationBarItem(
                 selected = destination.selected,
                 onClick = destination.onClick,
@@ -238,7 +261,12 @@ fun JalvoroNavigationBar(
                     Icon(
                         imageVector = destination.icon,
                         contentDescription = destination.label,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier
+                            .size(22.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            },
                     )
                 },
                 label = {
