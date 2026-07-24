@@ -74,6 +74,25 @@ describe("Admin compliance audit review", () => {
     expect(parsed?.timeline[0]?.eventCode).toBe("AUD-A1B2C3D4E5F6");
   });
 
+  it("accepts canonical lowercase billing plan references", () => {
+    const value = fixture();
+    value.complianceAudit.timeline[0] = {
+      eventCode: "AUD-A1B2C3D4E5F6",
+      domain: "billing",
+      action: "created",
+      subjectReference: "global_business_monthly",
+      occurredAt: "2026-07-24T08:00:00.000Z",
+      previousState: null,
+      nextState: "month / USD / active",
+      attentionRequired: false,
+      reviewStatus: "pending",
+      reviewedAt: null,
+      integrityState: "unverified",
+    };
+
+    expect(parseAdminComplianceAuditSnapshot(value)).not.toBeNull();
+  });
+
   it("fails closed on identity or finance output", () => {
     const identity = fixture() as Record<string, unknown>;
     (identity.complianceAudit as Record<string, unknown>).userId =
