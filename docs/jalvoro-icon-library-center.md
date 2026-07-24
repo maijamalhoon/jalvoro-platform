@@ -9,7 +9,7 @@ The Icon Library Center is the controlled workspace for creating, reviewing and 
 
 ## Current library
 
-`JALVORO Core` is the first versioned library. It currently exposes the canonical icon manifest across navigation, actions, finance, objects, identity, communication, interface and status categories.
+`JALVORO Core` is the first versioned library. It exposes the canonical icon manifest across navigation, actions, finance, objects, identity, communication, interface and status categories.
 
 The catalog provides:
 
@@ -19,7 +19,23 @@ The catalog provides:
 - compact, content, heading and hero stroke contexts;
 - component names and direct category import paths;
 - copyable React usage snippets;
-- library version, status and roadmap visibility.
+- library version, design status and roadmap visibility;
+- machine-readable semantic intent and review metadata for mastered icons.
+
+## Master process
+
+A category moves from `draft` to `master` only after it has:
+
+1. unique semantic silhouettes;
+2. clean-default geometry with no decorative dependency;
+3. fixed naming, aliases and category ownership;
+4. size checks at 16, 20, 24 and 32 pixels;
+5. complexity and object-count limits;
+6. a semantic intent, primary cue and rejection list per icon;
+7. automated quality-gate tests;
+8. explicit isolation from product rollout.
+
+Navigation is the first mastered category. Its 12 icons and complete design contract are documented in `docs/jalvoro-navigation-master-set.md`.
 
 ## Standard library model
 
@@ -28,8 +44,9 @@ Library metadata lives in `lib/icon-system/library.ts`. The model separates:
 1. the canonical vector definitions;
 2. the typed manifest and registry;
 3. reusable library metadata;
-4. the private review interface;
-5. future package extraction.
+4. category master specifications;
+5. the private review interface;
+6. future package extraction.
 
 Planned libraries may be added to the roadmap without pretending that their icons already exist. A library becomes active only when its symbols, metadata and tests are complete.
 
