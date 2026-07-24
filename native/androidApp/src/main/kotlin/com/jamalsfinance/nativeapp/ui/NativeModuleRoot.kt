@@ -97,9 +97,10 @@ fun NativeModuleRootShell(
             onOpenSettings = { workspace = NativeWorkspace.PersonalPlatform },
             onOpenMore = { workspace = NativeWorkspace.More },
         )
-        NativeWorkspace.AccountsTransactions -> NativeDashboardShell(
+        NativeWorkspace.AccountsTransactions -> JalvoroFinanceDashboard(
             email = email,
             financeRepository = financeRepository,
+            onBack = { workspace = NativeWorkspace.Overview },
             onSignOut = onSignOut,
         )
         NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
