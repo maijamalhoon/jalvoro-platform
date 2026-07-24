@@ -35,7 +35,7 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
       moduleKey: "global-overview",
       name: "Global Overview",
       description:
-        "Privacy-safe ecosystem, billing, user, security, incident, compliance, and release operations overview.",
+        "Privacy-safe executive operating pulse for users, billing, access, incidents, security, compliance, and release readiness.",
       lifecycleStatus: "public_release",
       enabled: true,
       requiredPermissions: ["command-center:overview:view"],
@@ -45,7 +45,7 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
       moduleKey: "global-operations",
       name: "Global Operations",
       description:
-        "Registry-backed product topology, subscription state, regional reach, and privacy-safe platform distribution for worldwide operations.",
+        "Worldwide product topology, subscription state, regional reach, and privacy-safe platform distribution.",
       lifecycleStatus: "public_release",
       enabled: true,
       requiredPermissions: ["command-center:overview:view"],
@@ -53,10 +53,10 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
     {
       moduleId: "mod_organizations",
       moduleKey: "organizations",
-      name: "Organization Foundation",
+      name: "Organization Operations",
       description:
-        "Private organization, membership, tenant-scoped authorization, lifecycle, and append-only audit foundation.",
-      lifecycleStatus: "internal_testing",
+        "Private organization lifecycle, memberships, tenant-scoped authorization, controlled administrator grants, and append-only audit operations.",
+      lifecycleStatus: "public_release",
       enabled: true,
       requiredPermissions: ["command-center:organizations:view"],
     },
@@ -65,7 +65,7 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
       moduleKey: "icon-system",
       name: "JALVORO Icon System",
       description:
-        "Internal inspection surface for the official JALVORO icon scheme.",
+        "Internal design infrastructure and symbol governance for the official JALVORO interface language.",
       lifecycleStatus: "public_release",
       enabled: true,
       requiredPermissions: ["command-center:icons:view"],
@@ -131,6 +131,16 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
         iconKey: "globe",
         order: 20,
         requiredPermissions: ["command-center:overview:view"],
+        environments: ["development", "preview", "production"],
+      },
+      {
+        navigationId: "organizations",
+        moduleKey: "organizations",
+        label: "Organizations",
+        href: "/admin/organizations",
+        iconKey: "organizations",
+        order: 30,
+        requiredPermissions: ["command-center:organizations:view"],
         environments: ["development", "preview", "production"],
       },
       {
