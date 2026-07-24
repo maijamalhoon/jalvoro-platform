@@ -3,6 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import AdminComplianceAuditPanel from "@/components/admin/AdminComplianceAuditPanel";
 import AdminControlCenter from "@/components/admin/AdminControlCenter";
 import AdminIncidentOperationsPanel from "@/components/admin/AdminIncidentOperationsPanel";
+import AdminReleaseReadinessPanel, {
+  type ReleaseActionResult,
+} from "@/components/admin/AdminReleaseReadinessPanel";
 import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePanel";
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
@@ -18,6 +21,11 @@ import {
 } from "@/lib/admin/compliance-audit";
 import { parseAdminControlCenterSnapshot } from "@/lib/admin/control-center";
 import { parseAdminIncidentOperationsSnapshot } from "@/lib/admin/incident-operations";
+import {
+  deriveAdminReleaseReadiness,
+  getAdminReleaseRuntimeEvidence,
+  parseAdminReleaseReadinessSnapshot,
+} from "@/lib/admin/release-readiness";
 import { deriveAdminSecurityPosture } from "@/lib/admin/security-posture";
 import { parseAdminUserOperationsSnapshot } from "@/lib/admin/user-operations";
 import { createClient } from "@/lib/supabase/server";
@@ -60,6 +68,16 @@ const INCIDENT_ACTION_RESULTS = new Set([
 
 const COMPLIANCE_ACTION_RESULTS = new Set([
   "updated",
+  "invalid",
+  "forbidden",
+  "missing",
+  "unavailable",
+]);
+
+const RELEASE_ACTION_RESULTS = new Set<ReleaseActionResult>([
+  "approved",
+  "revoked",
+  "blocked",
   "invalid",
   "forbidden",
   "missing",
@@ -110,13 +128,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const userOperations = parseAdminUserOperationsSnapshot(data);
   const incidentOperations = parseAdminIncidentOperationsSnapshot(data);
   const complianceAudit = parseAdminComplianceAuditSnapshot(data);
+  const releaseSnapshot = parseAdminReleaseReadinessSnapshot(data);
   if (
     !snapshot ||
     !billingOperations ||
     !accessOperations ||
     !userOperations ||
     !incidentOperations ||
-    !complianceAudit
+    !complianceAudit ||
+    !releaseSnapshot
   ) {
     throw new Error("Admin snapshot returned an invalid contract.");
   }
@@ -126,6 +146,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     access: accessOperations,
     billing: billingOperations,
     users: userOperations,
+  });
+  const releaseReadiness = deriveAdminReleaseReadiness({
+    snapshot,
+    billing: billingOperations,
+    access: accessOperations,
+    incidents: incidentOperations,
+    compliance: complianceAudit,
+    posture: securityPosture,
+    release: releaseSnapshot,
+    runtime: getAdminReleaseRuntimeEvidence(),
   });
 
   const resolvedSearchParams = await searchParams;
@@ -191,6 +221,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           | "unavailable")
       : null;
 
+  const rawReleaseActionResult = resolvedSearchParams.releaseAction;
+  const releaseActionResult =
+    typeof rawReleaseActionResult === "string" &&
+    RELEASE_ACTION_RESULTS.has(rawReleaseActionResult as ReleaseActionResult)
+      ? (rawReleaseActionResult as ReleaseActionResult)
+      : null;
+
   const rawAuditDomain = resolvedSearchParams.auditDomain;
   const auditDomain =
     typeof rawAuditDomain === "string" &&
@@ -209,6 +246,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     <>
       <AdminControlCenter snapshot={snapshot} />
       <AdminSecurityPosturePanel posture={securityPosture} />
+      <AdminReleaseReadinessPanel
+        readiness={releaseReadiness}
+        release={releaseSnapshot}
+        actionResult={releaseActionResult}
+      />
       <AdminIncidentOperationsPanel
         incidents={incidentOperations}
         actionResult={incidentActionResult}
