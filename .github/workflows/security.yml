@@ -16,7 +16,7 @@ concurrency:
 jobs:
   codeql:
     name: CodeQL
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false && github.base_ref == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -35,22 +35,93 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
 
-      - name: Analyze recovery data flow
+      - name: Analyze
+        uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
+        with:
+          category: /language:javascript-typescript
+
+  codeql-stacked-pr:
+    name: CodeQL Stacked PR Verification
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false && github.base_ref != 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Generate local CodeQL results
+        id: codeql-analysis
+        continue-on-error: true
         uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           category: /language:javascript-typescript
           upload: never
           output: codeql-results
-          post-processed-sarif-path: codeql-post-processed
 
-      - name: Upload CodeQL recovery diagnostics
+      - name: Enforce clean local CodeQL results
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          function findSarifFiles(directory) {
+            if (!fs.existsSync(directory)) return [];
+            return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+              const candidate = path.join(directory, entry.name);
+              if (entry.isDirectory()) return findSarifFiles(candidate);
+              return entry.isFile() && entry.name.endsWith(".sarif") ? [candidate] : [];
+            });
+          }
+
+          const files = findSarifFiles("codeql-results");
+          if (files.length === 0) {
+            console.error("CodeQL produced no SARIF results for the stacked pull request.");
+            process.exit(1);
+          }
+
+          let findings = 0;
+          let failedInvocations = 0;
+          let errorNotifications = 0;
+
+          for (const file of files) {
+            const sarif = JSON.parse(fs.readFileSync(file, "utf8"));
+            for (const run of sarif.runs ?? []) {
+              findings += (run.results ?? []).length;
+              for (const invocation of run.invocations ?? []) {
+                if (invocation.executionSuccessful === false) failedInvocations += 1;
+                for (const notification of invocation.toolExecutionNotifications ?? []) {
+                  if (notification.level === "error") errorNotifications += 1;
+                }
+              }
+            }
+          }
+
+          console.log(
+            `Verified ${files.length} SARIF file(s): ${findings} finding(s), ${failedInvocations} failed invocation(s), ${errorNotifications} error notification(s).`,
+          );
+
+          if (findings > 0 || failedInvocations > 0 || errorNotifications > 0) {
+            process.exit(1);
+          }
+          NODE
+
+      - name: Upload stacked PR diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: recovery-codeql-data-flow
-          path: |
-            codeql-results
-            codeql-post-processed
+          name: stacked-pr-codeql-results
+          path: codeql-results
           retention-days: 1
           if-no-files-found: warn
 
