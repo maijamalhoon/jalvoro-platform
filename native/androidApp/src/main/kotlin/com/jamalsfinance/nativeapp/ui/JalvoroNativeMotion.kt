@@ -3,10 +3,14 @@ package com.jamalsfinance.nativeapp.ui
 import android.animation.ValueAnimator
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -14,6 +18,8 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -23,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -150,19 +157,92 @@ internal fun <T> JalvoroAnimatedWorkspace(
 }
 
 @Composable
-internal fun JalvoroEntrance(
-    index: Int = 0,
+internal fun <T> JalvoroAnimatedSwap(
+    targetState: T,
+    modifier: Modifier = Modifier,
+    label: String = "jalvoro-content-swap",
+    contentKey: (T) -> Any? = { it },
+    content: @Composable (T) -> Unit,
+) {
+    val motion = LocalJalvoroMotion.current
+    val offsetPx = with(LocalDensity.current) { 4.dp.roundToPx() }
+
+    if (!motion.enabled) {
+        Box(modifier = modifier) { content(targetState) }
+        return
+    }
+
+    AnimatedContent(
+        targetState = targetState,
+        modifier = modifier,
+        contentKey = contentKey,
+        transitionSpec = {
+            (fadeIn(tween(motion.baseMillis, easing = JalvoroMotionEasing)) +
+                slideInVertically(
+                    tween(motion.baseMillis, easing = JalvoroMotionEasing),
+                    initialOffsetY = { offsetPx },
+                )) togetherWith fadeOut(
+                tween(motion.fastMillis, easing = JalvoroMotionEasing),
+            )
+        },
+        label = label,
+    ) { state ->
+        content(state)
+    }
+}
+
+@Composable
+internal fun JalvoroAnimatedReveal(
+    visible: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val motion = LocalJalvoroMotion.current
-    var entered by remember(index, motion.enabled, motion.mode) {
+
+    if (!motion.enabled) {
+        if (visible) Box(modifier = modifier) { content() }
+        return
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(
+            tween(motion.baseMillis, easing = JalvoroMotionEasing),
+        ) + expandVertically(
+            animationSpec = tween(motion.baseMillis, easing = JalvoroMotionEasing),
+            expandFrom = Alignment.Top,
+        ),
+        exit = fadeOut(
+            tween(motion.fastMillis, easing = JalvoroMotionEasing),
+        ) + shrinkVertically(
+            animationSpec = tween(motion.fastMillis, easing = JalvoroMotionEasing),
+            shrinkTowards = Alignment.Top,
+        ),
+    ) {
+        content()
+    }
+}
+
+@Composable
+internal fun JalvoroEntrance(
+    index: Int = 0,
+    key: Any? = index,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val motion = LocalJalvoroMotion.current
+    val offsetPx = with(LocalDensity.current) { 5.dp.toPx() }
+    var entered by remember(key, motion.enabled, motion.mode) {
         mutableStateOf(!motion.enabled)
     }
 
-    LaunchedEffect(index, motion.enabled, motion.mode) {
+    LaunchedEffect(key, motion.enabled, motion.mode) {
         if (motion.enabled) {
+            entered = false
             delay(motion.staggerDelay(index))
+            entered = true
+        } else {
             entered = true
         }
     }
@@ -180,7 +260,7 @@ internal fun JalvoroEntrance(
         label = "jalvoro-entrance-alpha",
     )
     val translationY by animateFloatAsState(
-        targetValue = if (entered) 0f else 5f,
+        targetValue = if (entered) 0f else offsetPx,
         animationSpec = if (motion.enabled) {
             tween(
                 durationMillis = motion.fastMillis,
@@ -199,6 +279,46 @@ internal fun JalvoroEntrance(
         },
     ) {
         content()
+    }
+}
+
+@Composable
+internal fun Modifier.jalvoroAnimateContentSize(): Modifier {
+    val motion = LocalJalvoroMotion.current
+    return if (motion.enabled) {
+        animateContentSize(
+            animationSpec = tween(
+                durationMillis = motion.baseMillis,
+                easing = JalvoroMotionEasing,
+            ),
+        )
+    } else {
+        this
+    }
+}
+
+@Composable
+internal fun Modifier.jalvoroPressFeedback(
+    interactionSource: InteractionSource,
+    pressedScale: Float = 0.985f,
+): Modifier {
+    val motion = LocalJalvoroMotion.current
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && motion.enabled) pressedScale else 1f,
+        animationSpec = if (motion.enabled) {
+            tween(
+                durationMillis = motion.instantMillis,
+                easing = JalvoroMotionEasing,
+            )
+        } else {
+            snap()
+        },
+        label = "jalvoro-press-scale",
+    )
+    return graphicsLayer {
+        scaleX = scale
+        scaleY = scale
     }
 }
 
