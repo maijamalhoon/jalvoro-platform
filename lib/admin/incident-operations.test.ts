@@ -122,6 +122,32 @@ describe("admin incident operations", () => {
     expect(migration).not.toMatch(/\b(description|notes|raw_payload)\s+(text|jsonb)/i);
   });
 
+  it("requires a non-null controlled resolution code", () => {
+    const migration = read(
+      "supabase/migrations/20260724073200_require_incident_resolution_code.sql",
+    );
+
+    expect(migration).toContain("and resolution_code is not null");
+    expect(migration).toContain("v_resolution_code is null or v_resolution_code not in");
+    expect(migration).toContain("incident_resolution_invalid");
+    expect(migration).toContain("critical_incident_owner_required");
+  });
+
+  it("indexes every incident workflow foreign key flagged by advisors", () => {
+    const migration = read(
+      "supabase/migrations/20260724073300_index_incident_foreign_keys.sql",
+    );
+
+    expect(migration).toContain("platform_security_incidents_acknowledged_by_idx");
+    expect(migration).toContain("platform_security_incidents_resolved_by_idx");
+    expect(migration).toContain(
+      "platform_security_incident_audit_previous_assignment_idx",
+    );
+    expect(migration).toContain(
+      "platform_security_incident_audit_next_assignment_idx",
+    );
+  });
+
   it("preserves one Admin snapshot RPC and server-only workflow actions", () => {
     const page = read("app/admin/page.tsx");
     const actions = read("app/admin/incident-actions.ts");
@@ -133,7 +159,9 @@ describe("admin incident operations", () => {
     expect(actions).toContain('"use server"');
     expect(actions).toContain("create_platform_security_incident");
     expect(actions).toContain("apply_platform_security_incident_workflow");
-    expect(panel).toContain("No title, description, notes, raw evidence or attachment is accepted.");
+    expect(panel).toContain(
+      "No title, description, notes, raw evidence or attachment is accepted.",
+    );
     expect(panel).not.toContain("textarea");
   });
 });
