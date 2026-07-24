@@ -123,7 +123,7 @@ internal fun GrowthMetricTile(
         GrowthMetricTone.Negative -> MaterialTheme.colorScheme.error
     }
     Surface(
-        modifier = modifier,
+        modifier = modifier.jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
@@ -137,21 +137,31 @@ internal fun GrowthMetricTile(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
             )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                color = valueColor,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = helper,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            JalvoroAnimatedSwap(
+                targetState = value,
+                label = "$label-growth-value",
+            ) { currentValue ->
+                Text(
+                    text = currentValue,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = valueColor,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            JalvoroAnimatedSwap(
+                targetState = helper,
+                label = "$label-growth-helper",
+            ) { currentHelper ->
+                Text(
+                    text = currentHelper,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -175,17 +185,22 @@ internal fun GrowthStatusPill(
         null -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
-        modifier = modifier,
+        modifier = modifier.jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(999.dp),
         color = container,
         contentColor = content,
     ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-        )
+        JalvoroAnimatedSwap(
+            targetState = label,
+            label = "growth-status-pill",
+        ) { currentLabel ->
+            Text(
+                text = currentLabel,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
@@ -198,46 +213,51 @@ internal fun GrowthFormDialog(
     content: @Composable () -> Unit,
 ) {
     Dialog(onDismissRequest = { if (dismissEnabled) onDismiss() }) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp),
-            shape = RoundedCornerShape(26.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 0.dp,
+        JalvoroEntrance(
+            key = "growth-dialog:$title",
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 760.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            Surface(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp),
+                shape = RoundedCornerShape(26.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 0.dp,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 760.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(15.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.primary,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(icon, null, Modifier.padding(10.dp).size(21.dp))
+                        Surface(
+                            shape = RoundedCornerShape(15.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ) {
+                            Icon(icon, null, Modifier.padding(10.dp).size(21.dp))
+                        }
+                        Text(
+                            text = title,
+                            modifier = Modifier.weight(1f).semantics { heading() },
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        JalvoroIconAction(
+                            icon = JalvoroIcons.Close,
+                            label = "Close",
+                            enabled = dismissEnabled,
+                            onClick = onDismiss,
+                        )
                     }
-                    Text(
-                        text = title,
-                        modifier = Modifier.weight(1f).semantics { heading() },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    JalvoroIconAction(
-                        icon = JalvoroIcons.Close,
-                        label = "Close",
-                        enabled = dismissEnabled,
-                        onClick = onDismiss,
-                    )
+                    content()
                 }
-                content()
             }
         }
     }
@@ -270,11 +290,17 @@ internal fun GrowthSelectionField(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    text = selected.takeIf(String::isNotBlank)?.let(optionLabel) ?: placeholder,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                val selectedLabel = selected.takeIf(String::isNotBlank)?.let(optionLabel) ?: placeholder
+                JalvoroAnimatedSwap(
+                    targetState = selectedLabel,
+                    label = "$label-growth-selection",
+                ) { currentSelection ->
+                    Text(
+                        text = currentSelection,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -299,33 +325,35 @@ internal fun GrowthEmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    JalvoroSurfaceCard {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.primary,
+    JalvoroEntrance(key = "growth-empty:$title") {
+        JalvoroSurfaceCard {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
-                Icon(icon, null, Modifier.padding(13.dp).size(26.dp))
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (actionLabel != null && onAction != null) {
-                Button(onClick = onAction, shape = RoundedCornerShape(14.dp)) {
-                    Text(actionLabel)
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ) {
+                    Icon(icon, null, Modifier.padding(13.dp).size(26.dp))
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (actionLabel != null && onAction != null) {
+                    Button(onClick = onAction, shape = RoundedCornerShape(14.dp)) {
+                        Text(actionLabel)
+                    }
                 }
             }
         }
