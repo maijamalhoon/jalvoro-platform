@@ -58,65 +58,83 @@ internal fun PayablesScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            PlanningHeroCard(
-                icon = JalvoroIcons.Wallet,
-                eyebrow = "Repayment progress",
-                primary = formatPkr(snapshot.totalPayableRemaining),
-                secondary = "Remaining balance",
-                detail = "${formatPkr(snapshot.totalPayablePaid)} paid of ${formatPkr(snapshot.totalPayableValue)}",
-                progress = if (snapshot.totalPayableValue > 0) snapshot.totalPayablePaid / snapshot.totalPayableValue else 0.0,
-            )
+            JalvoroEntrance(index = 0, key = "payables-hero") {
+                PlanningHeroCard(
+                    icon = JalvoroIcons.Wallet,
+                    eyebrow = "Repayment progress",
+                    primary = formatPkr(snapshot.totalPayableRemaining),
+                    secondary = "Remaining balance",
+                    detail = "${formatPkr(snapshot.totalPayablePaid)} paid of ${formatPkr(snapshot.totalPayableValue)}",
+                    progress = if (snapshot.totalPayableValue > 0) snapshot.totalPayablePaid / snapshot.totalPayableValue else 0.0,
+                )
+            }
         }
         item {
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        imageVector = JalvoroIcons.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                },
-                label = { Text("Search payables") },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-            )
+            JalvoroEntrance(index = 1, key = "payables-search") {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = JalvoroIcons.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    },
+                    label = { Text("Search payables") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                )
+            }
         }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                PayableFilter.entries.forEach { item ->
-                    FilterChip(
-                        selected = filter == item,
-                        onClick = { filter = item },
-                        label = { Text(item.name) },
-                    )
+            JalvoroEntrance(index = 2, key = "payables-filters") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PayableFilter.entries.forEach { item ->
+                        FilterChip(
+                            selected = filter == item,
+                            onClick = { filter = item },
+                            label = { Text(item.name) },
+                        )
+                    }
                 }
             }
         }
         if (filtered.isEmpty()) {
             item {
-                PlanningEmpty(
-                    icon = JalvoroIcons.Search,
-                    title = "No matching payables",
-                    body = "Change the search or filter, or add a new payable.",
-                )
+                JalvoroEntrance(
+                    index = 3,
+                    key = "payables-empty:${filter.name}:${search.trim()}",
+                ) {
+                    PlanningEmpty(
+                        icon = JalvoroIcons.Search,
+                        title = "No matching payables",
+                        body = "Change the search or filter, or add a new payable.",
+                    )
+                }
             }
         } else {
             items(filtered.size, key = { index -> filtered[index].row.id }) { index ->
-                PayableCard(
-                    payable = filtered[index],
-                    accounts = snapshot.accounts,
-                    today = today,
-                    onEdit = onEdit,
-                    onPayment = onPayment,
-                    onDelete = onDelete,
-                    onDeletePayment = onDeletePayment,
-                )
+                val payable = filtered[index]
+                JalvoroEntrance(
+                    index = (index + 3).coerceAtMost(12),
+                    key = "${filter.name}:${search.trim()}:${payable.row.id}",
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    PayableCard(
+                        payable = payable,
+                        accounts = snapshot.accounts,
+                        today = today,
+                        onEdit = onEdit,
+                        onPayment = onPayment,
+                        onDelete = onDelete,
+                        onDeletePayment = onDeletePayment,
+                    )
+                }
             }
         }
     }
@@ -140,6 +158,10 @@ internal fun PayableCard(
         "partial" -> PlanningTone.Warning
         else -> PlanningTone.Info
     }
+    val animatedProgress = rememberJalvoroAnimatedProgress(
+        target = payable.progress.toFloat(),
+        label = "payable-${payable.row.id}-progress",
+    )
 
     JalvoroSurfaceCard {
         Column(
@@ -179,7 +201,7 @@ internal fun PayableCard(
             }
 
             LinearProgressIndicator(
-                progress = { payable.progress.toFloat() },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -252,7 +274,7 @@ internal fun PayableCard(
                     Spacer(Modifier.size(7.dp))
                     Text(if (historyVisible) "Hide payment history" else "Payment history (${payable.payments.size})")
                 }
-                if (historyVisible) {
+                JalvoroAnimatedReveal(visible = historyVisible) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         payable.payments.forEach { payment ->
                             val accountName = payment.accountId?.let { id ->
