@@ -264,11 +264,11 @@ describe("Command Center organization foundation", () => {
   });
 
   it("registers a hidden internal module without adding navigation", () => {
-    const module = COMMAND_CENTER_PLATFORM_MANIFEST.modules.find(
+    const organizationModule = COMMAND_CENTER_PLATFORM_MANIFEST.modules.find(
       (entry) => entry.moduleKey === "organizations",
     );
 
-    expect(module).toMatchObject({
+    expect(organizationModule).toMatchObject({
       moduleId: "mod_organizations",
       lifecycleStatus: "internal_testing",
       enabled: true,
