@@ -113,6 +113,10 @@ Check(
 Check(
     accessContext.Permissions.Contains(BusinessPermissions.OrganizationRead),
     "Business access context permissions must be copied defensively.");
+var permissionCollection = accessContext.Permissions as ICollection<PermissionKey>;
+Check(
+    permissionCollection is null || permissionCollection.IsReadOnly,
+    "Business access context permissions must not expose a mutable collection.");
 
 var unavailableIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Unavailable);
 var duplicateIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Duplicate);
