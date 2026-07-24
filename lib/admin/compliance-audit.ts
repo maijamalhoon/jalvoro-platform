@@ -138,11 +138,11 @@ function readState(value: unknown) {
 
 function readSubjectReference(value: unknown) {
   if (value === null) return null;
-  const reference = readString(value, 32);
+  const reference = readString(value, 40);
   if (!reference) return undefined;
 
   return /^(PRV|ADM|AIN|USR|INC)-[A-F0-9]{12}$/.test(reference) ||
-    /^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(reference)
+    /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/.test(reference)
     ? reference
     : undefined;
 }
