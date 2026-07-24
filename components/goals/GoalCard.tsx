@@ -23,6 +23,7 @@ import {
 import { useProgressReveal, useReducedMotion } from "./use-animated-goal-value";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { Button } from "@/components/ui/button";
+import { calculateGoalProgress } from "@/lib/planning/calculations";
 import { getUserMutationError } from "@/lib/user-errors";
 
 interface GoalContribution {
@@ -59,13 +60,14 @@ export default function GoalCard({
   const [now] = useState(() => Date.now());
   const reduceMotion = useReducedMotion();
 
-  const current = Number(goal.current_amount);
-  const target = Number(goal.target_amount);
-  const safeCurrent = Number.isFinite(current) ? Math.max(current, 0) : 0;
-  const safeTarget = Number.isFinite(target) ? Math.max(target, 0) : 0;
-  const pct =
-    safeTarget > 0 ? Math.min((safeCurrent / safeTarget) * 100, 100) : 0;
-  const done = safeTarget > 0 && safeCurrent >= safeTarget;
+  const progress = calculateGoalProgress(
+    goal.current_amount,
+    goal.target_amount,
+  );
+  const safeCurrent = progress.current;
+  const safeTarget = progress.target;
+  const pct = progress.percentage;
+  const done = progress.completed;
   const progressReady = useProgressReveal(
     reduceMotion,
     `${goal.id}:${safeCurrent}:${safeTarget}`,
@@ -219,7 +221,7 @@ export default function GoalCard({
           </div>
           <div className="min-w-0 max-w-[48%] text-right">
             <p className="finance-amount break-words text-sm font-bold text-[var(--goal-accent)] [overflow-wrap:anywhere]">
-              {formatCurrency(Math.max(safeTarget - safeCurrent, 0))}
+              {formatCurrency(progress.remaining)}
             </p>
             {!done && (
               <p className="break-words text-xs text-text-secondary">
