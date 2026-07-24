@@ -40,7 +40,7 @@ internal static class BusinessCoreHttpPipelineContracts
     await using var host = await IntegrationHost.StartAsync(identityVerifier, membershipReader);
     using var response = await host.Client.GetAsync(
       $"/api/v1/context/{tenantId}",
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
 
     check(
       response.StatusCode is HttpStatusCode.Unauthorized,
@@ -65,7 +65,7 @@ internal static class BusinessCoreHttpPipelineContracts
     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "sb_publishable_not_a_user_token");
     using var response = await host.Client.SendAsync(
       request,
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
 
     check(
       response.StatusCode is HttpStatusCode.Unauthorized,
@@ -85,7 +85,7 @@ internal static class BusinessCoreHttpPipelineContracts
     using var request = CreateAuthenticatedRequest($"/api/v1/context/{tenantId}", CreateJwt());
     using var response = await host.Client.SendAsync(
       request,
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
 
     check(
       response.StatusCode is HttpStatusCode.ServiceUnavailable,
@@ -108,9 +108,9 @@ internal static class BusinessCoreHttpPipelineContracts
     using var request = CreateAuthenticatedRequest("/api/v1/context/not-a-guid", CreateJwt());
     using var response = await host.Client.SendAsync(
       request,
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
     using var body = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(
-      TestContext.Current.CancellationToken));
+      CancellationToken.None));
 
     check(
       response.StatusCode is HttpStatusCode.BadRequest,
@@ -135,7 +135,7 @@ internal static class BusinessCoreHttpPipelineContracts
     using var request = CreateAuthenticatedRequest($"/api/v1/context/{tenantId}", token);
     using var response = await host.Client.SendAsync(
       request,
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
 
     check(
       response.StatusCode is HttpStatusCode.Forbidden,
@@ -158,7 +158,7 @@ internal static class BusinessCoreHttpPipelineContracts
     using var request = CreateAuthenticatedRequest($"/api/v1/context/{tenantId}", CreateJwt());
     using var response = await host.Client.SendAsync(
       request,
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
 
     check(
       response.StatusCode is HttpStatusCode.ServiceUnavailable,
@@ -186,9 +186,9 @@ internal static class BusinessCoreHttpPipelineContracts
     request.Headers.TryAddWithoutValidation(CorrelationHeader, correlationId);
     using var response = await host.Client.SendAsync(
       request,
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
     using var body = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(
-      TestContext.Current.CancellationToken));
+      CancellationToken.None));
 
     check(
       response.StatusCode is HttpStatusCode.OK,
@@ -219,9 +219,9 @@ internal static class BusinessCoreHttpPipelineContracts
 
     using var securityResponse = await host.Client.GetAsync(
       "/api/v1/security",
-      TestContext.Current.CancellationToken);
+      CancellationToken.None);
     using var securityBody = JsonDocument.Parse(await securityResponse.Content.ReadAsStreamAsync(
-      TestContext.Current.CancellationToken));
+      CancellationToken.None));
     check(
       securityResponse.StatusCode is HttpStatusCode.OK &&
       !securityBody.RootElement.GetProperty("writeEndpointsActive").GetBoolean() &&
@@ -309,7 +309,7 @@ internal static class BusinessCoreHttpPipelineContracts
 
       var application = builder.Build();
       application.UseJalvoroBusinessCoreApi();
-      await application.StartAsync(TestContext.Current.CancellationToken);
+      await application.StartAsync(CancellationToken.None);
 
       var server = application.Services.GetRequiredService<IServer>();
       var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
@@ -332,7 +332,7 @@ internal static class BusinessCoreHttpPipelineContracts
     public async ValueTask DisposeAsync()
     {
       Client.Dispose();
-      await Application.StopAsync(TestContext.Current.CancellationToken);
+      await Application.StopAsync(CancellationToken.None);
       await Application.DisposeAsync();
     }
   }
