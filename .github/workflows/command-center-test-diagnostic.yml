@@ -1,15 +1,15 @@
 name: Command Center registry test diagnostic
 
 on:
-  push:
-    branches:
-      - agent/command-center-registry-control-plane
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: read
 
 jobs:
   test-diagnostic:
+    if: github.head_ref == 'agent/command-center-registry-control-plane'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
