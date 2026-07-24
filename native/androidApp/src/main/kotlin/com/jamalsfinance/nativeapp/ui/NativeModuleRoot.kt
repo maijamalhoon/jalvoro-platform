@@ -122,8 +122,11 @@ fun NativeModuleRootShell(
             onSignOut = onSignOut,
         )
         NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
+            email = email,
+            repository = personalPlatformRepository,
             preferences = nativePreferences,
             onBack = { workspace = NativeWorkspace.Overview },
+            onSignOut = onSignOut,
         )
         NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
             preferences = nativePreferences,
@@ -195,8 +198,8 @@ private fun NativeModuleLauncher(
             onClick = onPersonalPlatform,
         ),
         NativeModuleItem(
-            title = "Privacy & app lock",
-            description = "Biometric or device-credential lock, auto-lock timing, screenshots and recent-app protection.",
+            title = "Privacy & security",
+            description = "Privacy posture, account security, data export, processing choices, App Lock and screenshot protection.",
             action = "Open privacy",
             icon = JalvoroIcons.Privacy,
             onClick = onPrivacySecurity,
