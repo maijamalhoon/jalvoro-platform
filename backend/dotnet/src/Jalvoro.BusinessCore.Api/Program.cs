@@ -1,13 +1,24 @@
 using System.Text.Json.Serialization;
 using Jalvoro.BusinessCore.Application;
 using Jalvoro.BusinessCore.Application.Modules;
+using Jalvoro.BusinessCore.Application.Operations;
+using Jalvoro.BusinessCore.Application.Security;
 using Jalvoro.BusinessCore.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http.Timeouts;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddJalvoroBusinessCore();
+builder.Services.AddRequestTimeouts(options =>
+{
+  options.DefaultPolicy = new RequestTimeoutPolicy
+  {
+    Timeout = BusinessRequestPolicy.MaximumExecutionTime,
+    TimeoutStatusCode = StatusCodes.Status504GatewayTimeout,
+  };
+});
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
   options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -16,6 +27,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseRequestTimeouts();
 app.Use(async (context, next) =>
 {
   const string correlationHeader = "X-Correlation-ID";
@@ -73,6 +85,32 @@ app.MapGet(
           modules = catalog.GetAll(),
         }))
     .WithName("GetBusinessCoreModules");
+
+app.MapGet(
+        "/api/v1/security",
+        async (IAuthenticatedBusinessContextProvider contextProvider, CancellationToken cancellationToken) =>
+        {
+          var currentContext = await contextProvider.GetCurrentAsync(cancellationToken);
+          return Results.Ok(new
+          {
+            authorization = "fail-closed",
+            identityProviderConfigured = currentContext is not null,
+            trustClientIdentityHeaders = BusinessRequestPolicy.TrustClientIdentityHeaders,
+            exactTenantMatchRequired = true,
+            exactPermissionMatchRequired = true,
+            idempotencyRequiredForWrites = BusinessRequestPolicy.RequireIdempotencyForWrites,
+            idempotencyStorageConfigured = false,
+            requestTimeoutSeconds = (int)BusinessRequestPolicy.MaximumExecutionTime.TotalSeconds,
+            permissions = new[]
+            {
+              BusinessPermissions.OrganizationRead.Value,
+              BusinessPermissions.OrganizationManage.Value,
+              BusinessPermissions.MembershipRead.Value,
+              BusinessPermissions.MembershipManage.Value,
+            },
+          });
+        })
+    .WithName("GetBusinessCoreSecurityContract");
 
 app.MapHealthChecks(
     "/health/live",
