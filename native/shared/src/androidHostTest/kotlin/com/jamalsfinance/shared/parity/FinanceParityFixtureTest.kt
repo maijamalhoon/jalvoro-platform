@@ -155,10 +155,10 @@ class FinanceParityFixtureTest {
     }
 
     private fun assertClose(expected: Double, actual: Double?, tolerance: Double = 0.000001) {
-        assertNotNull(actual)
+        val value = assertNotNull(actual)
         assertTrue(
-            abs(expected - actual) <= tolerance,
-            "Expected $expected but received $actual",
+            abs(expected - value) <= tolerance,
+            "Expected $expected but received $value",
         )
     }
 }
