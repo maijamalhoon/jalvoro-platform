@@ -4,13 +4,14 @@ using Jalvoro.BusinessCore.Application.Modules;
 using Jalvoro.BusinessCore.Application.Operations;
 using Jalvoro.BusinessCore.Application.Security;
 using Jalvoro.BusinessCore.Infrastructure;
+using Jalvoro.BusinessCore.Infrastructure.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
-builder.Services.AddJalvoroBusinessCore();
+builder.Services.AddJalvoroBusinessCore(builder.Configuration);
 builder.Services.AddRequestTimeouts(options =>
 {
   options.DefaultPolicy = new RequestTimeoutPolicy
@@ -50,6 +51,8 @@ app.Use(async (context, next) =>
 
   await next();
 });
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet(
         "/",
@@ -88,29 +91,68 @@ app.MapGet(
 
 app.MapGet(
         "/api/v1/security",
-        async (IAuthenticatedBusinessContextProvider contextProvider, CancellationToken cancellationToken) =>
+        (SupabaseIdentityConfigurationState supabaseConfiguration) => Results.Ok(new
         {
-          var currentContext = await contextProvider.GetCurrentAsync(cancellationToken);
-          return Results.Ok(new
+          authorization = "fail-closed",
+          identityProviderConfigured = supabaseConfiguration.IsConfigured,
+          identityVerification = "supabase-auth-server",
+          expectedAudience = SupabaseIdentityConfiguration.ExpectedAudience,
+          anonymousUsersAccepted = false,
+          userMetadataUsedForAuthorization = false,
+          membershipProjection = "supabase-data-api-rls",
+          membershipProjectionConfigured = supabaseConfiguration.IsConfigured,
+          tenantSelection = "route-only-and-membership-verified",
+          trustClientIdentityHeaders = BusinessRequestPolicy.TrustClientIdentityHeaders,
+          serviceRoleUsed = false,
+          exactTenantMatchRequired = true,
+          exactPermissionMatchRequired = true,
+          idempotencyRequiredForWrites = BusinessRequestPolicy.RequireIdempotencyForWrites,
+          idempotencyStorageConfigured = false,
+          writeEndpointsActive = false,
+          requestTimeoutSeconds = (int)BusinessRequestPolicy.MaximumExecutionTime.TotalSeconds,
+          permissions = new[]
           {
-            authorization = "fail-closed",
-            identityProviderConfigured = currentContext is not null,
-            trustClientIdentityHeaders = BusinessRequestPolicy.TrustClientIdentityHeaders,
-            exactTenantMatchRequired = true,
-            exactPermissionMatchRequired = true,
-            idempotencyRequiredForWrites = BusinessRequestPolicy.RequireIdempotencyForWrites,
-            idempotencyStorageConfigured = false,
-            requestTimeoutSeconds = (int)BusinessRequestPolicy.MaximumExecutionTime.TotalSeconds,
-            permissions = new[]
-            {
-              BusinessPermissions.OrganizationRead.Value,
-              BusinessPermissions.OrganizationManage.Value,
-              BusinessPermissions.MembershipRead.Value,
-              BusinessPermissions.MembershipManage.Value,
-            },
-          });
-        })
+            BusinessPermissions.OrganizationRead.Value,
+            BusinessPermissions.OrganizationManage.Value,
+            BusinessPermissions.MembershipRead.Value,
+            BusinessPermissions.MembershipManage.Value,
+          },
+        }))
     .WithName("GetBusinessCoreSecurityContract");
+
+app.MapGet(
+        "/api/v1/context/{tenantId:guid}",
+        async (IBusinessContextResolver resolver, CancellationToken cancellationToken) =>
+        {
+          var resolution = await resolver.ResolveCurrentAsync(cancellationToken);
+          return resolution.Code switch
+          {
+            BusinessContextResolutionCode.Resolved when resolution.Context is { } context =>
+              Results.Ok(new
+              {
+                status = "resolved",
+                tenantId = context.TenantId.ToString(),
+                subjectId = context.SubjectId.ToString(),
+                authenticationMethod = context.AuthenticationMethod,
+                permissions = context.Permissions
+                  .Select(permission => permission.Value)
+                  .OrderBy(permission => permission, StringComparer.Ordinal)
+                  .ToArray(),
+                readOnly = true,
+              }),
+            BusinessContextResolutionCode.TenantUnavailable =>
+              Results.BadRequest(new { code = "tenant_unavailable" }),
+            BusinessContextResolutionCode.MembershipDenied =>
+              Results.Forbid(),
+            BusinessContextResolutionCode.TemporarilyUnavailable =>
+              Results.Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Business identity is temporarily unavailable."),
+            _ => Results.Unauthorized(),
+          };
+        })
+    .RequireAuthorization()
+    .WithName("GetVerifiedBusinessContext");
 
 app.MapHealthChecks(
     "/health/live",
