@@ -1,0 +1,135 @@
+import {
+  buildCommandCenterNavigation,
+  type CommandCenterEnvironment,
+  type ProductManifestV1,
+} from "./product-registry";
+
+export const COMMAND_CENTER_PLATFORM_MANIFEST = {
+  schemaVersion: "1.0",
+  productId: "prd_command_center",
+  productKey: "command-center",
+  productFamilyKey: "jalvoro-platform",
+  categoryKey: "internal-operations",
+  name: "JALVORO Command Center",
+  description:
+    "Central internal administration, analytics, observability, security, billing, support, governance, configuration, and operational-control platform for the JALVORO ecosystem.",
+  iconKey: "jalvoro-shield-money",
+  lifecycleStatus: "public_release",
+  registrationStatus: "active",
+  availability: {
+    environments: ["development", "preview", "production"],
+    countries: ["*"],
+    regions: ["global"],
+    currencies: ["*"],
+    languages: ["*"],
+    platforms: ["web"],
+  },
+  applications: [
+    {
+      applicationId: "app_command_center_web",
+      applicationKey: "command-center-web",
+      name: "JALVORO Command Center Web",
+      platforms: ["web"],
+      currentVersions: ["current"],
+    },
+  ],
+  modules: [
+    {
+      moduleId: "mod_global_overview",
+      moduleKey: "global-overview",
+      name: "Global Overview",
+      description:
+        "Privacy-safe ecosystem, billing, user, security, incident, compliance, and release operations overview.",
+      lifecycleStatus: "public_release",
+      enabled: true,
+      requiredPermissions: ["command-center:overview:view"],
+    },
+    {
+      moduleId: "mod_icon_system",
+      moduleKey: "icon-system",
+      name: "JALVORO Icon System",
+      description:
+        "Internal inspection surface for the official JALVORO icon scheme.",
+      lifecycleStatus: "public_release",
+      enabled: true,
+      requiredPermissions: ["command-center:icons:view"],
+    },
+  ],
+  serviceDependencies: ["supabase-admin-snapshot"],
+  subscriptionPlanKeys: [],
+  analyticsMetricKeys: [
+    "active-users",
+    "billing-segments",
+    "privacy-requests",
+    "security-posture",
+  ],
+  eventSchemaKeys: ["admin-audit-event"],
+  healthCheckKeys: ["command-center-snapshot"],
+  errorSourceKeys: ["command-center-runtime"],
+  featureFlagKeys: [],
+  supportCategoryKeys: ["internal-command-center"],
+  securityPolicyKeys: [
+    "least-privilege",
+    "privacy-minimisation",
+    "server-authorisation",
+  ],
+  dataGovernance: {
+    classification: "restricted",
+    retentionDays: 730,
+    residencyRegionKeys: ["global-control-plane"],
+  },
+  ownership: {
+    teamKey: "platform-operations",
+    documentationReference: "docs/jalvoro-command-center-registry.md",
+  },
+  admin: {
+    requiredPermissions: ["command-center:platform:view"],
+    navigation: [
+      {
+        navigationId: "global-overview",
+        moduleKey: "global-overview",
+        label: "Global Overview",
+        href: "/admin",
+        iconKey: "dashboard",
+        order: 10,
+        requiredPermissions: ["command-center:overview:view"],
+        environments: ["development", "preview", "production"],
+      },
+      {
+        navigationId: "icon-system",
+        moduleKey: "icon-system",
+        label: "Icon System",
+        href: "/admin/icon-system",
+        iconKey: "grid",
+        order: 900,
+        requiredPermissions: ["command-center:icons:view"],
+        environments: ["development", "preview", "production"],
+      },
+    ],
+  },
+} satisfies ProductManifestV1;
+
+export const COMMAND_CENTER_COMPATIBILITY_PERMISSIONS = new Set([
+  "command-center:platform:view",
+  "command-center:overview:view",
+  "command-center:icons:view",
+]);
+
+export function resolveCommandCenterEnvironment(): CommandCenterEnvironment {
+  if (process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") return "preview";
+  if (process.env.NODE_ENV === "production") return "production";
+  return "development";
+}
+
+export function getRegisteredCommandCenterNavigation(options?: {
+  environment?: CommandCenterEnvironment;
+  permissions?: ReadonlySet<string>;
+  includeUnreleased?: boolean;
+}) {
+  return buildCommandCenterNavigation([COMMAND_CENTER_PLATFORM_MANIFEST], {
+    environment: options?.environment ?? resolveCommandCenterEnvironment(),
+    permissions:
+      options?.permissions ?? COMMAND_CENTER_COMPATIBILITY_PERMISSIONS,
+    includeUnreleased: options?.includeUnreleased,
+  });
+}
