@@ -1,51 +1,34 @@
-"use client";
+import AdminSectionNavClient from "@/components/admin/AdminSectionNavClient";
+import {
+  parseResolvedCommandCenterNavigation,
+  resolveCommandCenterEnvironment,
+} from "@/lib/admin/command-center-navigation";
+import { createClient } from "@/lib/supabase/server";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+export default async function AdminSectionNav() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-import { JalvoroGridIcon } from "@/components/icons/jalvoro/components/interface";
-import { JalvoroDashboardIcon } from "@/components/icons/jalvoro/components/navigation";
-import type { JalvoroIconComponent } from "@/components/icons/jalvoro/types";
-import { getRegisteredCommandCenterNavigation } from "@/lib/admin/command-center-registry";
+  if (userError || !user) return null;
 
-const NAVIGATION_ICONS: Record<string, JalvoroIconComponent> = {
-  dashboard: JalvoroDashboardIcon,
-  grid: JalvoroGridIcon,
-};
+  const { data, error } = await supabase.rpc("get_command_center_navigation", {
+    p_environment: resolveCommandCenterEnvironment(),
+  });
 
-export default function AdminSectionNav() {
-  const pathname = usePathname();
-  const sections = getRegisteredCommandCenterNavigation();
+  if (error?.code === "42501") return null;
+  if (error) {
+    throw new Error(
+      `Command Center navigation unavailable: ${error.code ?? "unknown"}`,
+    );
+  }
 
-  return (
-    <nav
-      aria-label="Command Center sections"
-      className="flex items-center gap-1 rounded-xl border border-border/70 bg-card/75 p-1 shadow-sm"
-    >
-      {sections.map((item) => {
-        const exact = item.href === "/admin";
-        const active = exact
-          ? pathname === item.href
-          : pathname === item.href || pathname.startsWith(`${item.href}/`);
-        const Icon = NAVIGATION_ICONS[item.iconKey] ?? JalvoroGridIcon;
+  const sections = parseResolvedCommandCenterNavigation(data);
+  if (!sections) {
+    throw new Error("Command Center navigation returned an invalid contract.");
+  }
 
-        return (
-          <Link
-            key={`${item.productKey}:${item.navigationId}`}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            title={`${item.productName}: ${item.label}`}
-            className={`finance-focus inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium transition sm:px-3 ${
-              active
-                ? "bg-info/10 text-info"
-                : "text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
-            }`}
-          >
-            <Icon size={16} context="compact" aria-hidden="true" />
-            <span className="hidden lg:inline">{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <AdminSectionNavClient sections={sections} />;
 }

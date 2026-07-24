@@ -1,8 +1,4 @@
-import {
-  buildCommandCenterNavigation,
-  type CommandCenterEnvironment,
-  type ProductManifestV1,
-} from "./product-registry";
+import type { ProductManifestV1 } from "./product-registry";
 
 export const COMMAND_CENTER_PLATFORM_MANIFEST = {
   schemaVersion: "1.0",
@@ -108,28 +104,3 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
     ],
   },
 } satisfies ProductManifestV1;
-
-export const COMMAND_CENTER_COMPATIBILITY_PERMISSIONS = new Set([
-  "command-center:platform:view",
-  "command-center:overview:view",
-  "command-center:icons:view",
-]);
-
-export function resolveCommandCenterEnvironment(): CommandCenterEnvironment {
-  if (process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") return "preview";
-  if (process.env.NODE_ENV === "production") return "production";
-  return "development";
-}
-
-export function getRegisteredCommandCenterNavigation(options?: {
-  environment?: CommandCenterEnvironment;
-  permissions?: ReadonlySet<string>;
-  includeUnreleased?: boolean;
-}) {
-  return buildCommandCenterNavigation([COMMAND_CENTER_PLATFORM_MANIFEST], {
-    environment: options?.environment ?? resolveCommandCenterEnvironment(),
-    permissions:
-      options?.permissions ?? COMMAND_CENTER_COMPATIBILITY_PERMISSIONS,
-    includeUnreleased: options?.includeUnreleased,
-  });
-}
