@@ -6,6 +6,8 @@ import { parseAdminGlobalOperationsSnapshot } from "./global-operations";
 
 const migrationPath =
   "supabase/migrations/20260724160000_command_center_global_operations_overview.sql";
+const accessMigrationPath =
+  "supabase/migrations/20260724163500_scope_global_operations_role_access.sql";
 
 const validSnapshot = {
   generatedAt: "2026-07-24T16:00:00.000Z",
@@ -200,6 +202,22 @@ describe("Command Center global operations", () => {
         },
       }),
     ).toBeNull();
+  });
+
+  it("maps overview access only to the Global Operations module", () => {
+    const accessMigration = read(accessMigrationPath);
+
+    for (const role of ["owner", "admin", "analyst", "support"]) {
+      expect(accessMigration).toContain(
+        `('${role}', 'command-center:overview:view', 'command-center', 'global-operations', null)`,
+      );
+    }
+
+    expect(accessMigration).toContain("on conflict do nothing");
+    expect(accessMigration).not.toContain(
+      "'command-center:overview:view', null, null, null",
+    );
+    expect(accessMigration).not.toContain("command-center:operations:manage");
   });
 
   it("keeps the SQL surface private, aggregate-only and server-authorized", () => {
