@@ -1,6 +1,6 @@
 import type { JalvoroIconContext } from "./types";
 
-export const JALVORO_ICON_SYSTEM_VERSION = "1.0.0-alpha.4";
+export const JALVORO_ICON_SYSTEM_VERSION = "1.0.0-alpha.5";
 
 export const JALVORO_ICON_TOKENS = Object.freeze({
   viewBox: "0 0 24 24",

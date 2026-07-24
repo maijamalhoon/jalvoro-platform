@@ -25,6 +25,11 @@ import {
   JALVORO_NAVIGATION_MASTER_SPEC,
   isJalvoroNavigationMasterName,
 } from "@/lib/icon-system/navigation-master-set";
+import {
+  JALVORO_OBJECTS_MASTER_NAMES,
+  JALVORO_OBJECTS_MASTER_SPEC,
+  isJalvoroObjectsMasterName,
+} from "@/lib/icon-system/objects-master-set";
 
 export const JALVORO_ICON_CATEGORY_ORDER = [
   "navigation",
@@ -70,7 +75,7 @@ export const JALVORO_ICON_CATEGORY_META: Readonly<
     label: "Objects",
     description: "Reusable physical and digital objects used across products.",
     importPath: "@/components/icons/jalvoro/components/objects",
-    designStatus: "draft",
+    designStatus: "master",
   },
   identity: {
     label: "Identity",
@@ -109,8 +114,9 @@ export const JALVORO_ICON_LIBRARY = Object.freeze({
   masteredIconCount:
     JALVORO_NAVIGATION_MASTER_NAMES.length +
     JALVORO_ACTIONS_MASTER_NAMES.length +
-    JALVORO_FINANCE_MASTER_NAMES.length,
-  masteredCategoryCount: 3,
+    JALVORO_FINANCE_MASTER_NAMES.length +
+    JALVORO_OBJECTS_MASTER_NAMES.length,
+  masteredCategoryCount: 4,
   categoryCount: JALVORO_ICON_CATEGORY_ORDER.length,
 });
 
@@ -165,6 +171,10 @@ function getJalvoroMasterSpec(name: JalvoroIconName) {
 
   if (isJalvoroFinanceMasterName(name)) {
     return JALVORO_FINANCE_MASTER_SPEC[name];
+  }
+
+  if (isJalvoroObjectsMasterName(name)) {
+    return JALVORO_OBJECTS_MASTER_SPEC[name];
   }
 
   return null;
