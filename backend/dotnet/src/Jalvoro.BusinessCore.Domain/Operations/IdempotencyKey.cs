@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Jalvoro.BusinessCore.Domain.Operations;
 
 public sealed record IdempotencyKey
@@ -24,7 +26,9 @@ public sealed record IdempotencyKey
     return key;
   }
 
-  public static bool TryParse(string? value, out IdempotencyKey? key)
+  public static bool TryParse(
+    string? value,
+    [NotNullWhen(true)] out IdempotencyKey? key)
   {
     key = null;
     if (string.IsNullOrWhiteSpace(value) || value.Length is < MinimumLength or > MaximumLength)
