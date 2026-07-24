@@ -1,5 +1,9 @@
 using Jalvoro.BusinessCore.Application;
 using Jalvoro.BusinessCore.Application.Modules;
+using Jalvoro.BusinessCore.Application.Operations;
+using Jalvoro.BusinessCore.Application.Security;
+using Jalvoro.BusinessCore.Domain.Operations;
+using Jalvoro.BusinessCore.Domain.Security;
 using Jalvoro.BusinessCore.Domain.Tenancy;
 
 var failures = new List<string>();
@@ -66,9 +70,64 @@ Check(
     tenantId.Value == expectedTenantId,
     "A valid tenant ID must round-trip without mutation.");
 
+Check(!BusinessSubjectId.TryParse(null, out _), "A null business subject ID must fail validation.");
+Check(!BusinessSubjectId.TryParse(Guid.Empty.ToString(), out _), "An empty business subject ID must fail validation.");
+Check(BusinessSubjectId.TryParse(Guid.NewGuid().ToString(), out _), "A valid business subject ID must parse.");
+
+Check(!PermissionKey.TryParse("organization", out _), "Permission keys require at least two segments.");
+Check(!PermissionKey.TryParse("Organization.Read", out _), "Permission keys must reject uppercase values.");
+Check(!PermissionKey.TryParse("organization..read", out _), "Permission keys must reject empty segments.");
+Check(PermissionKey.TryParse("organization.read", out _), "A valid permission key must parse.");
+
+Check(!IdempotencyKey.TryParse("too-short", out _), "Short idempotency keys must fail validation.");
+Check(!IdempotencyKey.TryParse("contains whitespace 123", out _), "Idempotency keys must reject whitespace.");
+Check(IdempotencyKey.TryParse("01JALVORO-ORDER-0001", out _), "A valid idempotency key must parse.");
+Check(BusinessRequestPolicy.MaximumExecutionTime == TimeSpan.FromSeconds(15), "Business API requests must remain bounded to 15 seconds by default.");
+Check(BusinessRequestPolicy.RequireIdempotencyForWrites, "Business writes must require idempotency.");
+Check(!BusinessRequestPolicy.TrustClientIdentityHeaders, "Client identity headers must never be trusted.");
+
+var requiredTenant = BusinessTenantId.Create(Guid.NewGuid());
+var anotherTenant = BusinessTenantId.Create(Guid.NewGuid());
+var subjectId = BusinessSubjectId.Create(Guid.NewGuid());
+var mutablePermissions = new List<PermissionKey> { BusinessPermissions.OrganizationRead };
+var accessContext = new BusinessAccessContext(
+  requiredTenant,
+  subjectId,
+  mutablePermissions,
+  "contract-test");
+mutablePermissions.Clear();
+
+var authorization = new FailClosedBusinessAuthorizationService();
+Check(
+    authorization.Evaluate(null, requiredTenant, BusinessPermissions.OrganizationRead).Code == AuthorizationDecisionCode.Unauthenticated,
+    "Missing authentication context must deny access.");
+Check(
+    authorization.Evaluate(accessContext, anotherTenant, BusinessPermissions.OrganizationRead).Code == AuthorizationDecisionCode.TenantMismatch,
+    "Cross-tenant authorization must be denied.");
+Check(
+    authorization.Evaluate(accessContext, requiredTenant, BusinessPermissions.OrganizationManage).Code == AuthorizationDecisionCode.MissingPermission,
+    "Missing exact permission must deny access.");
+Check(
+    authorization.Evaluate(accessContext, requiredTenant, BusinessPermissions.OrganizationRead).Allowed,
+    "Matching tenant and exact permission must allow access.");
+Check(
+    accessContext.Permissions.Contains(BusinessPermissions.OrganizationRead),
+    "Business access context permissions must be copied defensively.");
+var permissionCollection = accessContext.Permissions as ICollection<PermissionKey>;
+Check(
+    permissionCollection is null || permissionCollection.IsReadOnly,
+    "Business access context permissions must not expose a mutable collection.");
+
+var unavailableIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Unavailable);
+var duplicateIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Duplicate);
+var reservedIdempotency = new IdempotencyDecision(IdempotencyDecisionCode.Reserved);
+Check(!unavailableIdempotency.MayExecute, "Unavailable idempotency storage must block execution.");
+Check(!duplicateIdempotency.MayExecute, "Duplicate idempotency reservations must block execution.");
+Check(reservedIdempotency.MayExecute, "Only a reserved idempotency scope may execute.");
+
 if (failures.Count == 0)
 {
-  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules verified.");
+  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules and fail-closed organization security verified.");
   return 0;
 }
 

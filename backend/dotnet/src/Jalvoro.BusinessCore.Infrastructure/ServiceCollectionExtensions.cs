@@ -1,4 +1,8 @@
 using Jalvoro.BusinessCore.Application.Modules;
+using Jalvoro.BusinessCore.Application.Operations;
+using Jalvoro.BusinessCore.Application.Security;
+using Jalvoro.BusinessCore.Infrastructure.Operations;
+using Jalvoro.BusinessCore.Infrastructure.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -11,6 +15,9 @@ public static class ServiceCollectionExtensions
     ArgumentNullException.ThrowIfNull(services);
 
     services.AddSingleton<IBusinessModuleCatalog, BusinessModuleCatalog>();
+    services.AddSingleton<IBusinessAuthorizationService, FailClosedBusinessAuthorizationService>();
+    services.AddSingleton<IAuthenticatedBusinessContextProvider, UnavailableBusinessContextProvider>();
+    services.AddSingleton<IIdempotencyCoordinator, UnavailableIdempotencyCoordinator>();
     services
         .AddHealthChecks()
         .AddCheck(
