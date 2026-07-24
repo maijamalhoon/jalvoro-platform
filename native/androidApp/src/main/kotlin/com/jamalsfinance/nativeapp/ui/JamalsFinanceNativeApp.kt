@@ -59,50 +59,52 @@ fun JamalsFinanceNativeApp(
         themeMode = localPreferences.themeMode,
         highContrast = localPreferences.highContrast,
     ) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            if (
-                authRepository == null ||
-                financeRepository == null ||
-                goalsPayablesRepository == null ||
-                investmentsAnalyticsRepository == null ||
-                reportsInsightsRepository == null ||
-                personalPlatformRepository == null
-            ) {
-                ConfigurationRequired()
-            } else {
-                val state by authRepository.state.collectAsStateWithLifecycle()
-                LaunchedEffect(authRepository) { authRepository.restoreSession() }
+        JalvoroMotionProvider(mode = localPreferences.motionMode) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                if (
+                    authRepository == null ||
+                    financeRepository == null ||
+                    goalsPayablesRepository == null ||
+                    investmentsAnalyticsRepository == null ||
+                    reportsInsightsRepository == null ||
+                    personalPlatformRepository == null
+                ) {
+                    ConfigurationRequired()
+                } else {
+                    val state by authRepository.state.collectAsStateWithLifecycle()
+                    LaunchedEffect(authRepository) { authRepository.restoreSession() }
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    if (!online && state is AuthState.SignedIn) {
-                        OfflineModeBanner()
-                    }
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                        when (val current = state) {
-                            AuthState.Restoring -> CenteredProgress("Restoring your secure session")
-                            AuthState.SignedOut -> NativeAuthScreen(
-                                repository = authRepository,
-                                online = online,
-                            )
-                            is AuthState.SignedIn -> NativeAppLockGate(
-                                preferences = nativePreferences,
-                            ) {
-                                NativeModuleRootShell(
-                                    email = current.session.user.email ?: "Signed in",
-                                    financeRepository = financeRepository,
-                                    goalsPayablesRepository = goalsPayablesRepository,
-                                    investmentsAnalyticsRepository = investmentsAnalyticsRepository,
-                                    reportsInsightsRepository = reportsInsightsRepository,
-                                    personalPlatformRepository = personalPlatformRepository,
-                                    nativePreferences = nativePreferences,
-                                    onSignOut = { authRepository.signOut() },
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (!online && state is AuthState.SignedIn) {
+                            OfflineModeBanner()
+                        }
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            when (val current = state) {
+                                AuthState.Restoring -> CenteredProgress("Restoring your secure session")
+                                AuthState.SignedOut -> NativeAuthScreen(
+                                    repository = authRepository,
+                                    online = online,
+                                )
+                                is AuthState.SignedIn -> NativeAppLockGate(
+                                    preferences = nativePreferences,
+                                ) {
+                                    NativeModuleRootShell(
+                                        email = current.session.user.email ?: "Signed in",
+                                        financeRepository = financeRepository,
+                                        goalsPayablesRepository = goalsPayablesRepository,
+                                        investmentsAnalyticsRepository = investmentsAnalyticsRepository,
+                                        reportsInsightsRepository = reportsInsightsRepository,
+                                        personalPlatformRepository = personalPlatformRepository,
+                                        nativePreferences = nativePreferences,
+                                        onSignOut = { authRepository.signOut() },
+                                    )
+                                }
+                                is AuthState.Failure -> NativeAuthScreen(
+                                    repository = authRepository,
+                                    online = online,
+                                    initialMessage = current.message,
                                 )
                             }
-                            is AuthState.Failure -> NativeAuthScreen(
-                                repository = authRepository,
-                                online = online,
-                                initialMessage = current.message,
-                            )
                         }
                     }
                 }
