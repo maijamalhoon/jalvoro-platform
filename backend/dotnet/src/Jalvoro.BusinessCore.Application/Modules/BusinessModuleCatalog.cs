@@ -3,7 +3,7 @@ namespace Jalvoro.BusinessCore.Application.Modules;
 public sealed class BusinessModuleCatalog : IBusinessModuleCatalog
 {
   private static readonly IReadOnlyList<BusinessModuleDescriptor> Modules =
-      Array.AsReadOnly(
+      Array.AsReadOnly<BusinessModuleDescriptor>(
       [
           new(
                 "platform.foundation",
