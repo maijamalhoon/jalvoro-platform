@@ -82,7 +82,7 @@ describe("Admin compliance audit review", () => {
       action: "created",
       subjectReference: "global_business_monthly",
       occurredAt: "2026-07-24T08:00:00.000Z",
-      previousState: null,
+      previousState: "none",
       nextState: "month / USD / active",
       attentionRequired: false,
       reviewStatus: "pending",
