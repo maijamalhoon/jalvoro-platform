@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import AdminControlCenter from "@/components/admin/AdminControlCenter";
+import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePanel";
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
 import BillingPlanOperations from "@/components/admin/BillingPlanOperations";
@@ -9,6 +10,7 @@ import PrivacyRequestOperations from "@/components/admin/PrivacyRequestOperation
 import { parseAdminAccessSnapshot } from "@/lib/admin/access-operations";
 import { parseBillingOperationsSnapshot } from "@/lib/admin/billing-operations";
 import { parseAdminControlCenterSnapshot } from "@/lib/admin/control-center";
+import { deriveAdminSecurityPosture } from "@/lib/admin/security-posture";
 import { parseAdminUserOperationsSnapshot } from "@/lib/admin/user-operations";
 import { createClient } from "@/lib/supabase/server";
 
@@ -77,6 +79,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     throw new Error("Admin snapshot returned an invalid contract.");
   }
 
+  const securityPosture = deriveAdminSecurityPosture({
+    snapshot,
+    access: accessOperations,
+    billing: billingOperations,
+    users: userOperations,
+  });
+
   const resolvedSearchParams = await searchParams;
   const rawPrivacyActionResult = resolvedSearchParams.privacyAction;
   const privacyActionResult =
@@ -118,6 +127,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   return (
     <>
       <AdminControlCenter snapshot={snapshot} />
+      <AdminSecurityPosturePanel posture={securityPosture} />
       <section className="mx-auto w-full max-w-[1500px] pb-12">
         <AdminTeamAccessPanel
           access={accessOperations}
