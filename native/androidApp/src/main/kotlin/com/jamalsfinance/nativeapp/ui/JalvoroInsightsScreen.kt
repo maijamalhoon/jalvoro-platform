@@ -38,7 +38,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -126,9 +125,18 @@ internal fun JalvoroInsightsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(JalvoroIcons.Wallet, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        JalvoroIcons.Wallet,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(Modifier.weight(1f)) {
-                        Text("Display currency", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Display currency",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Text(selectedCurrency, fontWeight = FontWeight.Bold)
                     }
                     JalvoroCurrencyMenu(
@@ -145,7 +153,11 @@ internal fun JalvoroInsightsScreen(
             item {
                 JalvoroFeedbackCard(
                     message = message,
-                    tone = if (insights.aiAvailable) JalvoroFeedbackTone.Info else JalvoroFeedbackTone.Warning,
+                    tone = if (insights.aiAvailable) {
+                        JalvoroFeedbackTone.Info
+                    } else {
+                        JalvoroFeedbackTone.Warning
+                    },
                 )
             }
         }
@@ -196,9 +208,21 @@ internal fun JalvoroInsightsScreen(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    JalvoroStarterPrompt("Where did I spend the most?", enabled = !chatLoading, onClick = ::sendQuestion)
-                    JalvoroStarterPrompt("How can I improve my cash flow?", enabled = !chatLoading, onClick = ::sendQuestion)
-                    JalvoroStarterPrompt("What should I focus on next?", enabled = !chatLoading, onClick = ::sendQuestion)
+                    JalvoroStarterPrompt(
+                        "Where did I spend the most?",
+                        enabled = !chatLoading,
+                        onClick = ::sendQuestion,
+                    )
+                    JalvoroStarterPrompt(
+                        "How can I improve my cash flow?",
+                        enabled = !chatLoading,
+                        onClick = ::sendQuestion,
+                    )
+                    JalvoroStarterPrompt(
+                        "What should I focus on next?",
+                        enabled = !chatLoading,
+                        onClick = ::sendQuestion,
+                    )
                 }
                 if (messages.isNotEmpty()) {
                     Spacer(Modifier.height(14.dp))
@@ -208,9 +232,16 @@ internal fun JalvoroInsightsScreen(
                 }
                 if (chatLoading) {
                     Spacer(Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Preparing a grounded answer…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Preparing a grounded answer…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 chatError?.let {
@@ -272,17 +303,38 @@ private fun JalvoroHealthOverview(insights: AiInsightsPayload) {
         ) {
             JalvoroHealthRing(insights.healthScore)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("FINANCIAL HEALTH", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                Text(insights.healthLabel, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    if (insights.aiAvailable) "Server AI + verified finance summary" else "Secure deterministic finance intelligence",
+                    "FINANCIAL HEALTH",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    insights.healthLabel,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (insights.aiAvailable) {
+                        "Server AI + verified finance summary"
+                    } else {
+                        "Secure deterministic finance intelligence"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = if (insights.aiAvailable) Color(0x1817855F) else MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = if (insights.aiAvailable) Color(0xFF17815F) else MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = if (insights.aiAvailable) {
+                        Color(0x1817855F)
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer
+                    },
+                    contentColor = if (insights.aiAvailable) {
+                        Color(0xFF17815F)
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    },
                 ) {
                     Text(
                         text = if (insights.aiAvailable) "AI AVAILABLE" else "SECURE FALLBACK",
@@ -304,11 +356,12 @@ private fun JalvoroHealthRing(score: Int) {
         normalized >= 50 -> Color(0xFFB57816)
         else -> MaterialTheme.colorScheme.error
     }
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
     Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = 10.dp.toPx()
             drawArc(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = trackColor,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -323,8 +376,16 @@ private fun JalvoroHealthRing(score: Int) {
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(normalized.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-            Text("/ 100", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                normalized.toString(),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                "/ 100",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -358,10 +419,28 @@ private fun JalvoroInsightMetric(
     modifier: Modifier = Modifier,
 ) {
     JalvoroSurfaceCard(modifier) {
-        Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = tone)
-            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(helper, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            Modifier.fillMaxWidth().padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = tone,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                helper,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -375,17 +454,28 @@ private fun JalvoroInsightsSection(
 ) {
     JalvoroSurfaceCard {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.primary,
                 ) {
-                    Icon(icon, contentDescription = null, modifier = Modifier.padding(9.dp).size(19.dp))
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        modifier = Modifier.padding(9.dp).size(19.dp),
+                    )
                 }
                 Column(Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -406,10 +496,14 @@ private fun JalvoroInsightCard(insight: AiInsight) {
             horizontalArrangement = Arrangement.spacedBy(11.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Box(Modifier.size(9.dp).background(tone, CircleShape).padding(top = 4.dp))
+            Box(Modifier.size(9.dp).background(tone, CircleShape))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(insight.title, fontWeight = FontWeight.Bold)
-                Text(insight.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    insight.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -427,14 +521,28 @@ private fun JalvoroActionCard(action: AiSuggestedAction) {
             horizontalArrangement = Arrangement.spacedBy(11.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Icon(JalvoroIcons.Check, contentDescription = null, tint = tone, modifier = Modifier.size(20.dp))
+            Icon(
+                JalvoroIcons.Check,
+                contentDescription = null,
+                tint = tone,
+                modifier = Modifier.size(20.dp),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(action.title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(8.dp))
-                    Text(action.priority.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = tone)
+                    Text(
+                        action.priority.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        color = tone,
+                    )
                 }
-                Text(action.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    action.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -477,7 +585,10 @@ private fun JalvoroAdvisorBubble(message: JalvoroAdvisorMessage) {
                 else -> MaterialTheme.colorScheme.surfaceContainerHighest
             },
         ) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(
+                Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
                 Text(
                     text = when {
                         user -> "You"
@@ -501,7 +612,12 @@ private fun JalvoroInsightKeyValue(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.width(12.dp))
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
     }
