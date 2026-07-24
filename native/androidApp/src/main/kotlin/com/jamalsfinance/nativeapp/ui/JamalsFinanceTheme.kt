@@ -1,11 +1,18 @@
 package com.jamalsfinance.nativeapp.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF2956C8),
@@ -89,6 +96,72 @@ private val DarkHighContrastColors = DarkColors.copy(
     outlineVariant = Color(0xFF8290A3),
 )
 
+private val baseTypography = Typography()
+
+private val JalvoroTypography = baseTypography.copy(
+    displayLarge = baseTypography.displayLarge.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-1.2).sp,
+    ),
+    displayMedium = baseTypography.displayMedium.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.9).sp,
+    ),
+    headlineLarge = baseTypography.headlineLarge.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.6).sp,
+    ),
+    headlineMedium = baseTypography.headlineMedium.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.45).sp,
+    ),
+    headlineSmall = baseTypography.headlineSmall.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.3).sp,
+    ),
+    titleLarge = baseTypography.titleLarge.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.2).sp,
+    ),
+    titleMedium = baseTypography.titleMedium.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+    ),
+    titleSmall = baseTypography.titleSmall.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+    ),
+    bodyLarge = baseTypography.bodyLarge.copy(fontFamily = FontFamily.SansSerif),
+    bodyMedium = baseTypography.bodyMedium.copy(fontFamily = FontFamily.SansSerif),
+    bodySmall = baseTypography.bodySmall.copy(fontFamily = FontFamily.SansSerif),
+    labelLarge = baseTypography.labelLarge.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+    ),
+    labelMedium = baseTypography.labelMedium.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+    ),
+    labelSmall = baseTypography.labelSmall.copy(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+    ),
+)
+
+private val JalvoroShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp),
+)
+
 @Composable
 fun JamalsFinanceTheme(
     themeMode: NativeThemeMode = NativeThemeMode.System,
@@ -108,6 +181,8 @@ fun JamalsFinanceTheme(
     }
     MaterialTheme(
         colorScheme = colors,
+        typography = JalvoroTypography,
+        shapes = JalvoroShapes,
         content = content,
     )
 }
