@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Jalvoro.BusinessCore.Domain.Security;
 
 public sealed record BusinessSubjectId
@@ -19,7 +21,9 @@ public sealed record BusinessSubjectId
     return new BusinessSubjectId(value);
   }
 
-  public static bool TryParse(string? value, out BusinessSubjectId? subjectId)
+  public static bool TryParse(
+    string? value,
+    [NotNullWhen(true)] out BusinessSubjectId? subjectId)
   {
     if (!Guid.TryParse(value, out var parsed) || parsed == Guid.Empty)
     {
