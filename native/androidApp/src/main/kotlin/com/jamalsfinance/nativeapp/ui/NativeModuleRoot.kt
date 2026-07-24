@@ -107,7 +107,7 @@ fun NativeModuleRootShell(
             repository = goalsPayablesRepository,
             onBack = { workspace = NativeWorkspace.Overview },
         )
-        NativeWorkspace.InvestmentsAnalytics -> InvestmentsAnalyticsDashboard(
+        NativeWorkspace.InvestmentsAnalytics -> JalvoroInvestmentsAnalyticsDashboard(
             repository = investmentsAnalyticsRepository,
             onBack = { workspace = NativeWorkspace.Overview },
         )
