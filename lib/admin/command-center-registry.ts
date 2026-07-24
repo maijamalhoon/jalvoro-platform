@@ -51,6 +51,16 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
       requiredPermissions: ["command-center:overview:view"],
     },
     {
+      moduleId: "mod_organizations",
+      moduleKey: "organizations",
+      name: "Organization Foundation",
+      description:
+        "Private organization, membership, tenant-scoped authorization, lifecycle, and append-only audit foundation.",
+      lifecycleStatus: "internal_testing",
+      enabled: true,
+      requiredPermissions: ["command-center:organizations:view"],
+    },
+    {
       moduleId: "mod_icon_system",
       moduleKey: "icon-system",
       name: "JALVORO Icon System",
@@ -64,6 +74,7 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
   serviceDependencies: [
     "supabase-admin-snapshot",
     "supabase-global-operations-snapshot",
+    "supabase-organization-control-plane",
   ],
   subscriptionPlanKeys: [],
   analyticsMetricKeys: [
@@ -72,11 +83,15 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
     "privacy-requests",
     "security-posture",
     "product-topology",
+    "organization-topology",
     "regional-reach",
     "platform-distribution",
   ],
-  eventSchemaKeys: ["admin-audit-event"],
-  healthCheckKeys: ["command-center-snapshot"],
+  eventSchemaKeys: ["admin-audit-event", "organization-audit-event"],
+  healthCheckKeys: [
+    "command-center-snapshot",
+    "organization-control-plane",
+  ],
   errorSourceKeys: ["command-center-runtime"],
   featureFlagKeys: [],
   supportCategoryKeys: ["internal-command-center"],
@@ -84,6 +99,7 @@ export const COMMAND_CENTER_PLATFORM_MANIFEST = {
     "least-privilege",
     "privacy-minimisation",
     "server-authorisation",
+    "tenant-isolation",
   ],
   dataGovernance: {
     classification: "restricted",
