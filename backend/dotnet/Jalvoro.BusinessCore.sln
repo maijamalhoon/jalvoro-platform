@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jalvoro.BusinessCore.Api", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jalvoro.BusinessCore.ContractTests", "tests\Jalvoro.BusinessCore.ContractTests\Jalvoro.BusinessCore.ContractTests.csproj", "{7BD83A5A-0BDC-48BB-AAD0-052F96A99F26}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jalvoro.BusinessCore.StagingSmoke", "tools\Jalvoro.BusinessCore.StagingSmoke\Jalvoro.BusinessCore.StagingSmoke.csproj", "{D7A63F04-9B5B-4D25-A81C-35A8B2BB7390}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,5 +40,9 @@ Global
 		{7BD83A5A-0BDC-48BB-AAD0-052F96A99F26}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7BD83A5A-0BDC-48BB-AAD0-052F96A99F26}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7BD83A5A-0BDC-48BB-AAD0-052F96A99F26}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7A63F04-9B5B-4D25-A81C-35A8B2BB7390}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7A63F04-9B5B-4D25-A81C-35A8B2BB7390}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7A63F04-9B5B-4D25-A81C-35A8B2BB7390}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7A63F04-9B5B-4D25-A81C-35A8B2BB7390}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
