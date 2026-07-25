@@ -49,3 +49,7 @@ The exact synchronized head must pass:
 - keyboard, reduced-motion, increased-contrast, and authenticated access review
 
 Automated success is necessary but does not replace the authenticated visual review or authorize production deployment.
+
+## Preview regeneration
+
+A documentation-only synchronization checkpoint was added after Vercel build capacity returned to request an exact-head preview for authenticated visual acceptance. It does not change application runtime behavior.
