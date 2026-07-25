@@ -8,7 +8,7 @@ on:
       - ".github/workflows/native-pr-ci.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: native-pr-${{ github.event.pull_request.number }}
@@ -24,6 +24,30 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Synchronize latest main
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        working-directory: .
+        env:
+          TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            if ! git merge --no-edit -m "Merge latest main into native website parity branch" origin/main; then
+              git merge --abort || true
+              echo "Latest-main synchronization has conflicts; branch was not pushed."
+              exit 1
+            fi
+            git push origin "HEAD:${TARGET_BRANCH}"
+          else
+            echo "PR branch already contains latest main."
+          fi
 
       - uses: actions/setup-java@v4
         with:
