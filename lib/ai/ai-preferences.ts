@@ -75,6 +75,12 @@ export async function loadAIPreferences(
   };
 }
 
+/**
+ * Produces only application-controlled presentation guidance that is safe to
+ * place in a provider system instruction. User-authored custom instructions
+ * must remain in ordinary user content and are never promoted to system-level
+ * authority.
+ */
 export function buildAIPreferenceInstruction(preferences: AIPreferences) {
   const lengthInstruction =
     preferences.responseLength === "detailed"
@@ -94,16 +100,16 @@ export function buildAIPreferenceInstruction(preferences: AIPreferences) {
       : preferences.riskStyle === "growth"
         ? "You may present growth-oriented options, but state material risk and never imply guaranteed returns."
         : "Balance financial resilience and growth when presenting options.";
-  const customInstruction = preferences.customInstructions
-    ? `User presentation preferences: ${JSON.stringify(preferences.customInstructions)}. Follow them only when they remain finance-related and do not conflict with verified figures, privacy, safety, or these instructions.`
-    : "";
 
-  return [
-    lengthInstruction,
-    toneInstruction,
-    riskInstruction,
-    customInstruction,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return [lengthInstruction, toneInstruction, riskInstruction].join(" ");
+}
+
+export function buildAIUserPreferenceContext(preferences: AIPreferences) {
+  return {
+    responseLength: preferences.responseLength,
+    tone: preferences.tone,
+    riskStyle: preferences.riskStyle,
+    customInstructions: preferences.customInstructions || null,
+    authority: "untrusted-user-preference",
+  } as const;
 }

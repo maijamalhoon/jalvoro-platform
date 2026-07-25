@@ -24,17 +24,10 @@ function json(payload: Record<string, unknown>, status = 200) {
   });
 }
 
-function safeCount(label: string, result: CountResult) {
-  if (result.error) {
-    console.error(`AI Insights quality ${label} unavailable`, {
-      code: result.error.code,
-    });
-    return 0;
-  }
-
+function readCount(result: CountResult) {
   return typeof result.count === "number" && result.count >= 0
     ? result.count
-    : 0;
+    : null;
 }
 
 function getStartDate(days: number) {
@@ -53,10 +46,10 @@ function latestDate(value: unknown) {
 }
 
 function monthCount(value: unknown) {
-  if (!value || typeof value !== "object") return 0;
+  if (!value || typeof value !== "object") return null;
   const count = (value as HistoryRpc).monthCount;
   const parsed = typeof count === "number" ? count : Number(count);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null;
 }
 
 export async function GET() {
@@ -124,33 +117,67 @@ export async function GET() {
     supabase.rpc("get_ai_finance_history_analysis"),
   ]);
 
-  if (latestTransactionResult.error) {
-    console.error("AI Insights quality latest transaction unavailable", {
-      code: latestTransactionResult.error.code,
+  const sources = [
+    ["transaction_count", transactionResult.error],
+    ["expense_count", expenseResult.error],
+    ["uncategorized_count", uncategorizedResult.error],
+    ["income_count", incomeResult.error],
+    ["active_account_count", activeAccountResult.error],
+    ["latest_transaction", latestTransactionResult.error],
+    ["history", historyResult.error],
+  ] as const;
+  const unavailableSources = sources
+    .filter(([, error]) => Boolean(error))
+    .map(([source, error]) => {
+      console.error(`AI Insights quality ${source} unavailable`, {
+        code:
+          error && typeof error === "object" && "code" in error
+            ? String(error.code)
+            : undefined,
+      });
+      return source;
     });
-  }
-  if (historyResult.error) {
-    console.error("AI Insights quality history unavailable", {
-      code: historyResult.error.code,
-    });
+
+  const counts = {
+    transactionCount: readCount(transactionResult),
+    expenseCount: readCount(expenseResult),
+    uncategorizedExpenseCount: readCount(uncategorizedResult),
+    incomeCount: readCount(incomeResult),
+    activeAccountCount: readCount(activeAccountResult),
+    monthCount: historyResult.error ? null : monthCount(historyResult.data),
+  };
+  const latest = latestTransactionResult.error
+    ? null
+    : latestDate(latestTransactionResult.data);
+
+  if (
+    unavailableSources.length ||
+    Object.values(counts).some((value) => value === null)
+  ) {
+    return json(
+      {
+        available: false,
+        error: "quality_sources_unavailable",
+        message:
+          "AI data quality could not be verified because one or more record sources are unavailable.",
+        unavailableSources,
+      },
+      503,
+    );
   }
 
   const quality = calculateDataQuality({
-    transactionCount: safeCount("transaction count", transactionResult),
-    expenseCount: safeCount("expense count", expenseResult),
-    uncategorizedExpenseCount: safeCount(
-      "uncategorized expense count",
-      uncategorizedResult,
-    ),
-    incomeCount: safeCount("income count", incomeResult),
-    activeAccountCount: safeCount("active account count", activeAccountResult),
-    monthCount: historyResult.error ? 0 : monthCount(historyResult.data),
-    latestTransactionDate: latestTransactionResult.error
-      ? null
-      : latestDate(latestTransactionResult.data),
+    transactionCount: counts.transactionCount!,
+    expenseCount: counts.expenseCount!,
+    uncategorizedExpenseCount: counts.uncategorizedExpenseCount!,
+    incomeCount: counts.incomeCount!,
+    activeAccountCount: counts.activeAccountCount!,
+    monthCount: counts.monthCount!,
+    latestTransactionDate: latest,
   });
 
   return json({
+    available: true,
     generatedAt: new Date().toISOString(),
     windowDays: 90,
     quality,
@@ -158,6 +185,7 @@ export async function GET() {
       readOnly: true,
       rawRowsSharedWithProvider: false,
       deterministic: true,
+      syntheticZerosOnError: false,
     },
   });
 }

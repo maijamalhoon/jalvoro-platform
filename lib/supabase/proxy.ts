@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { AI_CONSENT_VERSION } from "@/lib/ai-insights/consent";
 import {
   classifyAuthFailure,
   collectSupabaseSessionCookieNames,
@@ -41,6 +42,7 @@ const PUBLIC_API_ROUTES = [
 const BLOCKED_PRODUCTION_API_ROUTES = ["/api/sentry-example-api"];
 const CACHE_HEADER_NAMES = ["cache-control", "expires", "pragma", "vary"];
 const JSON_PROTECTED_API_PREFIXES = ["/api/ai-insights"];
+const AI_CONSENT_EXEMPT_API_ROUTES = ["/api/ai-insights/consent"];
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const MAX_PROTECTED_JSON_BYTES = 64 * 1024;
 
@@ -69,6 +71,13 @@ function matchesPath(pathname: string, routes: string[]) {
 
 function matchesPrefix(pathname: string, prefixes: readonly string[]) {
   return prefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+function requiresAIConsent(pathname: string) {
+  return (
+    pathname.startsWith("/api/ai-insights") &&
+    !matchesPath(pathname, AI_CONSENT_EXEMPT_API_ROUTES)
+  );
 }
 
 function copySupabaseResponseState(source: NextResponse, target: NextResponse) {
@@ -141,7 +150,10 @@ function safeApiResponse(
 
 function protectedApiResponse(
   status: 401 | 503,
-  code: "authentication_required" | "session_expired" | "auth_temporarily_unavailable",
+  code:
+    | "authentication_required"
+    | "session_expired"
+    | "auth_temporarily_unavailable",
 ) {
   return safeApiResponse(
     status,
@@ -163,16 +175,27 @@ function validateProtectedJsonRequest(request: NextRequest, pathname: string) {
 
   const fetchSite = request.headers.get("sec-fetch-site");
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
-    return safeApiResponse(403, "Cross-site request blocked", "cross_site_request_blocked");
+    return safeApiResponse(
+      403,
+      "Cross-site request blocked",
+      "cross_site_request_blocked",
+    );
   }
 
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.startsWith("application/json")) {
-    return safeApiResponse(415, "JSON content is required", "unsupported_media_type");
+    return safeApiResponse(
+      415,
+      "JSON content is required",
+      "unsupported_media_type",
+    );
   }
 
   const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_PROTECTED_JSON_BYTES) {
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > MAX_PROTECTED_JSON_BYTES
+  ) {
     return safeApiResponse(413, "Request is too large", "payload_too_large");
   }
 
@@ -181,7 +204,10 @@ function validateProtectedJsonRequest(request: NextRequest, pathname: string) {
 
 function jsonNotFound() {
   return NextResponse.json(
-    { error: "Not found", message: "This endpoint is not available in production." },
+    {
+      error: "Not found",
+      message: "This endpoint is not available in production.",
+    },
     {
       status: 404,
       headers: { "Cache-Control": "private, no-store, max-age=0" },
@@ -207,7 +233,10 @@ export async function updateSession(request: NextRequest) {
 
   if (isPublicApiRoute || isPublicAssetRoute) return NextResponse.next();
 
-  const invalidProtectedRequest = validateProtectedJsonRequest(request, pathname);
+  const invalidProtectedRequest = validateProtectedJsonRequest(
+    request,
+    pathname,
+  );
   if (invalidProtectedRequest) return invalidProtectedRequest;
 
   // PKCE exchanges need their code-verifier cookie intact until the callback or
@@ -229,7 +258,9 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet, headers) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
 
           const refreshedResponse = NextResponse.next({ request });
           copySupabaseResponseState(supabaseResponse, refreshedResponse);
@@ -268,7 +299,48 @@ export async function updateSession(request: NextRequest) {
         request.nextUrl.searchParams.get("next"),
       );
       const url = new URL(destination, request.nextUrl.origin);
-      return copySupabaseResponseState(supabaseResponse, NextResponse.redirect(url));
+      return copySupabaseResponseState(
+        supabaseResponse,
+        NextResponse.redirect(url),
+      );
+    }
+
+    if (requiresAIConsent(pathname)) {
+      const { data: consent, error: consentError } = await supabase
+        .from("ai_consents")
+        .select("version, accepted_at, revoked_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (consentError) {
+        console.error("AI consent proxy check failed", {
+          code: consentError.code,
+        });
+        return copySupabaseResponseState(
+          supabaseResponse,
+          safeApiResponse(
+            503,
+            "AI consent could not be verified",
+            "ai_consent_unavailable",
+          ),
+        );
+      }
+
+      const accepted =
+        consent?.version === AI_CONSENT_VERSION &&
+        typeof consent.accepted_at === "string" &&
+        consent.revoked_at === null;
+
+      if (!accepted) {
+        return copySupabaseResponseState(
+          supabaseResponse,
+          safeApiResponse(
+            403,
+            "AI consent is required",
+            "ai_consent_required",
+          ),
+        );
+      }
     }
 
     const rateLimit = EXPENSIVE_API_LIMITS.find(({ prefix }) =>
@@ -313,10 +385,14 @@ export async function updateSession(request: NextRequest) {
 
   const hasSessionCookies = hasSupabaseSessionCookies(request.cookies.getAll());
   const failure = classifyAuthFailure(authError, hasSessionCookies);
-  const originalPath = sanitizeInternalRedirect(`${pathname}${request.nextUrl.search}`);
+  const originalPath = sanitizeInternalRedirect(
+    `${pathname}${request.nextUrl.search}`,
+  );
 
   if (failure === "transient_failure") {
-    if (isPublicPageRoute || pathname === "/onboarding") return supabaseResponse;
+    if (isPublicPageRoute || pathname === "/onboarding") {
+      return supabaseResponse;
+    }
 
     const finalResponse = isApiRoute
       ? protectedApiResponse(503, "auth_temporarily_unavailable")
