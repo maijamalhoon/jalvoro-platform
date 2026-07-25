@@ -2,18 +2,19 @@
 
 ## Purpose
 
-This node adds a protected, read-only live verification path for the JALVORO Business Core without routing production traffic or applying database changes.
+This node provides a protected, read-only live verification path for the JALVORO Business Core without routing production traffic.
 
 The harness validates the same Supabase identity and tenant-context path used by the production ASP.NET Core composition:
 
 1. validate the target and injected configuration before making a network call;
-2. verify the staging test JWT through Supabase Auth `/auth/v1/user`;
-3. verify that the required `public.business_members` Data API contract is available;
-4. start the exact Business Core ASP.NET Core application on an ephemeral loopback port;
-5. resolve the configured tenant through `GET /api/v1/context/{tenantId}`;
-6. require a `200` read-only context for the expected subject and tenant.
+2. obtain a fresh short-lived session for the dedicated staging identity;
+3. verify that JWT through Supabase Auth `/auth/v1/user`;
+4. verify that the required `public.business_members` Data API contract is available;
+5. start the exact Business Core ASP.NET Core application on an ephemeral loopback port;
+6. resolve the configured tenant through `GET /api/v1/context/{tenantId}`;
+7. require a `200` read-only context for the expected subject and tenant.
 
-Only HTTP `GET` requests are issued.
+The .NET smoke process issues only HTTP `GET` requests. The workflow's one authentication request is a Supabase Auth session exchange; it does not mutate business data.
 
 ## Protected target
 
@@ -39,19 +40,23 @@ Encrypted environment secrets:
 - `JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY`
   - must use the modern `sb_publishable_...` format;
   - secret and service-role keys are rejected;
-  - legacy anon JWT keys are rejected by this new harness.
-- `JALVORO_SUPABASE_STAGING_TEST_JWT`
-  - must belong to a dedicated non-production test user;
-  - must not be copied from a production session.
+  - legacy anon JWT keys are rejected by this harness.
+- `JALVORO_SUPABASE_STAGING_TEST_EMAIL`
+  - dedicated non-production identity only.
+- `JALVORO_SUPABASE_STAGING_TEST_PASSWORD`
+  - dedicated non-production identity only;
+  - never printed or passed as a command-line argument.
 
 Environment variables:
 
 - `JALVORO_SUPABASE_STAGING_TEST_USER_ID`
-  - exact UUID expected from the Auth server response.
+  - exact UUID expected from the fresh Auth session.
 - `JALVORO_SUPABASE_STAGING_TENANT_ID`
   - exact staging tenant UUID expected to have an active membership for the test user.
 
-The workflow injects these values at runtime. No credential, user JWT, API key, test-user UUID, or tenant UUID is committed to the repository.
+The workflow signs in at runtime, rejects a subject mismatch, masks the short-lived access token, and passes that token only through `GITHUB_ENV` to the smoke process. A static expiring JWT is not stored as a GitHub secret.
+
+No credential, access token, API key, test-user UUID, or tenant UUID is committed to the repository.
 
 ## Manual execution
 
@@ -63,7 +68,7 @@ It runs only through `workflow_dispatch` and requires the exact confirmation:
 
 `STAGING_ONLY_READ_ONLY`
 
-The job uses the GitHub `staging` environment so approvals and environment-level secret controls can be applied independently from production.
+The job uses the GitHub `staging` environment so approvals and environment-level secret controls remain independent from production.
 
 ## Failure codes
 
@@ -77,37 +82,51 @@ The executable fails closed and reports only sanitized status codes:
 - `api_dependency_unavailable`: Supabase was unavailable during the full API path;
 - `resolved_context_contract_failed`: the live response violated the Business Core contract.
 
-Keys, JWTs, subject IDs, tenant IDs, and response bodies are never written to logs.
+Keys, passwords, JWTs, subject IDs, tenant IDs, and response bodies are never written to logs.
 
 ## Current live staging readiness
 
-A read-only metadata inspection on July 24, 2026 found:
+The staging synchronization and identity preparation completed on July 25, 2026.
+
+Prepared state:
 
 - staging project status: healthy;
-- `public.business_members`: absent;
-- RLS policy `business_members_select_self`: consequently absent;
-- migration `20260721173000_create_business_workspace_foundation`: not recorded in the staging migration history;
-- follow-up membership hardening migrations `20260721174500` and `20260722070300`: not recorded.
+- `public.businesses`: present with RLS;
+- `public.business_members`: present with RLS;
+- `business_members_select_self`: present;
+- authenticated Data API self-read: enabled;
+- anonymous membership read: denied;
+- dedicated non-anonymous Auth identity: prepared;
+- dedicated services tenant: prepared;
+- active owner membership: prepared;
+- PK / PKR / Asia-Karachi workspace context: prepared;
+- durable identity credentials: stored in Supabase Vault;
+- one-time bootstrap credentials and access token: wiped;
+- provisioning Edge Function: retired and JWT-protected.
 
-Therefore the full live tenant-context smoke is expected to stop at `schema_not_ready` until an explicit staging migration-sync decision is made.
+Live staging evidence:
 
-This node does not apply those migrations. It prevents the missing schema from being reported as a false success.
+- Auth user verification: `200`, exact subject, `authenticated`, non-anonymous;
+- exact membership projection: `200`, one active owner row;
+- cross-tenant projection: `200`, zero rows;
+- anonymous membership projection: `401`.
+
+The repository workflow still requires authorized synchronization of the protected GitHub `staging` environment values. That operation must not expose the Vault values in source control or logs.
 
 ## Preservation boundary
 
 This node does not:
 
 - access or call the production Supabase project;
-- create a Supabase branch or project;
-- apply a migration or execute DDL;
-- create, update, or delete database rows;
-- create an Auth user or session;
+- create a production Supabase branch or project;
+- apply a production migration;
+- activate a .NET business write endpoint;
 - commit credentials;
 - expose a service-role or secret key;
-- activate a business write endpoint;
 - deploy the .NET API;
 - route production traffic;
-- modify Personal Tracking.
+- modify Personal Tracking;
+- delete an existing product file or migration.
 
 ## Architecture rule
 
