@@ -1,4 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  isAdminControlPlanePath,
+  isControlPlaneOnlyPath,
+} from "@/lib/control-plane/config";
+import {
+  mergeControlPlaneResponseState,
+  updateControlPlaneSession,
+} from "@/lib/control-plane/proxy";
 import { updateSession } from "@/lib/supabase/proxy";
 
 const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
@@ -13,7 +21,32 @@ function getAIRewritePath(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
-  if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(request.nextUrl.pathname)) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname === "/control-invite") {
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    return response;
+  }
+
+  if (isControlPlaneOnlyPath(pathname)) {
+    return updateControlPlaneSession(request);
+  }
+
+  if (isAdminControlPlanePath(pathname)) {
+    const controlResponse = await updateControlPlaneSession(request);
+    if (controlResponse.headers.get("x-middleware-next") !== "1") {
+      return controlResponse;
+    }
+
+    const applicationResponse = await updateSession(request);
+    return mergeControlPlaneResponseState(controlResponse, applicationResponse);
+  }
+
+  if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(pathname)) {
     return NextResponse.next();
   }
 
