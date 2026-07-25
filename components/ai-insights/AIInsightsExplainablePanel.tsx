@@ -377,7 +377,21 @@ export default function AIInsightsExplainablePanel() {
         setRegenerating(false);
       }
     },
-    [copy.panel.unavailable, copy.server.emptyMessage, currency, language, live, rate],
+    [
+      copy.panel.unavailable,
+      copy.server.emptyMessage,
+      currency,
+      language,
+      live,
+      rate,
+      setData,
+      setEmptyMessage,
+      setError,
+      setLoading,
+      setRegenerating,
+      setSummary,
+      setSummaryCards,
+    ],
   );
 
   useEffect(() => {
