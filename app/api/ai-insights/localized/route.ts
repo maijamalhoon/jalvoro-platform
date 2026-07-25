@@ -14,6 +14,14 @@ import {
   type InsightPriority,
 } from "@/lib/ai-insights/copy";
 import {
+  getInsightActionTarget,
+  getInsightAttention,
+  getInsightTopic,
+  type InsightActionTarget,
+  type InsightAttention,
+  type InsightTopic,
+} from "@/lib/ai-insights/actionable";
+import {
   buildAIResponseLanguageInstruction,
   resolveRequestLanguage,
 } from "@/lib/i18n/request-language";
@@ -78,6 +86,9 @@ type EvidenceItem = {
 };
 
 type ExplainableInsight = LegacyInsight & {
+  topic: InsightTopic;
+  attention: InsightAttention;
+  actionTarget: InsightActionTarget;
   why: string;
   evidence: EvidenceItem[];
   confidence: InsightConfidence;
@@ -595,15 +606,26 @@ function enrichInsights(
   locale: string,
   generatedAt: string,
 ): ExplainableInsight[] {
-  return insights.map((insight, index) => ({
-    ...insight,
-    why: whyFor(index, copy),
-    evidence: evidenceFor(index, summary, copy, context, locale),
-    confidence: confidenceFor(index, summary, trust),
-    dataThrough: trust?.dataThrough ?? null,
-    generatedAt,
-    limitations: ["recorded-data-only", "informational-not-advice"],
-  }));
+  return insights.map((insight, index) => {
+    const topic = getInsightTopic(index);
+
+    return {
+      ...insight,
+      topic,
+      attention: getInsightAttention({
+        topic,
+        type: insight.type,
+        summary,
+      }),
+      actionTarget: getInsightActionTarget(topic),
+      why: whyFor(index, copy),
+      evidence: evidenceFor(index, summary, copy, context, locale),
+      confidence: confidenceFor(index, summary, trust),
+      dataThrough: trust?.dataThrough ?? null,
+      generatedAt,
+      limitations: ["recorded-data-only", "informational-not-advice"],
+    };
+  });
 }
 
 function parseTranslatedContent(
@@ -767,7 +789,7 @@ export async function GET(request: NextRequest) {
         insights: [],
         suggestedActions: [],
         dataThrough: trust?.dataThrough ?? null,
-        explainabilityVersion: "jalvoro-ai-evidence-v1",
+        explainabilityVersion: "jalvoro-ai-actionable-v2",
       });
     }
 
@@ -815,7 +837,7 @@ export async function GET(request: NextRequest) {
       ),
       suggestedActions: localizedActions,
       dataThrough: trust?.dataThrough ?? null,
-      explainabilityVersion: "jalvoro-ai-evidence-v1",
+      explainabilityVersion: "jalvoro-ai-actionable-v2",
     });
   } catch (error) {
     console.error("Localized AI Insights route failed", {

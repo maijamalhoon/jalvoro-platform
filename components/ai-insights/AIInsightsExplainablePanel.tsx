@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   FormEvent,
   useCallback,
@@ -9,8 +10,12 @@ import {
 } from "react";
 import {
   AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
   ChevronDown,
   Database,
+  Eye,
+  Flame,
   Lightbulb,
   Loader2,
   RefreshCw,
@@ -21,6 +26,12 @@ import {
 
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { getAIInsightsActionableCopy } from "@/lib/ai-insights/actionable-copy";
+import type {
+  InsightActionTarget,
+  InsightAttention,
+  InsightTopic,
+} from "@/lib/ai-insights/actionable";
 import {
   getAIInsightsCopy,
   type AIInsightsCopy,
@@ -39,6 +50,9 @@ type EvidenceItem = {
 
 type Insight = {
   type: InsightType;
+  topic: InsightTopic;
+  attention: InsightAttention;
+  actionTarget: InsightActionTarget;
   title: string;
   message: string;
   why: string;
@@ -169,6 +183,41 @@ const CONFIDENCE_STYLE: Record<InsightConfidence, string> = {
   medium: "bg-warning/10 text-warning",
   low: "bg-surface-secondary text-text-secondary",
 };
+
+const ATTENTION_ORDER: InsightAttention[] = [
+  "act-now",
+  "watch-closely",
+  "doing-well",
+];
+
+const ATTENTION_STYLE = {
+  "act-now": {
+    icon: Flame,
+    tone: "text-danger",
+    wash: "bg-danger/10",
+    border: "border-danger/20",
+  },
+  "watch-closely": {
+    icon: Eye,
+    tone: "text-warning",
+    wash: "bg-warning/10",
+    border: "border-warning/20",
+  },
+  "doing-well": {
+    icon: CheckCircle2,
+    tone: "text-success",
+    wash: "bg-success/10",
+    border: "border-success/20",
+  },
+} satisfies Record<
+  InsightAttention,
+  {
+    icon: typeof Flame;
+    tone: string;
+    wash: string;
+    border: string;
+  }
+>;
 
 function parseDate(value: string | null | undefined, locale: string) {
   if (!value) return null;
@@ -301,6 +350,7 @@ function OverviewSkeleton({ label }: { label: string }) {
 export default function AIInsightsExplainablePanel() {
   const { language, option } = useLanguage();
   const copy = getAIInsightsCopy(language);
+  const actionableCopy = getAIInsightsActionableCopy(language);
   const { currency, formatCurrency, live, rate } = useCurrency();
   const [data, setData] = useState<AIData | null>(null);
   const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([]);
@@ -329,6 +379,19 @@ export default function AIInsightsExplainablePanel() {
     () => Math.max(...topCategories.map((category) => category.amount), 1),
     [topCategories],
   );
+  const insightBuckets = useMemo<Record<InsightAttention, Insight[]>>(() => {
+    const buckets: Record<InsightAttention, Insight[]> = {
+      "act-now": [],
+      "watch-closely": [],
+      "doing-well": [],
+    };
+
+    for (const insight of data?.insights ?? []) {
+      buckets[insight.attention].push(insight);
+    }
+
+    return buckets;
+  }, [data]);
 
   const load = useCallback(
     async ({ regenerate = false } = {}) => {
@@ -377,21 +440,7 @@ export default function AIInsightsExplainablePanel() {
         setRegenerating(false);
       }
     },
-    [
-      copy.panel.unavailable,
-      copy.server.emptyMessage,
-      currency,
-      language,
-      live,
-      rate,
-      setData,
-      setEmptyMessage,
-      setError,
-      setLoading,
-      setRegenerating,
-      setSummary,
-      setSummaryCards,
-    ],
+    [copy.panel.unavailable, copy.server.emptyMessage, currency, language, live, rate],
   );
 
   useEffect(() => {
@@ -573,15 +622,74 @@ export default function AIInsightsExplainablePanel() {
               </p>
             </div>
           ) : data?.insights.length ? (
-            <div className="space-y-4">
-              {data.insights.map((insight, index) => (
-                <ExplainableInsightCard
-                  key={`${insight.type}-${insight.title}-${index}`}
-                  insight={insight}
-                  locale={option.locale}
-                  copy={copy}
-                />
-              ))}
+            <div data-ai-priority-queue className="space-y-5">
+              <div className="max-w-2xl">
+                <h3 className="text-sm font-semibold tracking-tight text-text-primary">
+                  {actionableCopy.title}
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  {actionableCopy.description}
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                {ATTENTION_ORDER.map((attention) => {
+                  const items = insightBuckets[attention];
+                  const attentionStyle = ATTENTION_STYLE[attention];
+                  const AttentionIcon = attentionStyle.icon;
+
+                  return (
+                    <section
+                      key={attention}
+                      data-ai-priority-bucket={attention}
+                      className={`min-w-0 rounded-[22px] border ${attentionStyle.border} bg-surface-secondary/25 p-3.5 sm:p-4`}
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span
+                          className={`grid size-9 shrink-0 place-items-center rounded-[13px] ${attentionStyle.wash} ${attentionStyle.tone}`}
+                        >
+                          <AttentionIcon size={16} aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-text-primary">
+                              {actionableCopy.buckets[attention]}
+                            </h4>
+                            <span className="rounded-full bg-background/70 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-text-secondary">
+                              {actionableCopy.count(items.length)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-4 text-text-secondary">
+                            {actionableCopy.bucketDescriptions[attention]}
+                          </p>
+                        </div>
+                      </div>
+
+                      {items.length ? (
+                        <div className="mt-3 grid gap-3">
+                          {items.map((insight, index) => (
+                            <ExplainableInsightCard
+                              key={`${attention}-${insight.topic}-${insight.title}-${index}`}
+                              insight={insight}
+                              locale={option.locale}
+                              copy={copy}
+                              actionLabel={
+                                actionableCopy.actionLabels[insight.topic]
+                              }
+                              actionSafety={actionableCopy.actionSafety}
+                              whyLabel={actionableCopy.whyAmISeeingThis}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 rounded-[16px] border border-dashed border-border/60 px-3 py-4 text-center text-[11px] text-text-muted">
+                          {actionableCopy.empty}
+                        </p>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="flex min-h-56 items-center justify-center text-center">
@@ -812,10 +920,16 @@ function ExplainableInsightCard({
   insight,
   locale,
   copy,
+  actionLabel,
+  actionSafety,
+  whyLabel,
 }: {
   insight: Insight;
   locale: string;
   copy: AIInsightsCopy;
+  actionLabel: string;
+  actionSafety: string;
+  whyLabel: string;
 }) {
   const config = INSIGHT_STYLE[insight.type] ?? INSIGHT_STYLE.tip;
   const Icon = config.icon;
@@ -848,13 +962,25 @@ function ExplainableInsightCard({
           <p className="mt-1.5 break-words text-xs leading-5 text-text-secondary">
             {insight.message}
           </p>
+          <div className="mt-3 flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Link
+              href={insight.actionTarget}
+              className="finance-focus inline-flex min-h-9 items-center justify-center gap-2 rounded-full bg-active px-3.5 text-[11px] font-semibold text-text-inverse transition-transform hover:-translate-y-0.5"
+            >
+              {actionLabel}
+              <ArrowUpRight size={13} aria-hidden="true" />
+            </Link>
+            <p className="max-w-sm text-[9px] leading-4 text-text-muted sm:text-end">
+              {actionSafety}
+            </p>
+          </div>
         </div>
       </div>
 
       <details className="group mt-3 border-t border-border/55 pt-3">
         <summary className="finance-focus flex cursor-pointer list-none items-center gap-2 text-[11px] font-semibold text-info">
           <Database size={13} aria-hidden="true" />
-          {copy.metadata.review}
+          {whyLabel}
           <ChevronDown
             size={13}
             className="ms-auto transition-transform group-open:rotate-180"
