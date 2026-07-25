@@ -21,6 +21,8 @@ The staging-only Edge Function `jalvoro-github-staging-smoke-session` verifies a
 
 The broker stores only the OIDC replay identifier and non-secret workflow metadata in the private schema. The table is not exposed to `PUBLIC`, `anon`, `authenticated`, or `service_role`.
 
+During initial proof validation, sanitized claim outcomes may be written to `private.github_oidc_staging_smoke_diagnostics`. It stores claim values and the rejection reason only; it never stores the encoded JWT, signature, access token, password, Vault secret, or refresh token. All exposed-role privileges are revoked.
+
 ## Credential flow
 
 1. GitHub Actions requests an OIDC token with the exact staging audience.
