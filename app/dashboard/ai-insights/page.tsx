@@ -5,6 +5,7 @@ import AIInsightsOnboarding from "@/components/ai-insights/AIInsightsOnboarding"
 import "./ai-insights-experience.css";
 import "./ai-insights-premium-polish.css";
 import "./ai-insights-intelligence-workspace.css";
+import "./ai-insights-global-responsive.css";
 
 export const dynamic = "force-dynamic";
 
