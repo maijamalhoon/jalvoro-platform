@@ -19,9 +19,11 @@ internal static class BusinessCoreWriteActivationContracts
     var application = File.ReadAllText(applicationPath);
     check(
       application.Contains("businessCoreWriteEndpointMapped = true", StringComparison.Ordinal) &&
-      application.Contains("writeEndpointsActive = true", StringComparison.Ordinal) &&
+      application.Contains(
+        "writeEndpointsActive = supabaseConfiguration.IsConfigured",
+        StringComparison.Ordinal) &&
       application.Contains("productionWriteTrafficActive = false", StringComparison.Ordinal),
-      "The security contract must distinguish an active mapped write endpoint from inactive production traffic.");
+      "The security contract must distinguish a mapped write endpoint, configured operational activity, and inactive production traffic.");
     check(
       application.Contains("activeWriteCommands = ActiveWriteCommands", StringComparison.Ordinal) &&
       application.Contains("\"organization.profile.update.v1\"", StringComparison.Ordinal),
