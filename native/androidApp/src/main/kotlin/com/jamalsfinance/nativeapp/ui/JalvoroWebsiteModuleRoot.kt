@@ -71,7 +71,6 @@ private data class JalvoroWebsiteModuleItem(
     val onClick: () -> Unit,
 )
 
-/** Root router for the website-parity rebuild. */
 @Composable
 fun JalvoroWebsiteModuleRootShell(
     email: String,
@@ -109,10 +108,15 @@ fun JalvoroWebsiteModuleRootShell(
                 onOpenSettings = { workspace = JalvoroWebsiteWorkspace.Settings },
                 onOpenMore = { workspace = JalvoroWebsiteWorkspace.More },
             )
-            JalvoroWebsiteWorkspace.Money -> JalvoroFinanceDashboard(
+            JalvoroWebsiteWorkspace.Money -> JalvoroWebsiteFinanceDashboard(
                 email = email,
                 financeRepository = financeRepository,
-                onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onOverview = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onPlanning = { workspace = JalvoroWebsiteWorkspace.Planning },
+                onInvestments = { workspace = JalvoroWebsiteWorkspace.Investments },
+                onReports = { workspace = JalvoroWebsiteWorkspace.Reports },
+                onSettings = { workspace = JalvoroWebsiteWorkspace.Settings },
+                onMore = { workspace = JalvoroWebsiteWorkspace.More },
                 onSignOut = onSignOut,
             )
             JalvoroWebsiteWorkspace.Planning -> GoalsPayablesDashboard(
@@ -223,11 +227,7 @@ private fun JalvoroWebsiteMoreWorkspace(
             val widthDp = maxWidth.value.toInt()
             val layout = selectPersonalAdaptiveLayout(widthDp, fontScale)
             val horizontalPadding = personalHorizontalPaddingDp(widthDp).dp
-            val rows = if (layout == PersonalAdaptiveLayout.TwoColumn) {
-                modules.chunked(2)
-            } else {
-                modules.map(::listOf)
-            }
+            val rows = if (layout == PersonalAdaptiveLayout.TwoColumn) modules.chunked(2) else modules.map(::listOf)
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize().widthIn(max = 1_000.dp),
@@ -262,10 +262,7 @@ private fun JalvoroWebsiteMoreWorkspace(
                                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                             ) {
                                 row.forEach { item ->
-                                    JalvoroWebsiteModuleCard(
-                                        item = item,
-                                        modifier = Modifier.weight(1f),
-                                    )
+                                    JalvoroWebsiteModuleCard(item, Modifier.weight(1f))
                                 }
                                 if (row.size == 1 && layout == PersonalAdaptiveLayout.TwoColumn) {
                                     Spacer(Modifier.weight(1f))
@@ -280,11 +277,7 @@ private fun JalvoroWebsiteMoreWorkspace(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                     ) {
-                        Icon(
-                            imageVector = JalvoroIcons.SignOut,
-                            contentDescription = null,
-                            modifier = Modifier.size(19.dp),
-                        )
+                        Icon(JalvoroIcons.SignOut, contentDescription = null, modifier = Modifier.size(19.dp))
                         Spacer(Modifier.size(8.dp))
                         Text("Sign out", fontWeight = FontWeight.Bold)
                     }
@@ -313,16 +306,8 @@ private fun JalvoroWebsiteModuleCard(
             modifier = Modifier.fillMaxWidth().padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = item.tone,
-                contentColor = Color.White,
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = null,
-                    modifier = Modifier.padding(10.dp).size(21.dp),
-                )
+            Surface(shape = CircleShape, color = item.tone, contentColor = Color.White) {
+                Icon(item.icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(21.dp))
             }
             Text(
                 text = item.title,
