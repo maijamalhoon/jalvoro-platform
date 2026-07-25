@@ -22,6 +22,9 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 45
+    defaults:
+      run:
+        shell: cmd
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
@@ -30,7 +33,6 @@ jobs:
       NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
     steps:
       - name: Enable Windows long paths
-        shell: powershell
         run: git config --global core.longpaths true
 
       - name: Check out repository
@@ -40,15 +42,10 @@ jobs:
           show-progress: false
 
       - name: Verify installed Node.js
-        shell: powershell
         run: |
-          $ErrorActionPreference = "Stop"
           node --version
           npm --version
-          $major = node -p "Number(process.versions.node.split('.')[0])"
-          if ([int]$major -ne 24) {
-            throw "Node.js 24 is required; found major version $major."
-          }
+          node -e "const major=Number(process.versions.node.split('.')[0]); if(major!==24){console.error('Node.js 24 is required; found '+process.versions.node); process.exit(1)}"
 
       - name: Install dependencies
         run: npm ci --silent
