@@ -5,9 +5,14 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "app/admin/**"
+      - "app/control/**"
+      - "app/control-login/**"
+      - "app/control-invite/**"
       - "components/admin/**"
+      - "components/control-plane/**"
       - "lib/admin/**"
-      - "vercel.json"
+      - "lib/control-plane/**"
+      - "supabase/control-plane/**"
       - ".github/workflows/command-center-exact-head.yml"
 
 permissions:
