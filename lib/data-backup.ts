@@ -1,5 +1,5 @@
-export const FINANCE_BACKUP_FORMAT = "jamals-finance-backup";
-export const FINANCE_BACKUP_VERSION = 1;
+export const FINANCE_BACKUP_FORMAT = "jalvoro-finance-backup";
+export const FINANCE_BACKUP_VERSION = 2;
 export const MAX_FINANCE_BACKUP_BYTES = 25 * 1024 * 1024;
 export const OPEN_FINANCE_DATA_IMPORT_EVENT = "jamal-open-data-import";
 export const FINANCE_DATA_IMPORTED_EVENT = "jamal-finance-data-imported";
@@ -26,6 +26,20 @@ export type FinanceBackupManifest = {
   recordCounts: Record<BackupDataKey, number>;
 };
 
+export type FinanceBackupSeal = {
+  issuer: "JALVORO";
+  algorithm: "HMAC-SHA256";
+  keyVersion: number;
+  signature: string;
+};
+
+export type FinanceBackupClientPreferences = {
+  currency?: string;
+  dateFormat?: string;
+  compactMode?: boolean;
+  themeMode?: string;
+};
+
 export type FinanceBackup = JsonRecord & {
   format: typeof FINANCE_BACKUP_FORMAT;
   version: typeof FINANCE_BACKUP_VERSION;
@@ -35,7 +49,8 @@ export type FinanceBackup = JsonRecord & {
     ownerId: string;
   };
   data: Record<BackupDataKey, unknown[]>;
-  manifest?: FinanceBackupManifest;
+  manifest: FinanceBackupManifest;
+  seal: FinanceBackupSeal;
 };
 
 export type FinanceImportResult = {
@@ -46,6 +61,8 @@ export type FinanceImportResult = {
   added: Record<string, number>;
   skipped: Record<string, number>;
   restored?: Record<string, number>;
+  clientPreferences?: FinanceBackupClientPreferences;
+  sealed: boolean;
 };
 
 export type BackupValidationResult =
@@ -54,6 +71,7 @@ export type BackupValidationResult =
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SIGNATURE_PATTERN = /^[0-9a-f]{64}$/i;
 
 export function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -71,32 +89,12 @@ export function getBackupRecordCount(backup: FinanceBackup) {
   );
 }
 
-export function withFinanceBackupManifest(
-  backup: FinanceBackup,
-): FinanceBackup {
-  const recordCounts = Object.fromEntries(
-    FINANCE_BACKUP_DATA_KEYS.map((key) => [key, backup.data[key].length]),
-  ) as Record<BackupDataKey, number>;
-
-  return {
-    ...backup,
-    manifest: {
-      totalRecords: Object.values(recordCounts).reduce(
-        (total, count) => total + count,
-        0,
-      ),
-      recordCounts,
-    },
-  };
-}
-
 function validateManifest(
   value: JsonRecord,
   data: Record<BackupDataKey, unknown[]>,
 ): string | null {
-  if (value.manifest === undefined) return null;
   if (!isRecord(value.manifest) || !isRecord(value.manifest.recordCounts)) {
-    return "This backup file is missing its integrity summary.";
+    return "This backup file is missing its sealed integrity summary.";
   }
 
   for (const key of FINANCE_BACKUP_DATA_KEYS) {
@@ -123,17 +121,47 @@ function validateManifest(
   return null;
 }
 
+function validateSeal(value: JsonRecord): string | null {
+  if (!isRecord(value.seal)) {
+    return "This backup file is not sealed by JALVORO.";
+  }
+
+  if (
+    value.seal.issuer !== "JALVORO" ||
+    value.seal.algorithm !== "HMAC-SHA256"
+  ) {
+    return "This backup file has an unsupported security seal.";
+  }
+
+  const keyVersion = normalizeNonNegativeInteger(value.seal.keyVersion);
+  if (keyVersion === null || keyVersion < 1) {
+    return "This backup file has an invalid security key version.";
+  }
+
+  if (
+    typeof value.seal.signature !== "string" ||
+    !SIGNATURE_PATTERN.test(value.seal.signature)
+  ) {
+    return "This backup file has an invalid security signature.";
+  }
+
+  return null;
+}
+
 export function validateFinanceBackup(value: unknown): BackupValidationResult {
   if (!isRecord(value)) {
     return { ok: false, error: "This backup file is invalid or damaged." };
   }
 
   if (value.format !== FINANCE_BACKUP_FORMAT) {
-    return { ok: false, error: "This is not a Jamal’s Finance backup file." };
+    return { ok: false, error: "This is not a sealed JALVORO backup file." };
   }
 
   if (value.version !== FINANCE_BACKUP_VERSION) {
-    return { ok: false, error: "This backup version is not supported." };
+    return {
+      ok: false,
+      error: "This backup version is not supported. Export a new JALVORO backup.",
+    };
   }
 
   if (
@@ -175,6 +203,9 @@ export function validateFinanceBackup(value: unknown): BackupValidationResult {
   const manifestError = validateManifest(value, data);
   if (manifestError) return { ok: false, error: manifestError };
 
+  const sealError = validateSeal(value);
+  if (sealError) return { ok: false, error: sealError };
+
   return { ok: true, value: value as FinanceBackup };
 }
 
@@ -184,6 +215,9 @@ export function parseFinanceImportResult(value: unknown): FinanceImportResult | 
   const added = isRecord(value.added) ? value.added : {};
   const skipped = isRecord(value.skipped) ? value.skipped : {};
   const restored = isRecord(value.restored) ? value.restored : {};
+  const clientPreferences = isRecord(value.clientPreferences)
+    ? value.clientPreferences
+    : undefined;
 
   const normalizeCounts = (counts: JsonRecord) =>
     Object.fromEntries(
@@ -206,5 +240,8 @@ export function parseFinanceImportResult(value: unknown): FinanceImportResult | 
     added: parsedAdded,
     skipped: normalizeCounts(skipped),
     restored: normalizeCounts(restored),
+    clientPreferences:
+      clientPreferences as FinanceBackupClientPreferences | undefined,
+    sealed: value.sealed === true,
   };
 }
