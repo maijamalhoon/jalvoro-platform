@@ -3,7 +3,7 @@ package com.jamalsfinance.nativeapp.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -215,13 +215,12 @@ private fun JalvoroWebsiteMoreWorkspace(
         onSettings = onSettings,
         onMore = {},
     ) { shellPadding ->
-        Box(
+        BoxWithConstraints(
             modifier = Modifier.fillMaxSize().padding(shellPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
-            val density = LocalDensity.current
-            val fontScale = density.fontScale
-            val widthDp = with(density) { constraints.maxWidth.toDp().value.toInt() }
+            val fontScale = LocalDensity.current.fontScale
+            val widthDp = maxWidth.value.toInt()
             val layout = selectPersonalAdaptiveLayout(widthDp, fontScale)
             val horizontalPadding = personalHorizontalPaddingDp(widthDp).dp
             val rows = if (layout == PersonalAdaptiveLayout.TwoColumn) {
