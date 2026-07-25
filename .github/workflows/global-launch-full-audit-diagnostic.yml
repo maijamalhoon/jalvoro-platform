@@ -35,6 +35,7 @@ jobs:
           npm audit --audit-level=low --json > global-launch-full-audit.json 2> global-launch-full-audit.stderr
           exit_code=$?
           echo "audit_exit_code=${exit_code}" > global-launch-full-audit-exit.txt
+          npm ls eslint eslint-config-next minimatch brace-expansion --all --json > global-launch-dependency-tree.json 2>/dev/null || true
           exit 0
 
       - name: Upload full dependency diagnostic
@@ -45,5 +46,8 @@ jobs:
             global-launch-full-audit.json
             global-launch-full-audit.stderr
             global-launch-full-audit-exit.txt
+            global-launch-dependency-tree.json
+            package.json
+            package-lock.json
           if-no-files-found: error
           retention-days: 1
