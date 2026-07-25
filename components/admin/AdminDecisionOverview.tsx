@@ -163,7 +163,7 @@ function ActionCenter({ items }: { items: CommandCenterActionItem[] }) {
                 </small>
               </span>
               <span className="rounded-lg border border-border/70 bg-background/60 px-2 py-1 font-mono text-xs font-semibold text-foreground">
-                {formatAdminCount(item.value)}
+                {item.valueLabel ?? formatAdminCount(item.value)}
               </span>
             </a>
           ))}
@@ -390,7 +390,9 @@ function PulsePanel({
                         ? "bg-warning"
                         : item.tone === "healthy"
                           ? "bg-success"
-                          : "bg-info",
+                          : item.tone === "neutral"
+                            ? "bg-muted-foreground/60"
+                            : "bg-info",
                   )}
                   style={{ width: `${width}%` }}
                 />
@@ -498,7 +500,7 @@ export default function AdminDecisionOverview({
           }
           tone={overview.systemTone}
           icon={JalvoroDashboardIcon}
-          href="#admin-product-health"
+          href="#decision-action-center"
         />
         <StatusCard
           label="Critical incidents"
@@ -542,7 +544,7 @@ export default function AdminDecisionOverview({
           detail="Access invitations plus open structured privacy requests."
           tone={overview.pendingReviews > 0 ? "attention" : "healthy"}
           icon={JalvoroPendingIcon}
-          href="#admin-access"
+          href={overview.pendingReviewsHref}
         />
         <StatusCard
           label="Data freshness"
