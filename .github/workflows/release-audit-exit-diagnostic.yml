@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm audit --omit=dev --audit-level=low > audit-output.txt 2>&1
+          npm audit --audit-level=low > audit-output.txt 2>&1
           code=$?
           printf 'exit_code=%s\n\n' "$code" > audit-exit-diagnostic.txt
           cat audit-output.txt >> audit-exit-diagnostic.txt
