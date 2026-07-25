@@ -15,7 +15,7 @@ describe("public launch surface", () => {
     const robots = read("app/robots.ts");
     const securityText = read("public/.well-known/security.txt");
 
-    expect(brand).toContain('https://jalvoro-app.vercel.app');
+    expect(brand).toContain("https://jalvoro-app.vercel.app");
     expect(sitemap).toContain('import { APP_URL } from "@/lib/brand"');
     expect(robots).toContain('import { APP_URL } from "@/lib/brand"');
     expect(securityText).toContain(
@@ -35,8 +35,8 @@ describe("public launch surface", () => {
     expect(page).toContain("<LaunchLegalRail />");
     expect(rail).toContain("Free access.");
     expect(rail).toContain("No payment required.");
-    expect(rail).toContain('/login?mode=signup&next=/dashboard');
-    expect(rail).toContain('/login?mode=signup&next=/business');
+    expect(rail).toContain("/login?mode=signup&next=/dashboard");
+    expect(rail).toContain("/login?mode=signup&next=/business");
 
     for (const route of ["/privacy", "/terms", "/disclosures", "/support"]) {
       expect(rail).toContain(`href=\"${route}\"`);
@@ -52,5 +52,18 @@ describe("public launch surface", () => {
     expect(rail).not.toMatch(/free trial/i);
     expect(rail).not.toMatch(/credit card/i);
     expect(rail).not.toMatch(/support@/i);
+  });
+
+  it("keeps protected workspaces out of crawler discovery", () => {
+    const robots = read("app/robots.ts");
+    const sitemap = read("app/sitemap.ts");
+
+    for (const route of ["/api/", "/admin/", "/onboarding/", "/business/", "/dashboard/"]) {
+      expect(robots).toContain(`\"${route}\"`);
+    }
+
+    expect(sitemap).not.toContain("/business");
+    expect(sitemap).not.toContain("/dashboard");
+    expect(sitemap).not.toContain("/onboarding");
   });
 });
