@@ -88,7 +88,7 @@ fun JamalsFinanceNativeApp(
                                 is AuthState.SignedIn -> NativeAppLockGate(
                                     preferences = nativePreferences,
                                 ) {
-                                    NativeModuleRootShell(
+                                    JalvoroWebsiteModuleRootShell(
                                         email = current.session.user.email ?: "Signed in",
                                         financeRepository = financeRepository,
                                         goalsPayablesRepository = goalsPayablesRepository,
