@@ -17,4 +17,4 @@ Security boundaries:
 - operator account creation uses the JWT-protected `control-plane-create-operator` Edge Function;
 - the server-side secret is read only from the Edge Function environment and no secret value is committed;
 - invitation tokens are hashed in storage and delivered in URL fragments so they are not sent in HTTP request paths;
-- new operators must replace their temporary password, enroll MFA and accept the one-time expiring invitation before access is created.
+- new operators verify a one-time Supabase invite, create a permanent password, perform a fresh password login, enroll MFA and accept the one-time expiring access invitation before authorization is created.
