@@ -186,6 +186,7 @@ describe("Command Center decision overview", () => {
       tone: "critical",
       value: 1,
     });
+    expect(result.pendingReviewsHref).toBe("#admin-privacy");
   });
 
   it("orders critical incident work before lower-risk operational signals", () => {
@@ -211,6 +212,27 @@ describe("Command Center decision overview", () => {
       "failed-operations",
       "access-invitations",
     ]);
+    expect(result.pendingReviewsHref).toBe("#admin-access");
+  });
+
+  it("labels freshness actions with minutes instead of an unlabeled count", () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.generatedAt = "2026-07-25T16:00:00.000Z";
+
+    const result = deriveCommandCenterDecisionOverview({
+      snapshot: currentSnapshot,
+      posture: posture(),
+      incidents: incidents(),
+      access: access(),
+      billing: billing(),
+      nowMs: NOW,
+    });
+
+    expect(result.actions[0]).toMatchObject({
+      key: "stale-snapshot",
+      value: 120,
+      valueLabel: "120m",
+    });
   });
 
   it("reports the full country count while limiting the visual ranking", () => {
