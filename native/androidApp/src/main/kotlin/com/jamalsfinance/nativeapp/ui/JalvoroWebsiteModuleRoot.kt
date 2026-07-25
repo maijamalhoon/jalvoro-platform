@@ -119,36 +119,42 @@ fun JalvoroWebsiteModuleRootShell(
                 onMore = { workspace = JalvoroWebsiteWorkspace.More },
                 onSignOut = onSignOut,
             )
-            JalvoroWebsiteWorkspace.Planning -> GoalsPayablesDashboard(
+            JalvoroWebsiteWorkspace.Planning -> JalvoroWebsitePlanningRoute(
+                email = email,
                 repository = goalsPayablesRepository,
-                onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onOverview = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onMoney = { workspace = JalvoroWebsiteWorkspace.Money },
+                onInvestments = { workspace = JalvoroWebsiteWorkspace.Investments },
+                onReports = { workspace = JalvoroWebsiteWorkspace.Reports },
+                onSettings = { workspace = JalvoroWebsiteWorkspace.Settings },
+                onMore = { workspace = JalvoroWebsiteWorkspace.More },
             )
-            JalvoroWebsiteWorkspace.Investments -> JalvoroInvestmentsAnalyticsDashboard(
+            JalvoroWebsiteWorkspace.Investments -> JalvoroWebsiteInvestmentsRoute(
                 repository = investmentsAnalyticsRepository,
                 onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
             )
-            JalvoroWebsiteWorkspace.Reports -> ReportsInsightsDashboard(
+            JalvoroWebsiteWorkspace.Reports -> JalvoroWebsiteReportsRoute(
                 repository = reportsInsightsRepository,
                 onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
             )
-            JalvoroWebsiteWorkspace.Settings -> PersonalPlatformDashboard(
+            JalvoroWebsiteWorkspace.Settings -> JalvoroWebsiteSettingsRoute(
                 repository = personalPlatformRepository,
                 preferences = nativePreferences,
                 onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
                 onSignOut = onSignOut,
             )
-            JalvoroWebsiteWorkspace.Privacy -> PrivacySecurityDashboard(
+            JalvoroWebsiteWorkspace.Privacy -> JalvoroWebsitePrivacyRoute(
                 email = email,
                 repository = personalPlatformRepository,
                 preferences = nativePreferences,
                 onBack = { workspace = JalvoroWebsiteWorkspace.More },
                 onSignOut = onSignOut,
             )
-            JalvoroWebsiteWorkspace.Accessibility -> AccessibilityDisplayDashboard(
+            JalvoroWebsiteWorkspace.Accessibility -> JalvoroWebsiteAccessibilityRoute(
                 preferences = nativePreferences,
                 onBack = { workspace = JalvoroWebsiteWorkspace.More },
             )
-            JalvoroWebsiteWorkspace.Motion -> JalvoroMotionSettingsDashboard(
+            JalvoroWebsiteWorkspace.Motion -> JalvoroWebsiteMotionRoute(
                 preferences = nativePreferences,
                 onBack = { workspace = JalvoroWebsiteWorkspace.More },
             )
