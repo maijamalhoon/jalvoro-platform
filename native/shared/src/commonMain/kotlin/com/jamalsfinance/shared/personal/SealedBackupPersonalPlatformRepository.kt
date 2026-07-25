@@ -30,12 +30,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * Preserves the server-issued JALVORO v2 HMAC seal end-to-end.
+ * Preserves server-issued JALVORO backup seals end-to-end.
  *
- * The legacy repository augmented exports on-device after the server returned them. That was safe
- * for v1, but any semantic mutation of a v2 payload invalidates its HMAC. Client preferences are
- * therefore supplied to the export RPC before the server signs the payload, and the returned JSON
- * is written without adding or changing fields.
+ * New native exports use the version-2 envelope and pass client preferences before server signing.
+ * Imports also accept the server-issued signed version-1 bridge used by previously deployed browser
+ * clients. Unsigned historical version-1 files and bridge files with any other scope remain rejected.
  */
 class SealedBackupPersonalPlatformRepository(
     baseClient: HttpClient,
@@ -166,12 +165,13 @@ internal fun validateSealedBackupPayload(
     val payload = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull()
         ?: return BackupValidationResult.Invalid("This backup file is invalid or damaged.")
 
-    if (payload["format"]?.jsonPrimitive?.contentOrNull != "jalvoro-finance-backup") {
-        return BackupValidationResult.Invalid("This is not a sealed JALVORO backup file.")
-    }
-    if (payload["version"]?.jsonPrimitive?.intOrNull != 2) {
+    val format = payload["format"]?.jsonPrimitive?.contentOrNull
+    val version = payload["version"]?.jsonPrimitive?.intOrNull
+    val currentV2 = format == "jalvoro-finance-backup" && version == 2
+    val sealedLegacyBridge = format == "jamals-finance-backup" && version == 1
+    if (!currentV2 && !sealedLegacyBridge) {
         return BackupValidationResult.Invalid(
-            "This backup version is not supported. Export a new JALVORO backup.",
+            "This backup version is not supported. Export a new sealed JALVORO backup.",
         )
     }
 
@@ -251,6 +251,12 @@ internal fun validateSealedBackupPayload(
     val keyVersion = seal["keyVersion"]?.jsonPrimitive?.intOrNull
     if (keyVersion == null || keyVersion < 1) {
         return BackupValidationResult.Invalid("This backup file has an invalid security key version.")
+    }
+    if (
+        sealedLegacyBridge &&
+        seal["scope"]?.jsonPrimitive?.contentOrNull != "legacy-client-bridge-v1"
+    ) {
+        return BackupValidationResult.Invalid("This backup file has an unsupported security seal.")
     }
     val signature = seal["signature"]?.jsonPrimitive?.contentOrNull
     if (signature == null || !Regex("^[0-9a-fA-F]{64}$").matches(signature)) {
