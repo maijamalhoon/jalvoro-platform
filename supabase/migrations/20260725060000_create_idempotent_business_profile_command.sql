@@ -142,13 +142,13 @@ security definer
 set search_path = pg_catalog, public, private, extensions
 as $$
 declare
-  operation_name constant text := 'organization.profile.update.v1';
+  command_operation_name constant text := 'organization.profile.update.v1';
   current_user_id uuid := auth.uid();
   normalized_name text := btrim(coalesce(p_name, ''));
   normalized_description text := nullif(btrim(coalesce(p_description, '')), '');
   normalized_timezone text := btrim(coalesce(p_timezone, ''));
   normalized_key text := btrim(coalesce(p_idempotency_key, ''));
-  request_fingerprint text;
+  calculated_fingerprint text;
   existing_fingerprint text;
   existing_response jsonb;
   current_business public.businesses%rowtype;
@@ -179,7 +179,7 @@ begin
     return jsonb_build_object('code', 'validation_failed');
   end if;
 
-  request_fingerprint := encode(
+  calculated_fingerprint := encode(
     extensions.digest(
       convert_to(
         jsonb_build_object(
@@ -199,25 +199,25 @@ begin
 
   perform pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(
-      p_business_id::text || ':' || operation_name || ':' || normalized_key,
+      p_business_id::text || ':' || command_operation_name || ':' || normalized_key,
       0
     )
   );
 
-  delete from private.business_command_idempotency
-  where business_id = p_business_id
-    and operation_name = operation_name
-    and expires_at <= now();
+  delete from private.business_command_idempotency as stored
+  where stored.business_id = p_business_id
+    and stored.operation_name = command_operation_name
+    and stored.expires_at <= now();
 
-  select request_fingerprint, response_body
+  select stored.request_fingerprint, stored.response_body
   into existing_fingerprint, existing_response
-  from private.business_command_idempotency command
-  where command.business_id = p_business_id
-    and command.operation_name = operation_name
-    and command.idempotency_key = normalized_key;
+  from private.business_command_idempotency as stored
+  where stored.business_id = p_business_id
+    and stored.operation_name = command_operation_name
+    and stored.idempotency_key = normalized_key;
 
   if found then
-    if existing_fingerprint <> request_fingerprint then
+    if existing_fingerprint <> calculated_fingerprint then
       return jsonb_build_object('code', 'idempotency_conflict');
     end if;
 
@@ -297,9 +297,9 @@ begin
     expires_at
   ) values (
     p_business_id,
-    operation_name,
+    command_operation_name,
     normalized_key,
-    request_fingerprint,
+    calculated_fingerprint,
     current_user_id,
     response_body,
     now() + interval '7 days'
