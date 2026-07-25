@@ -1,0 +1,286 @@
+[data-ai-intelligence-workspace] {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(1rem, 2.5vw, 1.8rem);
+  border: 1px solid color-mix(in srgb, var(--active) 18%, var(--border));
+  border-radius: clamp(1.45rem, 2.6vw, 2rem);
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--active) 8%, transparent), transparent 34%),
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--investment) 7%, transparent), transparent 32%),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface) 97%, var(--active) 3%), var(--surface));
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+[data-ai-intelligence-workspace]::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--active), var(--investment), var(--info), transparent 88%);
+  content: "";
+}
+
+[data-ai-workspace-header] {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+[data-ai-workspace-overview] {
+  display: grid;
+  min-width: 0;
+  gap: 0.85rem;
+  margin-top: 1.3rem;
+}
+
+[data-ai-quality-card],
+[data-ai-timeline-card],
+[data-ai-saved-card] {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface-secondary) 63%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+}
+
+[data-ai-quality-score] {
+  display: grid;
+  width: 4.4rem;
+  height: 4.4rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0.38rem;
+}
+
+[data-ai-quality-score]::before {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--surface);
+  content: "";
+}
+
+[data-ai-quality-score] > span {
+  z-index: 1;
+  grid-area: 1 / 1;
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.05em;
+  color: var(--text-primary);
+}
+
+[data-ai-scenario-lab] {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: 1.35rem;
+  background: color-mix(in srgb, var(--background) 48%, transparent);
+}
+
+[data-ai-scenario-grid] {
+  display: grid;
+  min-width: 0;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+[data-ai-scenario-card] {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: 1.15rem;
+  background: var(--surface);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+[data-ai-scenario-card] > h3 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+[data-ai-scenario-card] > p {
+  min-height: 2.7rem;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.15rem;
+  color: var(--text-secondary);
+}
+
+[data-ai-scenario-card] > label {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--surface-secondary) 72%, transparent);
+}
+
+[data-ai-scenario-card] > label > span {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+[data-ai-scenario-card] input[type="range"] {
+  width: 100%;
+  accent-color: var(--active);
+  cursor: pointer;
+}
+
+[data-ai-scenario-card] input[type="number"] {
+  min-height: 2.5rem;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 0 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--text-primary);
+  outline: none;
+}
+
+[data-ai-scenario-card] input[type="number"]:focus {
+  border-color: color-mix(in srgb, var(--active) 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--active) 10%, transparent);
+}
+
+[data-ai-scenario-card] > dl {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+[data-ai-scenario-card] > dl > div {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+
+[data-ai-scenario-card] dt {
+  min-width: 0;
+  font-size: 0.62rem;
+  line-height: 1rem;
+  color: var(--text-secondary);
+}
+
+[data-ai-scenario-card] dd {
+  max-width: 58%;
+  overflow-wrap: anywhere;
+  text-align: end;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1rem;
+  color: var(--text-primary);
+}
+
+[data-ai-insight-state-controls] button {
+  white-space: nowrap;
+}
+
+[data-ai-insights-experience] [data-ai-intelligence-workspace] {
+  margin-block: 0 !important;
+}
+
+[data-ai-insights-experience]
+  [data-ai-priority-queue]
+  [data-ai-insight-state-controls] {
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 40rem) {
+  [data-ai-workspace-header] {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 48rem) {
+  [data-ai-workspace-overview] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-ai-quality-card] {
+    grid-column: span 2;
+  }
+
+  [data-ai-scenario-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-ai-scenario-card]:last-child {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 75rem) {
+  [data-ai-workspace-overview] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-ai-quality-card] {
+    grid-column: auto;
+  }
+
+  [data-ai-scenario-grid] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-ai-scenario-card]:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 39.999rem) {
+  [data-ai-intelligence-workspace] {
+    padding: 0.95rem;
+    border-radius: 1.35rem;
+  }
+
+  [data-ai-quality-card],
+  [data-ai-timeline-card],
+  [data-ai-saved-card],
+  [data-ai-scenario-card] {
+    padding: 0.85rem;
+    border-radius: 1rem;
+  }
+
+  [data-ai-scenario-lab] {
+    padding: 0.85rem;
+  }
+
+  [data-ai-quality-score] {
+    width: 3.8rem;
+    height: 3.8rem;
+  }
+
+  [data-ai-insight-state-controls] {
+    width: 100%;
+  }
+
+  [data-ai-insight-state-controls] button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ai-intelligence-workspace] *,
+  [data-ai-intelligence-workspace] *::before,
+  [data-ai-intelligence-workspace] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
