@@ -2,7 +2,10 @@ using System.Text.Json.Serialization;
 using Jalvoro.BusinessCore.Application;
 using Jalvoro.BusinessCore.Application.Modules;
 using Jalvoro.BusinessCore.Application.Operations;
+using Jalvoro.BusinessCore.Application.Organizations;
 using Jalvoro.BusinessCore.Application.Security;
+using Jalvoro.BusinessCore.Domain.Operations;
+using Jalvoro.BusinessCore.Domain.Tenancy;
 using Jalvoro.BusinessCore.Infrastructure;
 using Jalvoro.BusinessCore.Infrastructure.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -119,8 +122,12 @@ public static class BusinessCoreApiApplication
             exactTenantMatchRequired = true,
             exactPermissionMatchRequired = true,
             idempotencyRequiredForWrites = BusinessRequestPolicy.RequireIdempotencyForWrites,
-            idempotencyStorageConfigured = false,
-            writeEndpointsActive = false,
+            idempotencyStorage = "supabase-transactional-rpc",
+            activeWriteCommands = new[]
+            {
+              "organization.profile.update.v1",
+            },
+            legacyWritePathsPreserved = true,
             requestTimeoutSeconds = (int)BusinessRequestPolicy.MaximumExecutionTime.TotalSeconds,
             permissions = new[]
             {
@@ -166,6 +173,71 @@ public static class BusinessCoreApiApplication
       .RequireAuthorization()
       .WithName("GetVerifiedBusinessContext");
 
+    app.MapPut(
+          "/api/v1/organizations/{tenantId}/profile",
+          async (
+            string tenantId,
+            UpdateOrganizationProfileRequest request,
+            HttpContext httpContext,
+            OrganizationProfileCommandHandler handler,
+            CancellationToken cancellationToken) =>
+          {
+            if (!BusinessTenantId.TryParse(tenantId, out var parsedTenantId))
+            {
+              return Results.BadRequest(new { code = "tenant_unavailable" });
+            }
+
+            var idempotencyValue = httpContext.Request.Headers["Idempotency-Key"].FirstOrDefault();
+            if (!IdempotencyKey.TryParse(idempotencyValue, out var idempotencyKey))
+            {
+              return Results.BadRequest(new { code = "idempotency_key_invalid" });
+            }
+
+            if (!OrganizationProfileDocument.TryCreate(
+                  request.Name,
+                  request.Description,
+                  request.Timezone,
+                  request.FiscalYearStartMonth,
+                  out var profile))
+            {
+              return Results.BadRequest(new { code = "organization_profile_invalid" });
+            }
+
+            var result = await handler.ExecuteAsync(
+              parsedTenantId,
+              idempotencyKey,
+              request.ExpectedVersion,
+              profile,
+              cancellationToken);
+
+            return result.Code switch
+            {
+              OrganizationProfileWriteCode.Updated when result.Profile is { } updated =>
+                Results.Ok(CreateOrganizationProfileResponse("updated", false, updated)),
+              OrganizationProfileWriteCode.Replayed when result.Profile is { } replayed =>
+                Results.Ok(CreateOrganizationProfileResponse("replayed", true, replayed)),
+              OrganizationProfileWriteCode.IdempotencyConflict =>
+                Results.Conflict(new { code = "idempotency_conflict" }),
+              OrganizationProfileWriteCode.VersionConflict =>
+                Results.Conflict(new
+                {
+                  code = "version_conflict",
+                  currentVersion = result.CurrentVersion,
+                }),
+              OrganizationProfileWriteCode.ValidationFailed =>
+                Results.BadRequest(new { code = "organization_profile_invalid" }),
+              OrganizationProfileWriteCode.Forbidden =>
+                Results.Forbid(),
+              OrganizationProfileWriteCode.NotFound =>
+                Results.NotFound(new { code = "organization_not_found" }),
+              _ => Results.Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "The organization profile command is temporarily unavailable."),
+            };
+          })
+      .RequireAuthorization()
+      .WithName("UpdateOrganizationProfile");
+
     app.MapHealthChecks(
       "/health/live",
       new HealthCheckOptions
@@ -182,4 +254,20 @@ public static class BusinessCoreApiApplication
 
     return app;
   }
+
+  private static object CreateOrganizationProfileResponse(
+    string code,
+    bool replayed,
+    OrganizationProfileSnapshot profile) =>
+    new
+    {
+      code,
+      replayed,
+      tenantId = profile.TenantId.ToString(),
+      profileVersion = profile.Version,
+      profile.Name,
+      profile.Description,
+      profile.Timezone,
+      profile.FiscalYearStartMonth,
+    };
 }
