@@ -27,6 +27,9 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 60
+    defaults:
+      run:
+        shell: cmd
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
@@ -35,7 +38,6 @@ jobs:
       NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
     steps:
       - name: Enable Windows long paths
-        shell: powershell
         run: git config --global core.longpaths true
 
       - name: Check out exact pull request head
@@ -47,15 +49,10 @@ jobs:
           show-progress: false
 
       - name: Verify installed Node.js
-        shell: powershell
         run: |
-          $ErrorActionPreference = "Stop"
           node --version
           npm --version
-          $major = node -p "Number(process.versions.node.split('.')[0])"
-          if ([int]$major -ne 24) {
-            throw "Node.js 24 is required; found major version $major."
-          }
+          node -e "const major=Number(process.versions.node.split('.')[0]); if(major!==24){console.error('Node.js 24 is required; found '+process.versions.node); process.exit(1)}"
 
       - name: Install locked dependencies
         run: npm ci --silent
@@ -70,11 +67,7 @@ jobs:
         run: npm run build
 
       - name: Verify exact head stayed clean
-        shell: powershell
         run: |
-          $ErrorActionPreference = "Stop"
           git diff --check
-          $changes = git status --porcelain
-          if ($changes) {
-            Write-Error "Validation modified the working tree:`n$changes"
-          }
+          git status --porcelain > "%TEMP%\jalvoro-command-center-status.txt"
+          for %%A in ("%TEMP%\jalvoro-command-center-status.txt") do if not %%~zA==0 (type "%TEMP%\jalvoro-command-center-status.txt" & exit /b 1)
