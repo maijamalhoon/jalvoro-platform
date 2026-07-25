@@ -57,6 +57,7 @@ describe("Control Plane owner management contracts", () => {
     expect(source).toContain("window.history.replaceState");
     expect(source).toContain("window.sessionStorage.setItem");
     expect(source).toContain("auth.verifyOtp");
+    expect(source).toContain("checkPasswordProtection");
     expect(source).toContain("auth.updateUser");
     expect(source).toContain("auth.signInWithPassword");
     expect(source).toContain("mfa.enroll");
