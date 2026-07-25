@@ -11,7 +11,7 @@ The staging-only Edge Function `jalvoro-github-staging-smoke-session` verifies a
 - GitHub OIDC issuer: `https://token.actions.githubusercontent.com`
 - audience: `jalvoro-staging-smoke`
 - repository: `maijamalhoon/jalvoro-platform`
-- protected environment subject: `repo:maijamalhoon/jalvoro-platform:environment:staging`
+- customized protected-environment subject: `repo:maijamalhoon@150429791/jalvoro-platform@1269849875:environment:staging`
 - workflow path: `.github/workflows/dotnet-staging-supabase-smoke.yml`
 - branch: `agent/staging-business-smoke-readiness`
 - allowed workflow event
