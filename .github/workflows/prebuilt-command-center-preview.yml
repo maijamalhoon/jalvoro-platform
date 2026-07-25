@@ -1,0 +1,103 @@
+name: Build exact Command Center preview
+
+on:
+  push:
+    branches:
+      - agent/global-command-center-launch-polish
+    paths:
+      - .github/workflows/prebuilt-command-center-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERCEL_ORG_ID: team_c7vX4XXpBVznnjgxQbnwezXa
+      VERCEL_PROJECT_ID: prj_uY7uXNCNGT0ilaasTYstt2y44a8G
+    steps:
+      - name: Check out exact Command Center branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Prepare one-shot workflow cleanup
+        run: rm -f .github/workflows/prebuilt-command-center-preview.yml
+
+      - name: Require existing Vercel automation credential
+        id: credential
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ACCESS_TOKEN: ${{ secrets.VERCEL_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="${VERCEL_TOKEN:-${VERCEL_ACCESS_TOKEN:-}}"
+          if [ -z "$token" ]; then
+            printf 'status=missing_vercel_automation_token\nsource_head=%s\n' "$GITHUB_SHA" > docs/command-center-preview-result.txt
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::add-mask::$token"
+          printf '%s' "$token" > "$RUNNER_TEMP/vercel-token"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.credential.outputs.available == 'true'
+        run: npm ci --silent
+
+      - name: Install pinned Vercel CLI
+        if: steps.credential.outputs.available == 'true'
+        run: npm install --global vercel@50.28.0 --silent
+
+      - name: Link exact Vercel project
+        if: steps.credential.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          cat > .vercel/project.json <<'JSON'
+          {"orgId":"team_c7vX4XXpBVznnjgxQbnwezXa","projectId":"prj_uY7uXNCNGT0ilaasTYstt2y44a8G","projectName":"jalvoro"}
+          JSON
+
+      - name: Pull preview environment
+        if: steps.credential.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat "$RUNNER_TEMP/vercel-token")"
+          vercel pull --yes --environment=preview --scope jamal-s-projects18 --token "$token"
+
+      - name: Build preview locally
+        if: steps.credential.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat "$RUNNER_TEMP/vercel-token")"
+          vercel build --scope jamal-s-projects18 --token "$token"
+
+      - name: Deploy prebuilt preview
+        if: steps.credential.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat "$RUNNER_TEMP/vercel-token")"
+          url="$(vercel deploy --prebuilt --yes --scope jamal-s-projects18 --token "$token")"
+          printf 'status=deployed\nsource_head=%s\npreview_url=%s\n' "$GITHUB_SHA" "$url" > docs/command-center-preview-result.txt
+
+      - name: Record result and remove one-shot workflow
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f docs/command-center-preview-result.txt ]; then
+            printf 'status=prebuilt_preview_failed\nsource_head=%s\n' "$GITHUB_SHA" > docs/command-center-preview-result.txt
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Record exact Command Center preview result"
+          git push origin HEAD:agent/global-command-center-launch-polish
