@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: "%s | JALVORO Command Center",
   },
   description:
-    "JALVORO Global Admin & Operations Command Center for private administration, analytics, observability, security, billing, support, governance, configuration, and operational control.",
+    "JALVORO Global Admin & Operations Control Center — the private Command Center for administration, analytics, observability, security, billing, support, governance, configuration, and operational control.",
   robots: {
     index: false,
     follow: false,
