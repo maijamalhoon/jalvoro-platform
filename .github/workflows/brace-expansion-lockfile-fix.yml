@@ -5,17 +5,18 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out repository
+      - name: Check out pull request branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
           show-progress: false
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
@@ -28,12 +29,14 @@ jobs:
           npm pkg set overrides.brace-expansion=5.0.8
           npm install --package-lock-only --ignore-scripts
           npm audit --audit-level=low
-      - name: Upload package files
-        uses: actions/upload-artifact@v4
-        with:
-          name: brace-expansion-lockfile-fix
-          path: |
-            package.json
-            package-lock.json
-          retention-days: 1
-          if-no-files-found: error
+      - name: Commit package files when changed
+        shell: bash
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Pin secure brace-expansion release"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
