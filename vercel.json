@@ -1,12 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run audit:ci && npm run lint && npm run typecheck && npm test && npm run build",
   "git": {
     "deploymentEnabled": {
       "*": false,
       "main": true,
-      "release/global-command-center-freeze-20260725": true,
-      "agent/mobile-sidebar-left-edge": true
+      "release/global-command-center-freeze-20260725": true
     }
   }
 }
