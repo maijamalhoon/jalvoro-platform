@@ -32,6 +32,21 @@ describe("Control Plane owner management contracts", () => {
     expect(source).toContain('"Vary": "Origin"');
   });
 
+  it("fails closed on ambiguous Auth admin errors and malformed key maps", () => {
+    const source = read(
+      "supabase/control-plane/functions/control-plane-create-operator/index.ts",
+    );
+    expect(source).toContain("existingUserErrorCodes");
+    expect(source).toContain('"email_exists"');
+    expect(source).toContain('"user_already_exists"');
+    expect(source).toContain("isExistingUserError(authLinkResult.error)");
+    expect(source).not.toContain('value.includes("already")');
+    expect(source).not.toContain('value.includes("exists")');
+    expect(source).not.toContain('value.includes("registered")');
+    expect(source).toContain("Object.fromEntries");
+    expect(source).toContain('typeof candidate !== "string"');
+  });
+
   it("gives the Root Owner usable role, status, invitation and grant actions", () => {
     const source = read(
       "components/control-plane/ControlPlaneOwnerManagement.tsx",
