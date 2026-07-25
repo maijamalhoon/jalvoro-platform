@@ -12,10 +12,12 @@ describe("mobile sidebar positioning contracts", () => {
   it("pins the Personal dashboard drawer to the physical left edge", () => {
     const css = read("app/dashboard/mobile-sidebar-edge-lock.css");
 
+    expect(css).toContain("display: block !important;");
     expect(css).toContain("position: absolute !important;");
     expect(css).toContain("inset: 0 auto 0 0 !important;");
     expect(css).toContain("left: 0 !important;");
     expect(css).toContain("right: auto !important;");
+    expect(css).toContain("height: 100dvh !important;");
     expect(css).toContain("transform-origin: left center !important;");
   });
 
@@ -36,6 +38,8 @@ describe("mobile sidebar positioning contracts", () => {
     expect(css).toContain("display: flex;");
     expect(css).toContain("justify-content: flex-start;");
     expect(css).toContain("margin: 0 auto 0 0;");
+    expect(css).toContain("height: 100dvh;");
+    expect(css).toContain("max-height: 100dvh;");
     expect(css).toContain("transform-origin: left center;");
     expect(css).toContain("transform: translate3d(-100%, 0, 0);");
   });
