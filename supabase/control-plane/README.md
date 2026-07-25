@@ -27,11 +27,17 @@ Build boundary:
 - they are intentionally excluded from the Next.js TypeScript program so the web build does not reinterpret Deno modules;
 - repository contract tests inspect their security invariants, while deployment and post-deployment smoke checks validate the Deno runtime artifact.
 
-Release gates:
+Deployment evidence:
 
-1. deploy the exact reviewed Edge Function source only to `zzvpovvuybfihwgjrder`;
-2. configure any approved custom application origin before deployment;
-3. verify allowed-origin preflight succeeds and an unrelated origin is denied;
-4. verify an invalid/oversized JSON request is denied without creating an Auth user or invitation;
-5. enable Supabase Auth leaked-password protection in the Control Plane project dashboard;
-6. rerun Security Advisor and authenticated Root Owner invitation smoke tests after deployment.
+- `control-plane-create-operator` version 5 is active in `zzvpovvuybfihwgjrder` with gateway JWT verification enabled;
+- the active source uses the reviewed exact-origin, request-size, validation, AAL2 Root Owner and partial-cleanup controls;
+- authenticated operator creation remains a human smoke-test gate because no operator credentials, password, TOTP secret or recovery code may be copied into automation.
+
+Remaining release gates:
+
+1. enable Supabase Auth leaked-password protection in the Control Plane project dashboard;
+2. rerun Security Advisor;
+3. complete an authenticated Root Owner invitation test from an approved application origin;
+4. verify an unrelated browser origin is denied;
+5. confirm failed or oversized requests create neither an Auth user nor a private invitation;
+6. remove the temporary review origin after the release branch is retired.
