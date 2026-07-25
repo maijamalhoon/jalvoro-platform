@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -66,7 +67,14 @@ internal fun JalvoroWebsiteUtilityShell(
                         modifier = Modifier.size(40.dp),
                         shape = RoundedCornerShape(14.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
-                    ) {}
+                    ) {
+                        Icon(
+                            imageVector = JalvoroIcons.Settings,
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         },
