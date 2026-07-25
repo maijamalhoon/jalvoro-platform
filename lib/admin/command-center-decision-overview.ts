@@ -22,6 +22,7 @@ export type CommandCenterActionItem = {
   label: string;
   detail: string;
   value: number;
+  valueLabel?: string;
   tone: CommandCenterDecisionTone;
   href: string;
   priority: number;
@@ -44,6 +45,7 @@ export type CommandCenterDecisionOverview = {
   openIncidents: number;
   securityFindings: number;
   pendingReviews: number;
+  pendingReviewsHref: "#admin-access" | "#admin-privacy";
   systemTone: CommandCenterDecisionTone;
   systemValue: "Healthy" | "Attention" | "Critical";
   freshness: CommandCenterFreshness;
@@ -139,6 +141,8 @@ export function deriveCommandCenterDecisionOverview({
     posture.criticalFindings + posture.attentionFindings;
   const pendingReviews =
     access.counts.pendingInvitations + snapshot.privacy.openRequests;
+  const pendingReviewsHref =
+    access.counts.pendingInvitations > 0 ? "#admin-access" : "#admin-privacy";
   const freshness = deriveCommandCenterFreshness(snapshot.generatedAt, nowMs);
 
   const hasCriticalSignal =
@@ -174,6 +178,8 @@ export function deriveCommandCenterDecisionOverview({
           label: "Operational snapshot is stale",
           detail: freshness.detail,
           value: freshness.ageMinutes ?? 0,
+          valueLabel:
+            freshness.ageMinutes === null ? "?" : `${freshness.ageMinutes}m`,
           tone: "critical",
           href: "#admin-product-health",
           priority: 5,
@@ -285,7 +291,11 @@ export function deriveCommandCenterDecisionOverview({
           key: "delayed-snapshot",
           label: "Refresh before time-sensitive action",
           detail: freshness.detail,
-          value: freshness.ageMinutes ?? 0,
+          value: Math.abs(freshness.ageMinutes ?? 0),
+          valueLabel:
+            freshness.ageMinutes === null
+              ? "?"
+              : `${Math.abs(freshness.ageMinutes)}m`,
           tone: "attention",
           href: "#admin-product-health",
           priority: 35,
@@ -337,6 +347,7 @@ export function deriveCommandCenterDecisionOverview({
     openIncidents,
     securityFindings,
     pendingReviews,
+    pendingReviewsHref,
     systemTone,
     systemValue,
     freshness,
