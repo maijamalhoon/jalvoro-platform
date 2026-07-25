@@ -4,6 +4,7 @@ import AdminCommandCenterShell from "@/components/admin/AdminCommandCenterShell"
 
 import "./command-center-world.css";
 import "./command-center-launch.css";
+import "./command-center-launch-mobile.css";
 import "./organization-operations.css";
 import "./organization-operations-detail.css";
 
