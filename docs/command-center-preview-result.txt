@@ -1,2 +1,0 @@
-status=missing_vercel_automation_token
-source_head=b5a6ba717816eab336b0fee39070090627686242
