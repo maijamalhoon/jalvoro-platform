@@ -2,7 +2,8 @@
 // This function executes under the Supabase Deno runtime, where deno.json and
 // the Edge Runtime declaration are authoritative. These minimal declarations
 // let the root project type-check the same source without adding a Node runtime
-// dependency or widening the function's production privileges.
+// dependency or widening the function's production privileges. Runtime module
+// resolution remains defined exclusively by the function-local deno.json.
 
 declare const Deno: {
   readonly env: {
@@ -13,10 +14,10 @@ declare const Deno: {
 
 declare module "postgres" {
   interface PostgresOptions {
-    prepare?: boolean;
-    max?: number;
-    connect_timeout?: number;
-    idle_timeout?: number;
+    readonly prepare?: boolean;
+    readonly max?: number;
+    readonly connect_timeout?: number;
+    readonly idle_timeout?: number;
   }
 
   interface Sql {
@@ -25,7 +26,7 @@ declare module "postgres" {
       ...values: readonly unknown[]
     ): Promise<T>;
 
-    end(options?: { timeout?: number }): Promise<void>;
+    end(options?: Readonly<{ timeout?: number }>): Promise<void>;
   }
 
   export default function postgres(
