@@ -1,0 +1,143 @@
+# Proves the first idempotent Business Core write against the isolated staging project and restores the original profile.
+name: .NET Staging Organization Profile Write Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type STAGING_ORGANIZATION_PROFILE_WRITE_RESTORE to confirm the isolated reversible write proof.
+        required: true
+        type: string
+  # Temporary exact-branch trigger used once to prove the OIDC-backed write path.
+  push:
+    branches:
+      - agent/idempotent-organization-profile-command
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: dotnet-staging-organization-profile-write-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Verify idempotent organization profile write and restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    env:
+      CI: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      JALVORO_SMOKE_MODE: organization-profile-write
+      JALVORO_SMOKE_ENVIRONMENT: staging
+      JALVORO_SMOKE_CONFIRMATION: STAGING_ORGANIZATION_PROFILE_WRITE_RESTORE
+      JALVORO_SUPABASE_STAGING_URL: https://zqhdwjivyfzeoqvahjme.supabase.co
+      JALVORO_SUPABASE_STAGING_TIMEOUT_SECONDS: "5"
+    steps:
+      - name: Enforce explicit staging write-and-restore scope
+        shell: bash
+        env:
+          DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$DISPATCH_CONFIRMATION" != "STAGING_ORGANIZATION_PROFILE_WRITE_RESTORE" ]; then
+              echo "The staging write smoke requires the exact restore confirmation." >&2
+              exit 1
+            fi
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            if [ "$GITHUB_REF" != "refs/heads/agent/idempotent-organization-profile-command" ]; then
+              echo "The temporary proof trigger is restricted to the exact command branch." >&2
+              exit 1
+            fi
+          else
+            echo "The staging write smoke rejected an unsupported event." >&2
+            exit 1
+          fi
+
+      - name: Acquire GitHub OIDC-backed staging owner session
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          oidc_response_file="$(mktemp)"
+          broker_response_file="$(mktemp)"
+          trap 'rm -f "$oidc_response_file" "$broker_response_file"' EXIT
+
+          oidc_status="$(curl \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --output "$oidc_response_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=jalvoro-staging-profile-write-smoke")"
+
+          if [ "$oidc_status" != "200" ]; then
+            echo "GitHub could not issue the protected staging write OIDC token." >&2
+            exit 1
+          fi
+
+          github_oidc_token="$(jq -er '.value | select(type == "string" and length > 0)' "$oidc_response_file")"
+          echo "::add-mask::$github_oidc_token"
+
+          broker_status="$(curl \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --output "$broker_response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer $github_oidc_token" \
+            --header "content-type: application/json" \
+            --data '{}' \
+            "$JALVORO_SUPABASE_STAGING_URL/functions/v1/jalvoro-github-staging-profile-write-session")"
+
+          if [ "$broker_status" != "200" ]; then
+            broker_code="$(jq -r '.code // "unknown"' "$broker_response_file" 2>/dev/null || printf 'unknown')"
+            echo "The staging profile-write session broker rejected the request: $broker_code" >&2
+            exit 1
+          fi
+
+          access_token="$(jq -er '.access_token | select(type == "string" and length > 0)' "$broker_response_file")"
+          publishable_key="$(jq -er '.publishable_key | select(type == "string" and startswith("sb_publishable_"))' "$broker_response_file")"
+          user_id="$(jq -er '.user_id | select(type == "string" and length > 0)' "$broker_response_file")"
+          tenant_id="$(jq -er '.tenant_id | select(type == "string" and length > 0)' "$broker_response_file")"
+
+          echo "::add-mask::$access_token"
+          echo "::add-mask::$user_id"
+          echo "::add-mask::$tenant_id"
+
+          {
+            printf 'JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY=%s\n' "$publishable_key"
+            printf 'JALVORO_SUPABASE_STAGING_TEST_JWT=%s\n' "$access_token"
+            printf 'JALVORO_SUPABASE_STAGING_TEST_USER_ID=%s\n' "$user_id"
+            printf 'JALVORO_SUPABASE_STAGING_TENANT_ID=%s\n' "$tenant_id"
+          } >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore staging smoke harness
+        run: dotnet restore backend/dotnet/tools/Jalvoro.BusinessCore.StagingSmoke/Jalvoro.BusinessCore.StagingSmoke.csproj
+
+      - name: Build staging smoke harness
+        run: dotnet build backend/dotnet/tools/Jalvoro.BusinessCore.StagingSmoke/Jalvoro.BusinessCore.StagingSmoke.csproj --configuration Release --no-restore
+
+      - name: Run reversible organization profile write smoke
+        run: dotnet run --project backend/dotnet/tools/Jalvoro.BusinessCore.StagingSmoke/Jalvoro.BusinessCore.StagingSmoke.csproj --configuration Release --no-build
