@@ -157,23 +157,20 @@ export default async function ExperienceOnboardingBridge({
   }
 
   const profileCompleted = Boolean(profileResult.data?.onboarding_completed);
+  const personalCompletionRequired =
+    profileCompleted && experience.workspaceKind === "personal";
 
-  if (profileCompleted && experience.workspaceKind === "personal") {
-    const progressResult = await supabase.rpc("update_workspace_onboarding_progress", {
-      p_session_id: sessionId,
-      p_current_step: 3,
-      p_completed_steps: [
-        "identity_verified",
-        "profile_ready",
-        "personal_workspace_ready",
-      ],
-      p_draft_data: {},
-      p_status: "completed",
-    });
+  if (personalCompletionRequired) {
+    const completionResult = await supabase.rpc(
+      "complete_personal_workspace_onboarding",
+      {
+        p_session_id: sessionId,
+      },
+    );
 
-    if (progressResult.error) {
+    if (completionResult.error) {
       console.error("Completed Personal onboarding could not be finalized", {
-        code: progressResult.error.code,
+        code: completionResult.error.code,
       });
 
       return (
@@ -185,30 +182,30 @@ export default async function ExperienceOnboardingBridge({
         />
       );
     }
-  }
-
-  const selectedWorkspace = experience.workspaceKind;
-  const preferenceWrite = await supabase.from("business_workspace_preferences").upsert({
-    user_id: user.id,
-    default_workspace: selectedWorkspace,
-    active_business_id: preferenceResult.data?.active_business_id ?? null,
-    onboarding_choice: selectedWorkspace,
-    updated_at: new Date().toISOString(),
-  });
-
-  if (preferenceWrite.error) {
-    console.error("Workspace onboarding preference write failed", {
-      code: preferenceWrite.error.code,
-      experience: experience.slug,
+  } else {
+    const selectedWorkspace = experience.workspaceKind;
+    const preferenceWrite = await supabase.from("business_workspace_preferences").upsert({
+      user_id: user.id,
+      default_workspace: selectedWorkspace,
+      active_business_id: preferenceResult.data?.active_business_id ?? null,
+      onboarding_choice: selectedWorkspace,
+      updated_at: new Date().toISOString(),
     });
 
-    return (
-      <PreparationError
-        experienceName={experience.productName}
-        retryHref={retryHref}
-        fallbackHref="/start"
-      />
-    );
+    if (preferenceWrite.error) {
+      console.error("Workspace onboarding preference write failed", {
+        code: preferenceWrite.error.code,
+        experience: experience.slug,
+      });
+
+      return (
+        <PreparationError
+          experienceName={experience.productName}
+          retryHref={retryHref}
+          fallbackHref="/start"
+        />
+      );
+    }
   }
 
   const metadataWrite = await supabase.auth.updateUser({
