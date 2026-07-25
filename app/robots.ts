@@ -8,6 +8,9 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: [
         "/api/",
+        "/admin/",
+        "/onboarding/",
+        "/business/",
         "/dashboard/",
         "/accounts/",
         "/transactions/",
