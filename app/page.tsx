@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import LandingChartMotion from "@/components/landing/LandingChartMotion";
+import {
+  LaunchAccessRail,
+  LaunchLegalRail,
+} from "@/components/landing/LaunchAccessRail";
 import LandingScrollReveal from "@/components/landing/LandingScrollReveal";
 import MathSymbolField from "@/components/landing/MathSymbolField";
 import PremiumLandingPage from "@/components/landing/PremiumLandingPage";
@@ -22,16 +26,14 @@ import "./landing-feature-cards.css";
 import "./landing-container-alignment.css";
 import "./landing-hero-responsive-fix.css";
 import "./landing-surface-unify.css";
+import "./landing-launch-trust.css";
 
 const title = `${APP_NAME} — ${APP_TAGLINE}`;
 
-// Public landing entry: all layout, preview, section, responsive, motion, and type layers load here.
 export const metadata: Metadata = {
   title,
   description: APP_DESCRIPTION,
-  alternates: {
-    canonical: "/",
-  },
+  alternates: { canonical: "/" },
   openGraph: {
     title,
     description: APP_DESCRIPTION,
@@ -50,7 +52,9 @@ export default function HomePage() {
   return (
     <>
       <LandingScrollReveal />
+      <LaunchAccessRail />
       <PremiumLandingPage />
+      <LaunchLegalRail />
       <LandingChartMotion />
       <MathSymbolField />
     </>
