@@ -32,7 +32,8 @@ jobs:
       JALVORO_SMOKE_CONFIRMATION: STAGING_ONLY_READ_ONLY
       JALVORO_SUPABASE_STAGING_URL: https://zqhdwjivyfzeoqvahjme.supabase.co
       JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY: ${{ secrets.JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY }}
-      JALVORO_SUPABASE_STAGING_TEST_JWT: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_JWT }}
+      JALVORO_SUPABASE_STAGING_TEST_EMAIL: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_EMAIL }}
+      JALVORO_SUPABASE_STAGING_TEST_PASSWORD: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_PASSWORD }}
       JALVORO_SUPABASE_STAGING_TEST_USER_ID: ${{ vars.JALVORO_SUPABASE_STAGING_TEST_USER_ID }}
       JALVORO_SUPABASE_STAGING_TENANT_ID: ${{ vars.JALVORO_SUPABASE_STAGING_TENANT_ID }}
       JALVORO_SUPABASE_STAGING_TIMEOUT_SECONDS: "5"
@@ -44,6 +45,56 @@ jobs:
             echo "The staging smoke run requires the exact STAGING_ONLY_READ_ONLY confirmation." >&2
             exit 1
           fi
+
+      - name: Acquire short-lived staging user session
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY" ] || \
+             [ -z "$JALVORO_SUPABASE_STAGING_TEST_EMAIL" ] || \
+             [ -z "$JALVORO_SUPABASE_STAGING_TEST_PASSWORD" ] || \
+             [ -z "$JALVORO_SUPABASE_STAGING_TEST_USER_ID" ]; then
+            echo "The protected staging identity configuration is incomplete." >&2
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          payload="$(jq -cn \
+            --arg email "$JALVORO_SUPABASE_STAGING_TEST_EMAIL" \
+            --arg password "$JALVORO_SUPABASE_STAGING_TEST_PASSWORD" \
+            '{email:$email,password:$password}')"
+
+          http_status="$(printf '%s' "$payload" | curl \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "apikey: $JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY" \
+            --header "content-type: application/json" \
+            --data-binary @- \
+            "$JALVORO_SUPABASE_STAGING_URL/auth/v1/token?grant_type=password")"
+
+          if [ "$http_status" != "200" ]; then
+            echo "The dedicated staging identity could not establish a session." >&2
+            exit 1
+          fi
+
+          access_token="$(jq -er '.access_token | select(type == "string" and length > 0)' "$response_file")"
+          returned_user_id="$(jq -er '.user.id | select(type == "string" and length > 0)' "$response_file")"
+
+          if [ "$returned_user_id" != "$JALVORO_SUPABASE_STAGING_TEST_USER_ID" ]; then
+            echo "The staging session subject does not match the approved test identity." >&2
+            exit 1
+          fi
+
+          echo "::add-mask::$access_token"
+          printf 'JALVORO_SUPABASE_STAGING_TEST_JWT=%s\n' "$access_token" >> "$GITHUB_ENV"
 
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
