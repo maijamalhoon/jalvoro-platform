@@ -36,39 +36,34 @@ jobs:
           clean: false
 
       - name: Apply and commit native website parity source
+        shell: cmd
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         working-directory: .
         run: |
-          $ErrorActionPreference = "Stop"
-          $fixerLog = "$env:GITHUB_WORKSPACE\native\native-fixer.log"
-          $node = "C:\Program Files\nodejs\node.exe"
-          if (-not (Test-Path $node)) { throw "Node.js was not found at $node" }
+          set "FIXER_LOG=%GITHUB_WORKSPACE%\native\native-fixer.log"
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-parity-fixes.mjs" > "%FIXER_LOG%" 2>&1
+          set "FIXER_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%FIXER_EXIT%"=="0" exit /b %FIXER_EXIT%
 
-          & $node "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-parity-fixes.mjs" 2>&1 |
-            Tee-Object -FilePath $fixerLog
-          $fixerExit = $LASTEXITCODE
-          if ($fixerExit -ne 0) { exit $fixerExit }
-
-          git diff --check 2>&1 | Tee-Object -FilePath $fixerLog -Append
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-          $sourcePaths = @(
-            "native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt",
-            "native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt",
-            "native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt"
+          git diff --check >> "%FIXER_LOG%" 2>&1
+          if errorlevel 1 (
+            type "%FIXER_LOG%"
+            exit /b 1
           )
-          $changes = git status --porcelain -- $sourcePaths
-          if ($changes) {
+
+          set "CHANGES="
+          for /f "delims=" %%A in ('git status --porcelain -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt') do set "CHANGES=1"
+          if defined CHANGES (
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -- $sourcePaths
+            git add -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
             git commit -m "Polish native website parity shell"
-            git push origin "HEAD:$env:PR_HEAD_REF"
-          } else {
-            "Native website parity source is already committed." |
-              Tee-Object -FilePath $fixerLog -Append
-          }
+            git push origin "HEAD:%PR_HEAD_REF%"
+          ) else (
+            echo Native website parity source is already committed.>> "%FIXER_LOG%"
+          )
 
       - name: Set up Java
         uses: actions/setup-java@v4
