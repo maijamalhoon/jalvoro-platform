@@ -15,6 +15,7 @@ on:
       - "package-lock.json"
       - ".github/workflows/finance-parity-pr-ci.yml"
       - ".github/scripts/setup-android-sdk.ps1"
+      - ".github/scripts/setup-android-sdk.cmd"
 
 permissions:
   contents: read
@@ -57,7 +58,8 @@ jobs:
           java-version: "17"
 
       - name: Set up Android SDK 36
-        run: '& "$env:GITHUB_WORKSPACE\.github\scripts\setup-android-sdk.ps1"'
+        shell: cmd
+        run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-android-sdk.cmd"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
