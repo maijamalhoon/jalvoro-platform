@@ -38,11 +38,25 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
+      - name: Prepare Node.js 24
+        run: |
+          $ErrorActionPreference = "Stop"
+          $node = Get-Command node -ErrorAction SilentlyContinue
+          $npm = Get-Command npm -ErrorAction SilentlyContinue
+          if (-not $node -or -not $npm) {
+            $release = Invoke-RestMethod "https://nodejs.org/dist/index.json" |
+              Where-Object { $_.version -like "v24.*" -and $_.files -contains "win-x64-msi" } |
+              Select-Object -First 1
+            if (-not $release) { throw "No official Node.js 24 Windows x64 MSI release was found." }
+            $msi = Join-Path $env:RUNNER_TEMP "node-$($release.version)-x64.msi"
+            Invoke-WebRequest "https://nodejs.org/dist/$($release.version)/node-$($release.version)-x64.msi" -OutFile $msi
+            $process = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart" -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "Node.js installer failed with exit code $($process.ExitCode)." }
+            "C:\Program Files\nodejs" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            $env:Path = "C:\Program Files\nodejs;$env:Path"
+          }
+          node --version
+          npm --version
 
       - name: Install website dependencies
         run: npm ci --silent
