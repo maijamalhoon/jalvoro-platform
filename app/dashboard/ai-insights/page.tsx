@@ -3,6 +3,7 @@ import AIInsightsGlobalExperience from "@/components/ai-insights/AIInsightsGloba
 import AIInsightsOnboarding from "@/components/ai-insights/AIInsightsOnboarding";
 
 import "./ai-insights-experience.css";
+import "./ai-insights-premium-polish.css";
 
 export const dynamic = "force-dynamic";
 
