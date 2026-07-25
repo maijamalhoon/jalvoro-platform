@@ -8,10 +8,34 @@ import {
   getBackupRecordCount,
   parseFinanceImportResult,
   validateFinanceBackup,
-  withFinanceBackupManifest,
 } from "./data-backup";
 
+function buildManifest(data: FinanceBackup["data"]): FinanceBackup["manifest"] {
+  const recordCounts = Object.fromEntries(
+    FINANCE_BACKUP_DATA_KEYS.map((key) => [key, data[key].length]),
+  ) as FinanceBackup["manifest"]["recordCounts"];
+
+  return {
+    recordCounts,
+    totalRecords: Object.values(recordCounts).reduce(
+      (total, count) => total + count,
+      0,
+    ),
+  };
+}
+
+function withTestManifest(backup: FinanceBackup): FinanceBackup {
+  return {
+    ...backup,
+    manifest: buildManifest(backup.data),
+  };
+}
+
 function makeBackup(): FinanceBackup {
+  const data = Object.fromEntries(
+    FINANCE_BACKUP_DATA_KEYS.map((key) => [key, [] as unknown[]]),
+  ) as FinanceBackup["data"];
+
   return {
     format: FINANCE_BACKUP_FORMAT,
     version: FINANCE_BACKUP_VERSION,
@@ -21,9 +45,14 @@ function makeBackup(): FinanceBackup {
       ownerId: "22222222-2222-2222-2222-222222222222",
       app: "jamals-finance",
     },
-    data: Object.fromEntries(
-      FINANCE_BACKUP_DATA_KEYS.map((key) => [key, [] as unknown[]]),
-    ) as FinanceBackup["data"],
+    data,
+    manifest: buildManifest(data),
+    seal: {
+      issuer: "JALVORO",
+      algorithm: "HMAC-SHA256",
+      keyVersion: 1,
+      signature: "a".repeat(64),
+    },
   };
 }
 
@@ -47,33 +76,26 @@ describe("finance backup validation", () => {
     backup.data.accounts.push({ id: "one" });
     backup.data.transactions.push({ id: "two" }, { id: "three" });
 
-    const validation = validateFinanceBackup(backup);
+    const validation = validateFinanceBackup(withTestManifest(backup));
     expect(validation.ok).toBe(true);
     if (validation.ok) expect(getBackupRecordCount(validation.value)).toBe(3);
   });
 
-  it("adds and validates a complete-data manifest", () => {
-    const validation = validateFinanceBackup(makeBackup());
-    expect(validation.ok).toBe(true);
-    if (!validation.ok) return;
+  it("validates a complete-data manifest", () => {
+    const backup = makeBackup();
+    backup.data.accounts.push({ id: "one" });
+    backup.data.goals.push({ id: "two" });
 
-    validation.value.data.accounts.push({ id: "one" });
-    validation.value.data.goals.push({ id: "two" });
-
-    const backup = withFinanceBackupManifest(validation.value);
-    expect(backup.manifest).toMatchObject({
+    const sealedBackup = withTestManifest(backup);
+    expect(sealedBackup.manifest).toMatchObject({
       totalRecords: 2,
       recordCounts: { accounts: 1, goals: 1 },
     });
-    expect(validateFinanceBackup(backup).ok).toBe(true);
+    expect(validateFinanceBackup(sealedBackup).ok).toBe(true);
   });
 
   it("rejects a backup whose manifest no longer matches its data", () => {
-    const validation = validateFinanceBackup(makeBackup());
-    expect(validation.ok).toBe(true);
-    if (!validation.ok) return;
-
-    const backup = withFinanceBackupManifest(validation.value);
+    const backup = withTestManifest(makeBackup());
     backup.data.transactions.push({ id: "added-after-export" });
 
     expect(validateFinanceBackup(backup)).toEqual({
@@ -92,12 +114,14 @@ describe("finance backup validation", () => {
         added: { accounts: 1, transactions: "2" },
         skipped: { accounts: 0 },
         restored: { notificationPreferences: "1" },
+        sealed: true,
       }),
     ).toMatchObject({
       totalAdded: 3,
       added: { accounts: 1, transactions: 2 },
       skipped: { accounts: 0 },
       restored: { notificationPreferences: 1 },
+      sealed: true,
     });
   });
 });
