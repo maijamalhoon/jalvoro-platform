@@ -33,7 +33,7 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
 
     steps:
       - name: Check out repository
