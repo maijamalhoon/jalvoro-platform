@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { KeyRound, LockKeyhole, ShieldCheck, Smartphone } from "lucide-react";
 
 import styles from "@/components/control-plane/control-plane-invitation.module.css";
+import { checkPasswordProtection } from "@/lib/auth/password-protection";
 import { createControlPlaneBrowserClient } from "@/lib/control-plane/client";
 
 const TOKEN_KEY = "jalvoro-control-plane-invitation";
@@ -177,6 +178,13 @@ export default function ControlPlaneInvitationAcceptance() {
 
     setBusy(true);
     setError("");
+    const passwordProtection = await checkPasswordProtection(permanentPassword);
+    if (!passwordProtection.ok) {
+      setError(passwordProtection.error);
+      setBusy(false);
+      return;
+    }
+
     const userResult = await supabase.auth.getUser();
     const invitedEmail = userResult.data.user?.email ?? email;
     if (userResult.error || !invitedEmail) {
