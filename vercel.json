@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/vercel-command-center-validation.mjs",
   "git": {
     "deploymentEnabled": {
       "*": false,
