@@ -2,6 +2,8 @@ internal static class OrganizationProfileMigrationContracts
 {
   private const string MigrationRelativePath =
     "supabase/migrations/20260725060000_create_idempotent_business_profile_command.sql";
+  private const string ReplayAuthorizationHardeningMigrationRelativePath =
+    "supabase/migrations/20260725072000_harden_business_profile_replay_authorization.sql";
 
   public static void Run(Action<bool, string> check)
   {
@@ -57,6 +59,37 @@ internal static class OrganizationProfileMigrationContracts
       migration.Contains("using (false)", StringComparison.Ordinal) &&
       migration.Contains("with check (false)", StringComparison.Ordinal),
       "Private idempotency and audit records must remain denied to exposed Data API roles.");
+
+    var hardeningMigrationPath = FindRepositoryFile(ReplayAuthorizationHardeningMigrationRelativePath);
+    check(
+      hardeningMigrationPath is not null,
+      "The direct-RPC replay authorization hardening migration must remain present.");
+    if (hardeningMigrationPath is null)
+    {
+      return;
+    }
+
+    var hardeningMigration = File.ReadAllText(hardeningMigrationPath);
+    var businessLockIndex = hardeningMigration.IndexOf("for update;", StringComparison.Ordinal);
+    var membershipLockIndex = hardeningMigration.IndexOf("for key share;", StringComparison.Ordinal);
+    var replayStoreIndex = hardeningMigration.IndexOf(
+      "delete from private.business_command_idempotency as stored",
+      StringComparison.Ordinal);
+
+    check(
+      businessLockIndex >= 0 &&
+      membershipLockIndex > businessLockIndex &&
+      replayStoreIndex > membershipLockIndex,
+      "The SECURITY DEFINER RPC must lock and authorize the exact active owner before reading or deleting replay state.");
+    check(
+      hardeningMigration.Contains("'actorUserId', current_user_id", StringComparison.Ordinal) &&
+      hardeningMigration.Contains("stored.actor_user_id", StringComparison.Ordinal) &&
+      hardeningMigration.Contains("existing_actor_user_id <> current_user_id", StringComparison.Ordinal),
+      "Idempotency fingerprints and stored replay responses must remain bound to the authenticated actor.");
+    check(
+      hardeningMigration.Contains("current_business.owner_user_id <> current_user_id", StringComparison.Ordinal) &&
+      hardeningMigration.Contains("authorized_member_user_id <> current_user_id", StringComparison.Ordinal),
+      "Direct RPC execution must fail closed unless both ownership and active owner membership are current.");
   }
 
   private static string? FindRepositoryFile(string relativePath)
