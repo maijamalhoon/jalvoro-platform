@@ -48,6 +48,23 @@ describe("site-wide form UI audit authority", () => {
     expect(dialogAuthority).toContain("data-jf-global-centered-dialog");
   });
 
+  it("locks the full-height baseline while the mobile keyboard animates", () => {
+    expect(dialogAuthority).toContain(
+      "let stableViewportMetrics: ViewportMetrics | null = null",
+    );
+    expect(dialogAuthority).toContain(
+      "if (!hasFocusedEntry) stableViewportMetrics = getViewportMetrics()",
+    );
+    expect(dialogAuthority).toContain("if (activeEntry) return");
+    expect(dialogAuthority).toContain(
+      "Math.min(baseline.screenTop, metrics.height * 0.08)",
+    );
+    expect(dialogAuthority).toContain(
+      `html body [\${KEYBOARD_ATTRIBUTE}="true"] .finance-modal-body`,
+    );
+    expect(dialogAuthority).toContain("overflow-y: auto !important");
+  });
+
   it("uses one normal modal width and content-driven height", () => {
     expect(auditAuthority).toContain("--jf-global-form-modal-width: 36rem");
     expect(auditAuthority).toContain("--jf-global-form-wide-modal-width: 46rem");
