@@ -23,10 +23,10 @@ import type {
 type DelegatedRole = Exclude<ControlPlaneRole, "owner">;
 type OneTimeAccess = {
   invitationLink: string;
-  temporaryPassword: string | null;
   maskedEmail: string;
   role: DelegatedRole;
   expiresAt: string | null;
+  accountCreated: boolean;
 };
 
 type FunctionResult = {
@@ -37,7 +37,7 @@ type FunctionResult = {
   };
   invitationToken?: unknown;
   accountCreated?: unknown;
-  temporaryPassword?: unknown;
+  authTokenHash?: unknown;
 };
 
 const roles: DelegatedRole[] = ["admin", "analyst", "support"];
@@ -138,21 +138,30 @@ export default function ControlPlaneOwnerManagement({
         typeof data?.invitation?.expiresAt === "string"
           ? data.invitation.expiresAt
           : null;
-      const temporaryPassword =
-        typeof data?.temporaryPassword === "string" ? data.temporaryPassword : null;
+      const authTokenHash =
+        typeof data?.authTokenHash === "string" ? data.authTokenHash : "";
+      const accountCreated = data?.accountCreated === true;
 
-      if (result.error || !token || !roles.includes(role as DelegatedRole)) {
+      if (
+        result.error ||
+        !token ||
+        !roles.includes(role as DelegatedRole) ||
+        (accountCreated && !authTokenHash)
+      ) {
         setError(readableFailure());
         return;
       }
 
-      const invitationLink = `${window.location.origin}/control-invite#invite=${encodeURIComponent(token)}&new=${data?.accountCreated === true ? "1" : "0"}`;
+      const authFragment = accountCreated
+        ? `&auth=${encodeURIComponent(authTokenHash)}`
+        : "";
+      const invitationLink = `${window.location.origin}/control-invite#invite=${encodeURIComponent(token)}${authFragment}`;
       setOneTimeAccess({
         invitationLink,
-        temporaryPassword,
         maskedEmail,
         role: role as DelegatedRole,
         expiresAt,
+        accountCreated,
       });
       setInviteEmail("");
       refresh("Operator account and expiring invitation created. Share the one-time values securely.");
@@ -175,7 +184,9 @@ export default function ControlPlaneOwnerManagement({
         return;
       }
 
-      const expiresAt = grantExpiry ? new Date(grantExpiry).toISOString() : null;
+      const expiresAt = grantExpiry
+        ? new Date(grantExpiry).toISOString()
+        : null;
       const { error: rpcError } = await supabase.rpc(
         "grant_control_plane_permission_by_reference",
         {
@@ -306,16 +317,11 @@ export default function ControlPlaneOwnerManagement({
               copied={copied === "link"}
               onCopy={() => copyValue("link", oneTimeAccess.invitationLink)}
             />
-            {oneTimeAccess.temporaryPassword ? (
-              <SecretRow
-                label="Temporary password"
-                value={oneTimeAccess.temporaryPassword}
-                copied={copied === "password"}
-                onCopy={() => copyValue("password", oneTimeAccess.temporaryPassword!)}
-              />
-            ) : (
-              <p className={styles.inlineNote}>This email already has a Control Plane identity. Share only the invitation link.</p>
-            )}
+            <p className={styles.inlineNote}>
+              {oneTimeAccess.accountCreated
+                ? "This link contains one-time Supabase identity verification. The operator will create a permanent password; no temporary password exists."
+                : "This email already has a Control Plane identity. The operator will use the existing password."}
+            </p>
             <button className={styles.textButton} type="button" onClick={() => setOneTimeAccess(null)}>
               Clear one-time values
             </button>
