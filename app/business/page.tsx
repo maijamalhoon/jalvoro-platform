@@ -58,7 +58,7 @@ export default async function BusinessWorkspacesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login?next=/business");
+  if (!user) redirect("/login?intent=business&next=/business");
 
   const membershipResult = await supabase
     .from("business_members")
@@ -90,16 +90,16 @@ export default async function BusinessWorkspacesPage() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/dashboard"
+            href="/"
             className="finance-focus inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-button)] px-2 text-sm font-bold text-text-secondary transition-colors hover:text-text-primary"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
-            Personal finance
+            JALVORO home
           </Link>
 
           <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3 py-1.5 text-xs font-black text-success">
             <ShieldCheck aria-hidden="true" className="size-4" />
-            Isolated business workspace
+            Tenant-isolated business access
           </span>
         </div>
 
@@ -118,15 +118,13 @@ export default async function BusinessWorkspacesPage() {
             </div>
           </div>
           <p className="mt-4 text-sm leading-7 text-text-secondary sm:text-base">
-            Personal finance stays unchanged. Create a fast Simple Shop or a complete Advanced
-            Company, each with independent data, members, currency, stock, and accounting.
+            Open an existing organization or create a new business workspace with independent data, members, currency, stock, accounting, roles, and operational controls.
           </p>
         </header>
 
         {membershipResult.error ? (
           <section className="mt-8 rounded-[var(--radius-card)] bg-danger-soft px-4 py-4 text-sm text-danger sm:px-5">
-            Business workspaces could not be loaded right now. Your personal finance data is
-            unaffected.
+            Business workspaces could not be loaded right now. No business data was changed.
           </section>
         ) : null}
 
@@ -135,10 +133,10 @@ export default async function BusinessWorkspacesPage() {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-base font-black text-text-primary sm:text-lg">
-                  Your businesses
+                  Your organizations
                 </h2>
                 <p className="mt-1 text-sm text-text-secondary">
-                  Open the shop counter or full company ERP.
+                  Open the relevant commerce or advanced business workspace.
                 </p>
               </div>
               <span className="text-sm font-black tabular-nums text-text-secondary">
@@ -184,7 +182,7 @@ export default async function BusinessWorkspacesPage() {
                         {business.name}
                       </h3>
                       <p className="mt-1 text-sm text-text-secondary">
-                        {simpleShop ? "Simple Shop" : "Advanced Company"} · {formatLabel(membership.role)}
+                        {simpleShop ? "Fast commerce" : "Advanced business"} · {formatLabel(membership.role)}
                       </p>
 
                       <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
@@ -215,7 +213,7 @@ export default async function BusinessWorkspacesPage() {
                         href={`/business/${business.slug}/team`}
                         className="finance-focus mt-4 inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-button)] bg-surface-secondary px-3 text-sm font-black text-text-secondary transition-colors hover:bg-primary-soft hover:text-primary"
                       >
-                        <UsersRound className="size-4" aria-hidden="true" /> Team & permissions
+                        <UsersRound className="size-4" aria-hidden="true" /> Team and permissions
                       </Link>
                     ) : null}
                   </article>
@@ -225,8 +223,7 @@ export default async function BusinessWorkspacesPage() {
           </section>
         ) : (
           <section className="mt-8 rounded-[var(--radius-card)] bg-surface-secondary px-5 py-5 text-sm text-text-secondary sm:px-6">
-            No business workspace exists yet. Create the first shop or company below without
-            changing your personal tracker.
+            No business workspace exists yet. Confirm the discovery details below to create the first organization.
           </section>
         )}
 

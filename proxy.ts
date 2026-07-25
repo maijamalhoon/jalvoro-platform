@@ -5,6 +5,32 @@ const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
   "/api/security/password-check",
 ]);
 
+function getBusinessDiscoveryRedirect(request: NextRequest) {
+  if (request.nextUrl.pathname !== "/login") return null;
+  if (request.nextUrl.searchParams.get("mode") !== "signup") return null;
+  if (request.nextUrl.searchParams.get("intent") === "business") return null;
+
+  const destination = request.nextUrl.clone();
+  destination.pathname = "/login/business";
+  destination.search = "";
+  return NextResponse.redirect(destination);
+}
+
+function getBusinessOnboardingRedirect(request: NextRequest) {
+  if (request.nextUrl.pathname !== "/onboarding") return null;
+
+  const next = request.nextUrl.searchParams.get("next");
+  if (!next || !(next === "/business" || next.startsWith("/business?") || next.startsWith("/business/"))) {
+    return null;
+  }
+
+  const destination = request.nextUrl.clone();
+  destination.pathname = "/onboarding/business";
+  destination.search = "";
+  destination.searchParams.set("next", next);
+  return NextResponse.redirect(destination);
+}
+
 function getAIRewritePath(request: NextRequest) {
   if (request.nextUrl.pathname !== "/api/ai-insights") return null;
   if (request.method === "POST") return "/api/ai-insights/advanced";
@@ -13,6 +39,12 @@ function getAIRewritePath(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
+  const businessDiscoveryRedirect = getBusinessDiscoveryRedirect(request);
+  if (businessDiscoveryRedirect) return businessDiscoveryRedirect;
+
+  const businessOnboardingRedirect = getBusinessOnboardingRedirect(request);
+  if (businessOnboardingRedirect) return businessOnboardingRedirect;
+
   if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(request.nextUrl.pathname)) {
     return NextResponse.next();
   }

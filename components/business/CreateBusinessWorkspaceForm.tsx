@@ -10,35 +10,101 @@ import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 
 const BUSINESS_TYPES = [
-  { value: "retail", label: "Retail" },
-  { value: "wholesale", label: "Wholesale" },
+  { value: "retail", label: "Retail and shops" },
+  { value: "wholesale", label: "Wholesale and distribution" },
   { value: "services", label: "Services" },
   { value: "manufacturing", label: "Manufacturing" },
-  { value: "restaurant", label: "Restaurant / Food" },
+  { value: "restaurant", label: "Restaurant and food" },
   { value: "ecommerce", label: "E-commerce" },
   { value: "construction", label: "Construction" },
   { value: "professional_services", label: "Professional services" },
   { value: "other", label: "Other" },
 ] as const;
 
-const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as const;
+const BASE_CURRENCIES = [
+  "PKR",
+  "AED",
+  "SAR",
+  "USD",
+  "CAD",
+  "AUD",
+  "INR",
+  "EUR",
+  "GBP",
+  "JPY",
+  "CNY",
+] as const;
+
+const STRUCTURE_LABELS: Record<string, string> = {
+  solo: "One-person business",
+  small_business: "Small business",
+  growing_business: "Growing business",
+  multi_branch: "Multi-branch business",
+  franchise: "Dealership or franchise",
+  enterprise: "Enterprise",
+};
+
+const MODULE_LABELS: Record<string, string> = {
+  accounting: "Accounting",
+  invoicing: "Invoicing",
+  inventory: "Inventory",
+  pos: "POS",
+  restaurant: "Restaurant operations",
+  crm: "CRM",
+  team: "Teams and permissions",
+  payroll: "Payroll readiness",
+  branches: "Branches",
+  warehouse: "Warehouses",
+};
 
 type WorkspaceMode = "simple_shop" | "advanced_company";
+
+function isBusinessType(value: string): value is (typeof BUSINESS_TYPES)[number]["value"] {
+  return BUSINESS_TYPES.some((item) => item.value === value);
+}
+
+function isBaseCurrency(value: string): value is (typeof BASE_CURRENCIES)[number] {
+  return BASE_CURRENCIES.includes(value as (typeof BASE_CURRENCIES)[number]);
+}
+
+function isWorkspaceMode(value: string): value is WorkspaceMode {
+  return value === "simple_shop" || value === "advanced_company";
+}
 
 export default function CreateBusinessWorkspaceForm() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [name, setName] = useState("");
-  const [businessType, setBusinessType] = useState("retail");
+  const [businessType, setBusinessType] = useState<(typeof BUSINESS_TYPES)[number]["value"]>("retail");
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple_shop");
   const [countryCode, setCountryCode] = useState("");
-  const [baseCurrency, setBaseCurrency] = useState("PKR");
+  const [baseCurrency, setBaseCurrency] = useState<(typeof BASE_CURRENCIES)[number]>("PKR");
   const [timezone, setTimezone] = useState("UTC");
+  const [requestedStructure, setRequestedStructure] = useState("");
+  const [requestedModules, setRequestedModules] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (detected) setTimezone(detected);
+    const params = new URLSearchParams(window.location.search);
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const requestedTimezone = params.get("timezone")?.trim();
+    const requestedType = params.get("business_type")?.trim() ?? "";
+    const requestedMode = params.get("workspace_mode")?.trim() ?? "";
+    const requestedCountry = params.get("country")?.trim().toUpperCase() ?? "";
+    const requestedCurrency = params.get("currency")?.trim().toUpperCase() ?? "";
+    const structure = params.get("structure")?.trim() ?? "";
+    const modules = (params.get("modules") ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => Boolean(MODULE_LABELS[item]));
+
+    setTimezone(requestedTimezone || detectedTimezone || "UTC");
+    if (isBusinessType(requestedType)) setBusinessType(requestedType);
+    if (isWorkspaceMode(requestedMode)) setWorkspaceMode(requestedMode);
+    if (/^[A-Z]{2}$/.test(requestedCountry)) setCountryCode(requestedCountry);
+    if (isBaseCurrency(requestedCurrency)) setBaseCurrency(requestedCurrency);
+    if (STRUCTURE_LABELS[structure]) setRequestedStructure(structure);
+    setRequestedModules(Array.from(new Set(modules)));
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -98,8 +164,8 @@ export default function CreateBusinessWorkspaceForm() {
       setName("");
       toast.success(
         workspaceMode === "simple_shop"
-          ? "Simple Shop created with stock, cash, and accounting ready."
-          : "Advanced Company created with its ERP foundation.",
+          ? "Fast commerce workspace created with stock, cash, and accounting ready."
+          : "Advanced business workspace created with its operational foundation.",
       );
       router.replace(
         business.workspace_mode === "simple_shop"
@@ -129,15 +195,29 @@ export default function CreateBusinessWorkspaceForm() {
             Create a business workspace
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Choose a fast shop workflow or the full company ERP. Both use isolated tenants,
-            verified accounting, inventory, currency, and roles.
+            Confirm the business foundation recommended by the discovery journey. Every workspace uses isolated tenants, verified accounting boundaries, currency, and roles.
           </p>
         </div>
       </div>
 
+      {requestedStructure || requestedModules.length > 0 ? (
+        <div className="mt-5 rounded-[var(--radius-card)] bg-primary-soft px-4 py-4 text-sm text-primary">
+          <strong className="block text-text-primary">Discovery setup retained</strong>
+          <p className="mt-1 leading-6">
+            {requestedStructure ? STRUCTURE_LABELS[requestedStructure] : "Business workspace"}
+            {requestedModules.length > 0
+              ? ` · Requested systems: ${requestedModules.map((item) => MODULE_LABELS[item]).join(", ")}`
+              : ""}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-text-secondary">
+            Requested systems are setup intent only. Final module access remains controlled by released capabilities, plan entitlements, organization role, and verified permissions.
+          </p>
+        </div>
+      ) : null}
+
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <fieldset className="space-y-3">
-          <legend className="text-sm font-bold text-text-primary">Workspace style</legend>
+          <legend className="text-sm font-bold text-text-primary">Workspace foundation</legend>
           <div className="grid gap-3 md:grid-cols-2">
             <button
               type="button"
@@ -151,10 +231,10 @@ export default function CreateBusinessWorkspaceForm() {
             >
               <span className="flex items-center gap-3">
                 <Store aria-hidden="true" className="size-5 shrink-0" />
-                <strong className="text-sm">Simple Shop</strong>
+                <strong className="text-sm">Fast commerce workspace</strong>
               </span>
               <span className="mt-2 block text-xs leading-5 opacity-80">
-                Quick sale, purchase, stock, expenses, balances, returns, daily cash, and profit.
+                Quick sales, purchases, stock, expenses, balances, returns, daily cash, and profit.
               </span>
             </button>
             <button
@@ -169,10 +249,10 @@ export default function CreateBusinessWorkspaceForm() {
             >
               <span className="flex items-center gap-3">
                 <Layers3 aria-hidden="true" className="size-5 shrink-0" />
-                <strong className="text-sm">Advanced Company</strong>
+                <strong className="text-sm">Advanced business workspace</strong>
               </span>
               <span className="mt-2 block text-xs leading-5 opacity-80">
-                Full accounting, contacts, sales, purchases, inventory, CRM, and reports modules.
+                Full accounting, contacts, sales, purchases, inventory, CRM, roles, and reporting foundations.
               </span>
             </button>
           </div>
@@ -184,7 +264,7 @@ export default function CreateBusinessWorkspaceForm() {
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={workspaceMode === "simple_shop" ? "Example: Jamal General Store" : "Example: Jamal Traders"}
+              placeholder={workspaceMode === "simple_shop" ? "Example: JALVORO General Store" : "Example: JALVORO Traders"}
               autoComplete="organization"
               maxLength={120}
               disabled={saving}
@@ -196,7 +276,10 @@ export default function CreateBusinessWorkspaceForm() {
             <span className="text-sm font-bold text-text-primary">Nature of business</span>
             <select
               value={businessType}
-              onChange={(event) => setBusinessType(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (isBusinessType(value)) setBusinessType(value);
+              }}
               className="field-input min-h-11 w-full"
               disabled={saving}
             >
@@ -212,7 +295,10 @@ export default function CreateBusinessWorkspaceForm() {
             <span className="text-sm font-bold text-text-primary">Base currency</span>
             <select
               value={baseCurrency}
-              onChange={(event) => setBaseCurrency(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (isBaseCurrency(value)) setBaseCurrency(value);
+              }}
               className="field-input min-h-11 w-full"
               disabled={saving}
             >
@@ -254,11 +340,11 @@ export default function CreateBusinessWorkspaceForm() {
         <div className="grid gap-3 rounded-[var(--radius-button)] bg-surface-secondary px-4 py-4 text-sm text-text-secondary sm:grid-cols-2">
           <span className="flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="size-4 text-success" />
-            Tenant-isolated data and accounting
+            Tenant-isolated business data and accounting
           </span>
           <span className="flex items-center gap-2">
             <Globe2 aria-hidden="true" className="size-4 text-primary" />
-            Global currency and timezone foundation
+            Country, currency, and timezone-aware foundation
           </span>
         </div>
 
@@ -274,7 +360,7 @@ export default function CreateBusinessWorkspaceForm() {
           ) : (
             <Building2 aria-hidden="true" />
           )}
-          Create {workspaceMode === "simple_shop" ? "Simple Shop" : "Advanced Company"}
+          Create {workspaceMode === "simple_shop" ? "commerce workspace" : "business workspace"}
         </Button>
       </form>
     </section>
