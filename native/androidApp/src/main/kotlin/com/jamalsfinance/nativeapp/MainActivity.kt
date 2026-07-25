@@ -22,6 +22,8 @@ import com.jamalsfinance.shared.goals.SupabaseGoalsPayablesRepository
 import com.jamalsfinance.shared.investments.InvestmentsAnalyticsRepository
 import com.jamalsfinance.shared.investments.SupabaseInvestmentsAnalyticsRepository
 import com.jamalsfinance.shared.network.platformHttpClient
+import com.jamalsfinance.shared.personal.PersonalPlatformRepository
+import com.jamalsfinance.shared.personal.SealedBackupPersonalPlatformRepository
 import com.jamalsfinance.shared.personal.SupabasePersonalPlatformRepository
 import com.jamalsfinance.shared.reports.SupabaseReportsInsightsRepository
 
@@ -31,7 +33,7 @@ private data class NativeRepositories(
     val goalsPayables: GoalsPayablesRepository,
     val investmentsAnalytics: InvestmentsAnalyticsRepository,
     val reportsInsights: SupabaseReportsInsightsRepository,
-    val personalPlatform: SupabasePersonalPlatformRepository,
+    val personalPlatform: PersonalPlatformRepository,
 )
 
 class MainActivity : ComponentActivity() {
@@ -76,6 +78,11 @@ class MainActivity : ComponentActivity() {
                 config = config,
                 authRepository = authRepository,
             )
+            val personalDelegate = SupabasePersonalPlatformRepository(
+                baseClient = baseClient,
+                config = config,
+                authRepository = authRepository,
+            )
             NativeRepositories(
                 auth = authRepository,
                 finance = ResilientFinanceRepository(
@@ -101,10 +108,11 @@ class MainActivity : ComponentActivity() {
                     config = config,
                     authRepository = authRepository,
                 ),
-                personalPlatform = SupabasePersonalPlatformRepository(
+                personalPlatform = SealedBackupPersonalPlatformRepository(
                     baseClient = baseClient,
                     config = config,
                     authRepository = authRepository,
+                    delegate = personalDelegate,
                 ),
             )
         } else {
