@@ -127,12 +127,17 @@ Check(reservedIdempotency.MayExecute, "Only a reserved idempotency scope may exe
 
 await SupabaseIdentityContracts.RunAsync(Check);
 await BusinessCoreHttpPipelineContracts.RunAsync(Check);
+await OrganizationProfileCommandContracts.RunAsync(Check);
+await OrganizationProfileHttpContracts.RunAsync(Check);
+BusinessCoreWriteActivationContracts.Run(Check);
+OrganizationProfileMigrationContracts.Run(Check);
 StagingSupabaseSmokeContracts.Run(Check);
 StagingWorkflowCredentialContracts.Run(Check);
+StagingOrganizationProfileWriteWorkflowContracts.Run(Check);
 
 if (failures.Count == 0)
 {
-  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules, fail-closed organization security, verified Supabase identity projection, full HTTP pipeline behavior, and staging-only live-smoke safety.");
+  Console.WriteLine($"JALVORO Business Core contracts passed: {modules.Count} modules, fail-closed tenant security, verified Supabase identity, idempotent organization profile commands, truthful write activation reporting, full HTTP behavior, and protected reversible staging smoke safety.");
   return 0;
 }
 
