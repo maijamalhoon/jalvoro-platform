@@ -75,12 +75,19 @@ internal fun JalvoroWebsiteSettingsRoute(
     preferences: AndroidNativePreferences,
     onBack: () -> Unit,
     onSignOut: suspend () -> Unit,
-) = PersonalPlatformDashboard(
-    repository = repository,
-    preferences = preferences,
+) = JalvoroWebsiteUtilityShell(
+    title = "Settings",
     onBack = onBack,
-    onSignOut = onSignOut,
-)
+) {
+    JalvoroWebsiteLegacyScreenFrame {
+        PersonalPlatformDashboard(
+            repository = repository,
+            preferences = preferences,
+            onBack = onBack,
+            onSignOut = onSignOut,
+        )
+    }
+}
 
 @Composable
 internal fun JalvoroWebsitePrivacyRoute(
@@ -89,28 +96,49 @@ internal fun JalvoroWebsitePrivacyRoute(
     preferences: AndroidNativePreferences,
     onBack: () -> Unit,
     onSignOut: suspend () -> Unit,
-) = PrivacySecurityDashboard(
-    email = email,
-    repository = repository,
-    preferences = preferences,
+) = JalvoroWebsiteUtilityShell(
+    title = "Privacy & security",
     onBack = onBack,
-    onSignOut = onSignOut,
-)
+) {
+    JalvoroWebsiteLegacyScreenFrame {
+        PrivacySecurityDashboard(
+            email = email,
+            repository = repository,
+            preferences = preferences,
+            onBack = onBack,
+            onSignOut = onSignOut,
+        )
+    }
+}
 
 @Composable
 internal fun JalvoroWebsiteAccessibilityRoute(
     preferences: AndroidNativePreferences,
     onBack: () -> Unit,
-) = AccessibilityDisplayDashboard(
-    preferences = preferences,
+) = JalvoroWebsiteUtilityShell(
+    title = "Accessibility & display",
     onBack = onBack,
-)
+) {
+    JalvoroWebsiteLegacyScreenFrame {
+        AccessibilityDisplayDashboard(
+            preferences = preferences,
+            onBack = onBack,
+        )
+    }
+}
 
 @Composable
 internal fun JalvoroWebsiteMotionRoute(
     preferences: AndroidNativePreferences,
     onBack: () -> Unit,
-) = JalvoroMotionSettingsDashboard(
-    preferences = preferences,
+) = JalvoroWebsiteUtilityShell(
+    title = "Motion & interactions",
     onBack = onBack,
-)
+) {
+    JalvoroWebsiteLegacyScreenFrame {
+        JalvoroMotionSettingsDashboard(
+            preferences = preferences,
+            onBack = onBack,
+        )
+    }
+}
