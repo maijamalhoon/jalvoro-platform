@@ -1,3 +1,0 @@
-run_id=30151210710
-source_commit=917750c425acad81dece978660e3caafd0fcf804
-artifact=command-center-deploy-source-30151210710
