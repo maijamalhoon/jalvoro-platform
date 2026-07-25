@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import LandingChartMotion from "@/components/landing/LandingChartMotion";
+import {
+  LaunchAccessRail,
+  LaunchLegalRail,
+} from "@/components/landing/LaunchAccessRail";
 import LandingScrollReveal from "@/components/landing/LandingScrollReveal";
 import MathSymbolField from "@/components/landing/MathSymbolField";
 import PremiumLandingPage from "@/components/landing/PremiumLandingPage";
@@ -50,7 +54,9 @@ export default function HomePage() {
   return (
     <>
       <LandingScrollReveal />
+      <LaunchAccessRail />
       <PremiumLandingPage />
+      <LaunchLegalRail />
       <LandingChartMotion />
       <MathSymbolField />
     </>
