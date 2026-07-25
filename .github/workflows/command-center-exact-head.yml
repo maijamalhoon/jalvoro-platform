@@ -1,0 +1,75 @@
+name: Command Center exact-head gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "app/admin/**"
+      - "app/control/**"
+      - "app/control-login/**"
+      - "app/control-invite/**"
+      - "components/admin/**"
+      - "components/control-plane/**"
+      - "lib/admin/**"
+      - "lib/control-plane/**"
+      - "supabase/control-plane/**"
+      - ".github/workflows/command-center-exact-head.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: command-center-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate-command-center:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    # The repository's available trusted runner is Windows; every run command
+    # uses cmd so local PowerShell execution policy cannot bypass validation.
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: cmd
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder
+      NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
+    steps:
+      - name: Enable Windows long paths
+        run: git config --global core.longpaths true
+
+      - name: Check out exact pull request head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          show-progress: false
+
+      - name: Verify installed Node.js
+        run: |
+          node --version
+          npm --version
+          node -e "const major=Number(process.versions.node.split('.')[0]); if(major!==24){console.error('Node.js 24 is required; found '+process.versions.node); process.exit(1)}"
+
+      - name: Install locked dependencies
+        run: npm ci --silent
+
+      - name: Enforce dependency policy
+        run: npm run audit:ci
+
+      - name: Validate brand, lint, strict TypeScript and tests
+        run: npm run check
+
+      - name: Build complete production application
+        run: npm run build
+
+      - name: Verify exact head stayed clean
+        run: |
+          git diff --check
+          git status --porcelain > "%TEMP%\jalvoro-command-center-status.txt"
+          for %%A in ("%TEMP%\jalvoro-command-center-status.txt") do if not %%~zA==0 (type "%TEMP%\jalvoro-command-center-status.txt" & exit /b 1)

@@ -11,11 +11,40 @@ describe("Control Plane owner management contracts", () => {
       "supabase/control-plane/functions/control-plane-create-operator/index.ts",
     );
     expect(source).toContain('rpc("get_my_control_plane_access")');
-    expect(source).toContain("auth.admin.listUsers");
     expect(source).toContain("auth.admin.generateLink");
+    expect(source).not.toContain("auth.admin.listUsers");
     expect(source).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
     expect(source).toContain("create_control_plane_invitation");
     expect(source).not.toMatch(/sb_secret_[A-Za-z0-9_-]+/);
+  });
+
+  it("restricts browser origins, request size and invitation expiry", () => {
+    const source = read(
+      "supabase/control-plane/functions/control-plane-create-operator/index.ts",
+    );
+    expect(source).toContain("CONTROL_PLANE_ALLOWED_ORIGINS");
+    expect(source).toContain('error: "origin_not_allowed"');
+    expect(source).not.toContain('"Access-Control-Allow-Origin": "*"');
+    expect(source).toContain("MAX_REQUEST_BYTES");
+    expect(source).toContain('error: "request_too_large"');
+    expect(source).toContain("expiresInHours === null");
+    expect(source).toContain('"Referrer-Policy": "no-referrer"');
+    expect(source).toContain('"Vary": "Origin"');
+  });
+
+  it("fails closed on ambiguous Auth admin errors and malformed key maps", () => {
+    const source = read(
+      "supabase/control-plane/functions/control-plane-create-operator/index.ts",
+    );
+    expect(source).toContain("existingUserErrorCodes");
+    expect(source).toContain('"email_exists"');
+    expect(source).toContain('"user_already_exists"');
+    expect(source).toContain("isExistingUserError(authLinkResult.error)");
+    expect(source).not.toContain('value.includes("already")');
+    expect(source).not.toContain('value.includes("exists")');
+    expect(source).not.toContain('value.includes("registered")');
+    expect(source).toContain("Object.fromEntries");
+    expect(source).toContain('typeof candidate !== "string"');
   });
 
   it("gives the Root Owner usable role, status, invitation and grant actions", () => {
