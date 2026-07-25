@@ -8,7 +8,12 @@ const shouldRunReleaseChecks = releaseCandidateBranches.has(
   process.env.VERCEL_GIT_COMMIT_REF ?? "",
 );
 const commands = [
-  ...(shouldRunReleaseChecks ? [["npm", ["run", "check"]]] : []),
+  ...(shouldRunReleaseChecks
+    ? [
+        ["npm", ["run", "audit:ci"]],
+        ["npm", ["run", "check"]],
+      ]
+    : []),
   ["npm", ["run", "build"]],
 ];
 
