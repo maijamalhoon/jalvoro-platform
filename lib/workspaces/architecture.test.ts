@@ -8,6 +8,13 @@ const migrationSource = readFileSync(
   ),
   "utf8",
 );
+const atomicCreationMigrationSource = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260725214500_atomic_experience_workspace_creation.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const onboardingBridgeSource = readFileSync(
   new URL("../../app/onboarding/[experience]/page.tsx", import.meta.url),
   "utf8",
@@ -51,6 +58,7 @@ describe("workspace foundation architecture", () => {
     expect(migrationSource).toContain("add column if not exists entry_experience text");
     expect(migrationSource).toContain("Legacy module_config remains during gradual migration");
     expect(migrationSource).not.toMatch(/drop table.*businesses|drop table.*business_members/is);
+    expect(atomicCreationMigrationSource).not.toMatch(/drop table|alter table/i);
   });
 
   it("uses RLS, explicit grants, ownership checks, and indexed membership paths", () => {
@@ -68,10 +76,15 @@ describe("workspace foundation architecture", () => {
     );
     expect(migrationSource).toContain("business_module_entitlements_active_idx");
     expect(migrationSource).toContain("revoke execute on function");
+    expect(atomicCreationMigrationSource).toContain("from public, anon");
+    expect(atomicCreationMigrationSource).toContain("to authenticated, service_role");
   });
 
   it("does not use user metadata as an authorization source", () => {
     expect(migrationSource).not.toMatch(/raw_user_meta_data|user_metadata|auth\.jwt/i);
+    expect(atomicCreationMigrationSource).not.toMatch(
+      /raw_user_meta_data|user_metadata|auth\.jwt/i,
+    );
     expect(switchRouteSource).not.toMatch(/user_metadata|jalvoro_start_experience/);
     expect(switchRouteSource).toContain('.eq("status", "active")');
     expect(switchRouteSource).toContain('.eq("business_id", businessId)');
@@ -102,18 +115,43 @@ describe("workspace foundation architecture", () => {
     expect(onboardingCompletionClientSource).toContain("COMPLETION_TIMEOUT_MS");
     expect(onboardingCompletionClientSource).toContain("Promise.race");
     expect(onboardingCompletionClientSource).toContain("Open Personal Finance");
-    expect(workspaceCreatorSource).toContain(
-      'supabase.rpc("apply_business_entry_experience"',
-    );
     expect(workspaceCreatorSource).toContain("onboardingSessionId");
     expect(migrationSource).toContain(
       "create or replace function public.update_workspace_onboarding_progress",
     );
   });
 
+  it("creates the organization and tailored defaults in one transaction", () => {
+    expect(atomicCreationMigrationSource).toContain(
+      "create or replace function public.create_business_workspace_for_experience",
+    );
+    expect(atomicCreationMigrationSource).toContain(
+      "created_business_id := public.create_business_workspace_with_mode",
+    );
+    expect(atomicCreationMigrationSource).toContain(
+      "perform public.apply_business_entry_experience",
+    );
+    expect(atomicCreationMigrationSource).toContain(
+      "when normalized_experience = 'retail-pos' then 'simple_shop'",
+    );
+    expect(atomicCreationMigrationSource).toContain("else 'advanced_company'");
+    expect(workspaceCreatorSource).toContain(
+      'supabase.rpc("create_business_workspace_for_experience"',
+    );
+    expect(workspaceCreatorSource).not.toContain(
+      'supabase.rpc("create_business_workspace_with_mode"',
+    );
+    expect(workspaceCreatorSource).not.toContain(
+      'supabase.rpc("apply_business_entry_experience"',
+    );
+    expect(workspaceCreatorSource).toContain("Nothing was partially created");
+  });
+
   it("keeps creation defaults compatible with the selected experience", () => {
     expect(workspaceCreatorSource).toContain("Starting workflow:");
-    expect(workspaceCreatorSource).toContain("setWorkspaceMode(setupDefaults.workspaceMode)");
+    expect(workspaceCreatorSource).toContain(
+      "const workspaceMode = setupDefaults.workspaceMode",
+    );
     expect(workspaceCreatorSource).toContain("setBusinessType(setupDefaults.businessType)");
     expect(workspaceCreatorSource).not.toContain(
       'onClick={() => setWorkspaceMode("simple_shop")}',
