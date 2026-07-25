@@ -1,0 +1,42 @@
+name: One-time Command Center latest-main synchronization
+
+on:
+  push:
+    branches:
+      - agent/global-command-center-launch-polish
+    paths:
+      - ".github/workflows/one-time-command-center-main-sync.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-time-command-center-main-sync
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact Command Center branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: agent/global-command-center-launch-polish
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Merge exact verified main without force
+        env:
+          EXPECTED_MAIN: 40dcc92947bf11311a0a1951be8f87c42a732a55
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN"
+          git merge --no-edit origin/main
+          rm .github/workflows/one-time-command-center-main-sync.yml
+          git add .github/workflows/one-time-command-center-main-sync.yml
+          git commit --amend --no-edit
+          git push origin HEAD:agent/global-command-center-launch-polish
