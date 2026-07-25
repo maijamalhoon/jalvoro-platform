@@ -140,7 +140,7 @@ public static class BusinessCoreApiApplication
             activeWriteCommands = ActiveWriteCommands,
             legacyWritePathsPreserved = true,
             businessCoreWriteEndpointMapped = true,
-            writeEndpointsActive = true,
+            writeEndpointsActive = supabaseConfiguration.IsConfigured,
             productionWriteTrafficActive = false,
             requestTimeoutSeconds = (int)BusinessRequestPolicy.MaximumExecutionTime.TotalSeconds,
             permissions = PublishedPermissions,
