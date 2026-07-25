@@ -21,7 +21,7 @@ export default function AdminError({
       scope.setTag("jalvoro.boundary", "admin-error");
       scope.setLevel("error");
       if (error.digest) {
-        scope.setExtra("next_error_digest", error.digest);
+        scope.setTag("next.error_digest", error.digest.slice(0, 160));
       }
       Sentry.captureException(error);
     });
