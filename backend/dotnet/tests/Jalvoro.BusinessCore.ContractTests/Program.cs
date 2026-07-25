@@ -128,6 +128,7 @@ Check(reservedIdempotency.MayExecute, "Only a reserved idempotency scope may exe
 await SupabaseIdentityContracts.RunAsync(Check);
 await BusinessCoreHttpPipelineContracts.RunAsync(Check);
 StagingSupabaseSmokeContracts.Run(Check);
+StagingWorkflowCredentialContracts.Run(Check);
 
 if (failures.Count == 0)
 {
