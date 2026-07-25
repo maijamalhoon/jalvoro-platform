@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,11 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,72 +38,75 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 const val JALVORO_NAME = "JALVORO"
-const val JALVORO_PERSONAL = "Jalvoro Personal"
+const val JALVORO_PERSONAL = "PERSONAL WORKSPACE"
 const val JALVORO_TAGLINE = "Everything you run. One place."
 
+/** Website-matched blue CircleDollarSign brand mark. */
 @Composable
 fun JalvoroBrandMark(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
 ) {
-    Canvas(
+    Surface(
         modifier = modifier.semantics {
             if (contentDescription != null) this.contentDescription = contentDescription
         },
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = Color.White,
+        shadowElevation = 6.dp,
     ) {
-        val scale = size.minDimension / 64f
-        drawRoundRect(
-            color = Color(0xFF07365F),
-            cornerRadius = CornerRadius(16f * scale, 16f * scale),
-        )
-
-        val upper = Path().apply {
-            moveTo(18f * scale, 18f * scale)
-            lineTo(18f * scale, 36f * scale)
-            cubicTo(
-                18f * scale,
-                44f * scale,
-                23f * scale,
-                48f * scale,
-                32f * scale,
-                48f * scale,
+        Canvas(modifier = Modifier.fillMaxSize().padding(9.dp)) {
+            val stroke = 1.9.dp.toPx()
+            drawCircle(
+                color = Color.White,
+                radius = size.minDimension * 0.44f,
+                style = Stroke(width = stroke),
             )
-            cubicTo(
-                41f * scale,
-                48f * scale,
-                46f * scale,
-                44f * scale,
-                46f * scale,
-                36f * scale,
+            val centerX = size.width / 2f
+            drawLine(
+                color = Color.White,
+                start = Offset(centerX, size.height * 0.20f),
+                end = Offset(centerX, size.height * 0.80f),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
             )
-            lineTo(46f * scale, 18f * scale)
+            val dollar = Path().apply {
+                moveTo(size.width * 0.68f, size.height * 0.34f)
+                cubicTo(
+                    size.width * 0.58f,
+                    size.height * 0.24f,
+                    size.width * 0.35f,
+                    size.height * 0.26f,
+                    size.width * 0.34f,
+                    size.height * 0.40f,
+                )
+                cubicTo(
+                    size.width * 0.34f,
+                    size.height * 0.53f,
+                    size.width * 0.68f,
+                    size.height * 0.45f,
+                    size.width * 0.67f,
+                    size.height * 0.62f,
+                )
+                cubicTo(
+                    size.width * 0.66f,
+                    size.height * 0.76f,
+                    size.width * 0.42f,
+                    size.height * 0.78f,
+                    size.width * 0.31f,
+                    size.height * 0.68f,
+                )
+            }
+            drawPath(
+                path = dollar,
+                color = Color.White,
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+            )
         }
-        drawPath(
-            path = upper,
-            color = Color.White,
-            style = Stroke(
-                width = 5f * scale,
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round,
-            ),
-        )
-
-        val lower = Path().apply {
-            moveTo(22f * scale, 31f * scale)
-            lineTo(32f * scale, 41f * scale)
-            lineTo(42f * scale, 31f * scale)
-        }
-        drawPath(
-            path = lower,
-            color = Color(0xFF7DD3FC),
-            style = Stroke(
-                width = 5f * scale,
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round,
-            ),
-        )
     }
 }
 
@@ -119,7 +122,7 @@ fun JalvoroBrandLockup(
         horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp),
     ) {
         JalvoroBrandMark(
-            modifier = Modifier.size(if (compact) 38.dp else 46.dp),
+            modifier = Modifier.size(if (compact) 40.dp else 46.dp),
             contentDescription = "JALVORO logo",
         )
         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -127,12 +130,17 @@ fun JalvoroBrandLockup(
                 text = JALVORO_NAME,
                 style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
+                letterSpacing = (-0.25).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelMedium,
+                text = subtitle.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = if (compact) 9.sp else 10.sp,
+                    letterSpacing = if (compact) 1.35.sp else 1.5.sp,
+                ),
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
