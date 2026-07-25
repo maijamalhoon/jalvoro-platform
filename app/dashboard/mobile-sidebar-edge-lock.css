@@ -3,7 +3,7 @@
 /*
  * Final mobile/tablet navigation drawer position authority.
  * The Base UI dialog viewport owns the full screen; the drawer is pinned to
- * the physical left edge so no generic dialog alignment can recenter it.
+ * the physical viewport left edge so no generic dialog alignment can recenter it.
  */
 @media (max-width: 1023px) {
   html body
