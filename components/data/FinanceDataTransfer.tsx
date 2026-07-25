@@ -54,7 +54,7 @@ function getFriendlyImportError(error: unknown) {
       message,
     )
   ) {
-    return "This backup belongs to this account. Delete its finance data first, then use the backup for recovery.";
+    return "This backup was exported from this account. Import it into a different JALVORO account.";
   }
 
   if (
