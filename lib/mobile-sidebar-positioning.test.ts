@@ -9,16 +9,26 @@ function read(path: string) {
 }
 
 describe("mobile sidebar positioning contracts", () => {
-  it("pins the Personal dashboard drawer to the physical left edge", () => {
+  it("anchors the Personal dashboard drawer as a left viewport child", () => {
     const css = read("app/dashboard/mobile-sidebar-edge-lock.css");
 
-    expect(css).toContain("display: block !important;");
-    expect(css).toContain("position: absolute !important;");
-    expect(css).toContain("inset: 0 auto 0 0 !important;");
-    expect(css).toContain("left: 0 !important;");
-    expect(css).toContain("right: auto !important;");
+    expect(css).toContain("display: flex !important;");
+    expect(css).toContain("justify-content: flex-start !important;");
+    expect(css).toContain("position: relative !important;");
+    expect(css).toContain("flex: 0 0 auto !important;");
+    expect(css).toContain("margin: 0 auto 0 0 !important;");
     expect(css).toContain("height: 100dvh !important;");
     expect(css).toContain("transform-origin: left center !important;");
+    expect(css).not.toContain("position: absolute !important;");
+  });
+
+  it("uses explicit side alignment in the shared Sheet viewport", () => {
+    const sheet = read("components/ui/sheet.tsx");
+
+    expect(sheet).toContain('side === "left"');
+    expect(sheet).toContain('"items-stretch justify-start"');
+    expect(sheet).toContain('data-slot="sheet-viewport"');
+    expect(sheet).toContain('data-side={side}');
   });
 
   it("keeps the dashboard edge lock as the final dashboard CSS authority", () => {
