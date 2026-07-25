@@ -1,10 +1,20 @@
-# JALVORO Control Plane database
+# JALVORO Control Plane database and functions
 
-These migrations belong only to the isolated Supabase project:
+These migrations and functions belong only to the isolated Supabase project:
 
 - project: `jalvoro-control-plane`
 - ref: `zzvpovvuybfihwgjrder`
 
 They are deliberately outside `supabase/migrations`. The normal JALVORO production migration runner must never apply them to `jalvoro-production`.
 
-The deployed control realm requires an authenticated operator, `aal2`, a password authentication event no older than 12 hours, and a TOTP event no older than 20 minutes before any bounded Control Plane RPC can run.
+Security boundaries:
+
+- every bounded Control Plane RPC requires an active operator and `aal2`;
+- password authentication must be no older than 12 hours;
+- TOTP verification must be no older than 20 minutes, including invitation acceptance;
+- Root Owner identity, role and active status are immutable through delegated controls;
+- private tables deny direct `anon` and `authenticated` data privileges;
+- operator account creation uses the JWT-protected `control-plane-create-operator` Edge Function;
+- the server-side secret is read only from the Edge Function environment and no secret value is committed;
+- invitation tokens are hashed in storage and delivered in URL fragments so they are not sent in HTTP request paths;
+- new operators must replace their temporary password, enroll MFA and accept the one-time expiring invitation before access is created.
