@@ -11,11 +11,25 @@ describe("Control Plane owner management contracts", () => {
       "supabase/control-plane/functions/control-plane-create-operator/index.ts",
     );
     expect(source).toContain('rpc("get_my_control_plane_access")');
-    expect(source).toContain("auth.admin.listUsers");
     expect(source).toContain("auth.admin.generateLink");
+    expect(source).not.toContain("auth.admin.listUsers");
     expect(source).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
     expect(source).toContain("create_control_plane_invitation");
     expect(source).not.toMatch(/sb_secret_[A-Za-z0-9_-]+/);
+  });
+
+  it("restricts browser origins, request size and invitation expiry", () => {
+    const source = read(
+      "supabase/control-plane/functions/control-plane-create-operator/index.ts",
+    );
+    expect(source).toContain("CONTROL_PLANE_ALLOWED_ORIGINS");
+    expect(source).toContain('error: "origin_not_allowed"');
+    expect(source).not.toContain('"Access-Control-Allow-Origin": "*"');
+    expect(source).toContain("MAX_REQUEST_BYTES");
+    expect(source).toContain('error: "request_too_large"');
+    expect(source).toContain("expiresInHours === null");
+    expect(source).toContain('"Referrer-Policy": "no-referrer"');
+    expect(source).toContain('"Vary": "Origin"');
   });
 
   it("gives the Root Owner usable role, status, invitation and grant actions", () => {
