@@ -163,4 +163,28 @@ describe("audited Global Operations organization activation", () => {
     );
     expect(migration).not.toContain("from public, anon, authenticated");
   });
+
+  it("wires the route to the audited parser and organization-aware UI", () => {
+    const page = readFileSync(
+      resolve(process.cwd(), "app/admin/global-operations/page.tsx"),
+      "utf8",
+    );
+    const panel = readFileSync(
+      resolve(
+        process.cwd(),
+        "components/admin/AdminGlobalOperationsDecisionPanel.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(page).toContain("parseAuditedAdminGlobalOperationsSnapshot");
+    expect(page).toContain("AdminGlobalOperationsDecisionPanel");
+    expect(page).not.toContain("parseAdminGlobalOperationsSnapshot");
+    expect(page).not.toContain("AdminGlobalOperationsPanel");
+    expect(panel).toContain('href="/admin/organizations"');
+    expect(panel).not.toContain(
+      "No organization or membership model is registered in this data plane.",
+    );
+    expect(panel).not.toContain("Organization source pending");
+  });
 });
