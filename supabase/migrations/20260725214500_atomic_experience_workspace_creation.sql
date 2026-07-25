@@ -4,7 +4,7 @@ create table if not exists public.workspace_creation_requests (
   experience text not null check (
     experience in ('freelancer', 'small-business', 'retail-pos', 'enterprise')
   ),
-  business_id uuid references public.businesses(id) on delete set null,
+  business_id uuid references public.businesses(id) on delete cascade,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
   primary key (user_id, request_id),
