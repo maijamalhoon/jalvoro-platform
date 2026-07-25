@@ -7,7 +7,15 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  getProductExperience,
+  type ProductExperienceSlug,
+} from "@/lib/product-experiences";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getBusinessSetupDefaults,
+  isBusinessExperience,
+} from "@/lib/workspaces/domain";
 
 const BUSINESS_TYPES = [
   { value: "retail", label: "Retail" },
@@ -22,15 +30,38 @@ const BUSINESS_TYPES = [
 ] as const;
 
 const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as const;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type WorkspaceMode = "simple_shop" | "advanced_company";
+type BusinessExperience = Exclude<ProductExperienceSlug, "personal">;
 
-export default function CreateBusinessWorkspaceForm() {
+type CreateBusinessWorkspaceFormProps = {
+  initialExperience?: ProductExperienceSlug | null;
+  onboardingSessionId?: string | null;
+};
+
+export default function CreateBusinessWorkspaceForm({
+  initialExperience,
+  onboardingSessionId,
+}: CreateBusinessWorkspaceFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const businessExperience: BusinessExperience = isBusinessExperience(initialExperience)
+    ? initialExperience
+    : "small-business";
+  const experience = getProductExperience(businessExperience);
+  const setupDefaults = getBusinessSetupDefaults(businessExperience);
+  const validSessionId =
+    onboardingSessionId && UUID_PATTERN.test(onboardingSessionId)
+      ? onboardingSessionId
+      : null;
+
   const [name, setName] = useState("");
-  const [businessType, setBusinessType] = useState("retail");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple_shop");
+  const [businessType, setBusinessType] = useState(setupDefaults.businessType);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(
+    setupDefaults.workspaceMode,
+  );
   const [countryCode, setCountryCode] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("PKR");
   const [timezone, setTimezone] = useState("UTC");
@@ -79,6 +110,18 @@ export default function CreateBusinessWorkspaceForm() {
         return;
       }
 
+      const contextResult = await supabase.rpc("apply_business_entry_experience", {
+        p_business_id: businessId,
+        p_experience: businessExperience,
+        p_session_id: validSessionId,
+      });
+
+      if (contextResult.error) {
+        console.error("Business experience context could not be finalized", {
+          code: contextResult.error.code,
+        });
+      }
+
       const { data: business, error: businessError } = await supabase
         .from("businesses")
         .select("slug, workspace_mode")
@@ -96,11 +139,15 @@ export default function CreateBusinessWorkspaceForm() {
       }
 
       setName("");
-      toast.success(
-        workspaceMode === "simple_shop"
-          ? "Simple Shop created with stock, cash, and accounting ready."
-          : "Advanced Company created with its ERP foundation.",
-      );
+      if (contextResult.error) {
+        toast.warning(
+          "Workspace created. Its product setup context will finish the next time you open it.",
+        );
+      } else {
+        toast.success(
+          `${experience?.productName ?? "Business workspace"} created with isolated data and modules ready.`,
+        );
+      }
       router.replace(
         business.workspace_mode === "simple_shop"
           ? `/business/${business.slug}/shop`
@@ -125,12 +172,17 @@ export default function CreateBusinessWorkspaceForm() {
           )}
         </span>
         <div className="min-w-0">
-          <h2 className="text-base font-black tracking-tight text-text-primary sm:text-lg">
-            Create a business workspace
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
+            {experience?.label ?? "For Small Businesses"}
+          </p>
+          <h2 className="mt-1 text-base font-black tracking-tight text-text-primary sm:text-lg">
+            {businessExperience === "freelancer"
+              ? "Set up your independent work"
+              : `Create ${experience?.productName ?? "a business workspace"}`}
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Choose a fast shop workflow or the full company ERP. Both use isolated tenants,
-            verified accounting, inventory, currency, and roles.
+            Experience controls the starting workflow and module entitlements. You can expand the
+            same isolated workspace later without creating another identity.
           </p>
         </div>
       </div>
@@ -180,11 +232,19 @@ export default function CreateBusinessWorkspaceForm() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm font-bold text-text-primary">Business name</span>
+            <span className="text-sm font-bold text-text-primary">
+              {businessExperience === "freelancer" ? "Professional name" : "Business name"}
+            </span>
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={workspaceMode === "simple_shop" ? "Example: Jamal General Store" : "Example: Jamal Traders"}
+              placeholder={
+                businessExperience === "freelancer"
+                  ? "Example: Ali Design Studio"
+                  : workspaceMode === "simple_shop"
+                    ? "Example: Jamal General Store"
+                    : "Example: Jamal Traders"
+              }
               autoComplete="organization"
               maxLength={120}
               disabled={saving}
@@ -196,7 +256,7 @@ export default function CreateBusinessWorkspaceForm() {
             <span className="text-sm font-bold text-text-primary">Nature of business</span>
             <select
               value={businessType}
-              onChange={(event) => setBusinessType(event.target.value)}
+              onChange={(event) => setBusinessType(event.target.value as typeof businessType)}
               className="field-input min-h-11 w-full"
               disabled={saving}
             >
@@ -254,11 +314,11 @@ export default function CreateBusinessWorkspaceForm() {
         <div className="grid gap-3 rounded-[var(--radius-button)] bg-surface-secondary px-4 py-4 text-sm text-text-secondary sm:grid-cols-2">
           <span className="flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="size-4 text-success" />
-            Tenant-isolated data and accounting
+            Tenant-isolated data and membership
           </span>
           <span className="flex items-center gap-2">
             <Globe2 aria-hidden="true" className="size-4 text-primary" />
-            Global currency and timezone foundation
+            Workspace-level modules and configuration
           </span>
         </div>
 
@@ -274,7 +334,7 @@ export default function CreateBusinessWorkspaceForm() {
           ) : (
             <Building2 aria-hidden="true" />
           )}
-          Create {workspaceMode === "simple_shop" ? "Simple Shop" : "Advanced Company"}
+          Create {experience?.productName ?? "Business workspace"}
         </Button>
       </form>
     </section>

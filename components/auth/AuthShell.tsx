@@ -39,6 +39,8 @@ export default function AuthShell({
   const isExperienceAuth =
     Boolean(experience) &&
     (pathname.startsWith("/login/") || pathname.startsWith("/signup/"));
+  const isExperienceSignup =
+    Boolean(experience) && pathname.startsWith("/signup/");
   const backHref = isExperienceAuth && experience ? experience.previewPath : "/";
   const backLabel = isExperienceAuth ? "Workspace preview" : "Home";
   const isEntryStep = progress === "Step 1 of 2";
@@ -114,6 +116,18 @@ export default function AuthShell({
                     <p className="mt-1 text-xs leading-5 text-text-secondary">
                       {experience.authContext}
                     </p>
+                    {isExperienceSignup ? (
+                      <p className="mt-3 border-t border-primary/15 pt-3 text-xs leading-5 text-text-secondary">
+                        Already have a {APP_NAME} identity?{" "}
+                        <Link
+                          href={experience.loginPath}
+                          className="finance-focus font-black text-primary"
+                        >
+                          Sign in and add this workspace
+                        </Link>
+                        . A duplicate account will not be created.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>

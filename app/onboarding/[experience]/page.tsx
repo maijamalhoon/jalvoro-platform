@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { getProductExperience } from "@/lib/product-experiences";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeInternalRedirect } from "@/lib/supabase/session";
-import { getProductExperience } from "@/lib/product-experiences";
+import { appendOnboardingSession } from "@/lib/workspaces/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,14 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function personalCompletionDestination(sessionId: string, destination: string) {
+  const params = new URLSearchParams({
+    session: sessionId,
+    next: destination,
+  });
+  return `/workspaces/onboarding/complete?${params.toString()}`;
 }
 
 export default async function ExperienceOnboardingBridge({
@@ -44,7 +53,7 @@ export default async function ExperienceOnboardingBridge({
     redirect(`${experience.loginPath}?next=${encodeURIComponent(returnPath)}`);
   }
 
-  const [profileResult, preferenceResult] = await Promise.all([
+  const [profileResult, preferenceResult, sessionResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("onboarding_completed")
@@ -55,6 +64,10 @@ export default async function ExperienceOnboardingBridge({
       .select("active_business_id")
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase.rpc("begin_workspace_onboarding", {
+      p_experience: experience.slug,
+      p_next_path: destination,
+    }),
   ]);
 
   const selectedWorkspace = experience.workspaceKind;
@@ -70,17 +83,46 @@ export default async function ExperienceOnboardingBridge({
     await supabase.auth.updateUser({
       data: {
         jalvoro_start_experience: experience.slug,
+        jalvoro_onboarding_session:
+          typeof sessionResult.data === "string" ? sessionResult.data : null,
       },
     });
   }
 
+  const sessionId =
+    !sessionResult.error && typeof sessionResult.data === "string"
+      ? sessionResult.data
+      : null;
+  const resumableDestination = appendOnboardingSession(destination, sessionId);
+
   if (profileResult.data?.onboarding_completed) {
-    redirect(destination);
+    if (experience.workspaceKind === "personal" && sessionId) {
+      await supabase.rpc("update_workspace_onboarding_progress", {
+        p_session_id: sessionId,
+        p_current_step: 3,
+        p_completed_steps: [
+          "identity_verified",
+          "profile_ready",
+          "personal_workspace_ready",
+        ],
+        p_draft_data: {},
+        p_status: "completed",
+      });
+      redirect(destination);
+    }
+
+    redirect(resumableDestination);
   }
 
+  const genericOnboardingDestination =
+    experience.workspaceKind === "personal" && sessionId
+      ? personalCompletionDestination(sessionId, destination)
+      : resumableDestination;
   const onboardingParams = new URLSearchParams({
-    next: destination,
+    next: genericOnboardingDestination,
     prepared: experience.slug,
   });
+  if (sessionId) onboardingParams.set("session", sessionId);
+
   redirect(`/onboarding?${onboardingParams.toString()}`);
 }
