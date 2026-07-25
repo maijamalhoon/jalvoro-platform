@@ -1,4 +1,4 @@
-# Manually verifies the read-only JALVORO Business Core path against the approved staging Supabase project.
+# Verifies the read-only JALVORO Business Core path against the approved staging Supabase project.
 name: .NET Staging Supabase Smoke
 
 on:
@@ -8,9 +8,14 @@ on:
         description: Type STAGING_ONLY_READ_ONLY to confirm the protected target and read-only scope.
         required: true
         type: string
+  # Temporary exact-branch trigger used once to prove the OIDC path without storing GitHub secrets.
+  push:
+    branches:
+      - agent/staging-business-smoke-readiness
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: dotnet-staging-supabase-smoke
@@ -27,74 +32,94 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
-      JALVORO_WORKFLOW_CONFIRMATION: ${{ inputs.confirmation }}
       JALVORO_SMOKE_ENVIRONMENT: staging
       JALVORO_SMOKE_CONFIRMATION: STAGING_ONLY_READ_ONLY
       JALVORO_SUPABASE_STAGING_URL: https://zqhdwjivyfzeoqvahjme.supabase.co
-      JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY: ${{ secrets.JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY }}
-      JALVORO_SUPABASE_STAGING_TEST_EMAIL: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_EMAIL }}
-      JALVORO_SUPABASE_STAGING_TEST_PASSWORD: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_PASSWORD }}
-      JALVORO_SUPABASE_STAGING_TEST_USER_ID: ${{ vars.JALVORO_SUPABASE_STAGING_TEST_USER_ID }}
-      JALVORO_SUPABASE_STAGING_TENANT_ID: ${{ vars.JALVORO_SUPABASE_STAGING_TENANT_ID }}
       JALVORO_SUPABASE_STAGING_TIMEOUT_SECONDS: "5"
     steps:
-      - name: Enforce explicit staging-only confirmation
+      - name: Enforce explicit staging-only execution
         shell: bash
+        env:
+          DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          if [ "$JALVORO_WORKFLOW_CONFIRMATION" != "STAGING_ONLY_READ_ONLY" ]; then
-            echo "The staging smoke run requires the exact STAGING_ONLY_READ_ONLY confirmation." >&2
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$DISPATCH_CONFIRMATION" != "STAGING_ONLY_READ_ONLY" ]; then
+              echo "The staging smoke run requires the exact STAGING_ONLY_READ_ONLY confirmation." >&2
+              exit 1
+            fi
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            if [ "$GITHUB_REF" != "refs/heads/agent/staging-business-smoke-readiness" ]; then
+              echo "The temporary OIDC proof is restricted to the approved staging-readiness branch." >&2
+              exit 1
+            fi
+          else
+            echo "The staging smoke workflow rejected an unsupported event." >&2
             exit 1
           fi
 
-      - name: Acquire short-lived staging user session
+      - name: Acquire GitHub OIDC-backed staging session
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ -z "$JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY" ] || \
-             [ -z "$JALVORO_SUPABASE_STAGING_TEST_EMAIL" ] || \
-             [ -z "$JALVORO_SUPABASE_STAGING_TEST_PASSWORD" ] || \
-             [ -z "$JALVORO_SUPABASE_STAGING_TEST_USER_ID" ]; then
-            echo "The protected staging identity configuration is incomplete." >&2
-            exit 1
-          fi
+          oidc_response_file="$(mktemp)"
+          broker_response_file="$(mktemp)"
+          trap 'rm -f "$oidc_response_file" "$broker_response_file"' EXIT
 
-          response_file="$(mktemp)"
-          trap 'rm -f "$response_file"' EXIT
-
-          payload="$(jq -cn \
-            --arg email "$JALVORO_SUPABASE_STAGING_TEST_EMAIL" \
-            --arg password "$JALVORO_SUPABASE_STAGING_TEST_PASSWORD" \
-            '{email:$email,password:$password}')"
-
-          http_status="$(printf '%s' "$payload" | curl \
+          oidc_status="$(curl \
             --silent \
             --show-error \
             --connect-timeout 10 \
             --max-time 30 \
-            --output "$response_file" \
+            --output "$oidc_response_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=jalvoro-staging-smoke")"
+
+          if [ "$oidc_status" != "200" ]; then
+            echo "GitHub could not issue the protected staging OIDC token." >&2
+            exit 1
+          fi
+
+          github_oidc_token="$(jq -er '.value | select(type == "string" and length > 0)' "$oidc_response_file")"
+          echo "::add-mask::$github_oidc_token"
+
+          broker_status="$(curl \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --output "$broker_response_file" \
             --write-out '%{http_code}' \
             --request POST \
-            --header "apikey: $JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY" \
+            --header "Authorization: Bearer $github_oidc_token" \
             --header "content-type: application/json" \
-            --data-binary @- \
-            "$JALVORO_SUPABASE_STAGING_URL/auth/v1/token?grant_type=password")"
+            --data '{}' \
+            "$JALVORO_SUPABASE_STAGING_URL/functions/v1/jalvoro-github-staging-smoke-session")"
 
-          if [ "$http_status" != "200" ]; then
-            echo "The dedicated staging identity could not establish a session." >&2
+          if [ "$broker_status" != "200" ]; then
+            broker_code="$(jq -r '.code // "unknown"' "$broker_response_file" 2>/dev/null || printf 'unknown')"
+            echo "The staging OIDC session broker rejected the request: $broker_code" >&2
             exit 1
           fi
 
-          access_token="$(jq -er '.access_token | select(type == "string" and length > 0)' "$response_file")"
-          returned_user_id="$(jq -er '.user.id | select(type == "string" and length > 0)' "$response_file")"
-
-          if [ "$returned_user_id" != "$JALVORO_SUPABASE_STAGING_TEST_USER_ID" ]; then
-            echo "The staging session subject does not match the approved test identity." >&2
-            exit 1
-          fi
+          access_token="$(jq -er '.access_token | select(type == "string" and length > 0)' "$broker_response_file")"
+          publishable_key="$(jq -er '.publishable_key | select(type == "string" and startswith("sb_publishable_"))' "$broker_response_file")"
+          user_id="$(jq -er '.user_id | select(type == "string" and length > 0)' "$broker_response_file")"
+          tenant_id="$(jq -er '.tenant_id | select(type == "string" and length > 0)' "$broker_response_file")"
 
           echo "::add-mask::$access_token"
-          printf 'JALVORO_SUPABASE_STAGING_TEST_JWT=%s\n' "$access_token" >> "$GITHUB_ENV"
+          echo "::add-mask::$user_id"
+          echo "::add-mask::$tenant_id"
+
+          {
+            printf 'JALVORO_SUPABASE_STAGING_PUBLISHABLE_KEY=%s\n' "$publishable_key"
+            printf 'JALVORO_SUPABASE_STAGING_TEST_JWT=%s\n' "$access_token"
+            printf 'JALVORO_SUPABASE_STAGING_TEST_USER_ID=%s\n' "$user_id"
+            printf 'JALVORO_SUPABASE_STAGING_TENANT_ID=%s\n' "$tenant_id"
+          } >> "$GITHUB_ENV"
 
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
