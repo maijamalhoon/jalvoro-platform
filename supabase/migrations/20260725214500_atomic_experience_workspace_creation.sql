@@ -13,10 +13,15 @@ security invoker
 set search_path = pg_catalog, public, private
 as $$
 declare
+  current_user_id uuid := auth.uid();
   normalized_experience text := lower(btrim(coalesce(p_experience, '')));
   workspace_mode text;
   created_business_id uuid;
 begin
+  if current_user_id is null then
+    raise exception 'Authentication required.' using errcode = '42501';
+  end if;
+
   if normalized_experience not in (
     'freelancer',
     'small-business',
@@ -45,6 +50,19 @@ begin
     p_experience => normalized_experience,
     p_session_id => p_session_id
   );
+
+  if p_session_id is not null and not exists (
+    select 1
+    from public.workspace_onboarding_sessions session
+    where session.id = p_session_id
+      and session.user_id = current_user_id
+      and session.experience = normalized_experience
+      and session.business_id = created_business_id
+      and session.status = 'completed'
+  ) then
+    raise exception 'Onboarding session completion could not be confirmed.'
+      using errcode = 'P0002';
+  end if;
 
   return created_business_id;
 end;
@@ -79,4 +97,4 @@ comment on function public.create_business_workspace_for_experience(
   text,
   uuid
 ) is
-  'Creates an organization workspace and applies its experience defaults in one transaction. Any setup failure rolls the entire creation back.';
+  'Creates an organization workspace and applies its experience defaults in one transaction. Any setup or session-confirmation failure rolls the entire creation back.';
