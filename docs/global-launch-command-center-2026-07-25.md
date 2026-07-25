@@ -52,15 +52,10 @@ Automated success is necessary but does not replace the authenticated visual rev
 
 ## Exact hardened-main synchronization
 
-The Command Center branch now contains the hardened launch baseline from `main` and is zero commits behind it. Its remaining pull-request diff is limited to the Command Center presentation, shell behavior, route metadata, mobile treatment, and this acceptance record.
+The Command Center branch is rebuilt directly on the latest `main` baseline `becc5ea347c25c1bf3936f3a01687b7b5709a394` and is zero commits behind it. Its remaining pull-request diff is limited to the five Command Center presentation, shell, metadata, mobile, and acceptance files.
 
-The exact post-synchronization head must independently pass automated and authenticated preview acceptance before merge.
+The synchronized candidate includes the backup re-import compatibility repair and the immutable preview allowlist already merged to `main`. No duplicate policy or deployment configuration remains in this pull request.
 
-## Final candidate freeze
+## Final candidate checkpoint
 
-- synchronized Command Center merge commit: `ebace858ecc08dde1eef77309c6c97f33b0fc285`
-- one-shot source-export cleanup commit: `2d445126b6fd8fe64ad746bb3fa1d9695cb24495`
-- hardened main baseline: `009b1917d0411fe0f509cdf3db0c5490e7511013`
-- remaining pull-request scope: exactly five Command Center presentation and acceptance files
-
-The temporary source-export workflow has removed itself and is not part of the pull-request diff. This human-authored checkpoint freezes the final candidate and triggers exact-head CI, private security validation, dependency review, and the allowlisted Vercel preview. It introduces no runtime behavior, permission, route, database, or production-data change.
+This documentation-only checkpoint re-emits the synchronized tree through GitHub's standard contents path so exact-head CI, private security validation, dependency review, and the allowlisted Vercel preview run normally. It introduces no runtime behavior, permission, route, database, secret, or production-data change.
