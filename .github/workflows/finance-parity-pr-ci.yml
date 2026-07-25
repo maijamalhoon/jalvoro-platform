@@ -24,11 +24,15 @@ concurrency:
 
 jobs:
   website-and-native-parity:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 60
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - name: Check out repository
@@ -56,7 +60,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+        run: sdkmanager.bat "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -66,8 +70,12 @@ jobs:
       - name: Run native finance parity contract
         working-directory: native
         run: |
-          set -o pipefail
-          gradle :shared:testAndroidHostTest --stacktrace 2>&1 | tee finance-parity-native.log
+          $ErrorActionPreference = "Continue"
+          & gradle :shared:testAndroidHostTest --stacktrace 2>&1 | Tee-Object -FilePath finance-parity-native.log
+          $gradleExitCode = $LASTEXITCODE
+          if ($gradleExitCode -ne 0) {
+            exit $gradleExitCode
+          }
 
       - name: Upload parity diagnostic
         if: always()
