@@ -39,6 +39,7 @@ const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as con
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CREATION_REQUEST_STORAGE_PREFIX = "jalvoro-workspace-creation-request";
+const STORAGE_NAMES = ["sessionStorage", "localStorage"] as const;
 
 type BusinessExperience = Exclude<ProductExperienceSlug, "personal">;
 
@@ -73,9 +74,9 @@ function creationRequestStorageKey(experience: BusinessExperience) {
 function readPersistedCreationRequest(experience: BusinessExperience) {
   const key = creationRequestStorageKey(experience);
 
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  for (const storageName of STORAGE_NAMES) {
     try {
-      const stored = storage.getItem(key);
+      const stored = window[storageName].getItem(key);
       if (stored && UUID_PATTERN.test(stored)) return stored;
     } catch {
       // Continue to the next browser-owned persistence option.
@@ -88,9 +89,9 @@ function readPersistedCreationRequest(experience: BusinessExperience) {
 function persistCreationRequest(experience: BusinessExperience, requestId: string) {
   const key = creationRequestStorageKey(experience);
 
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  for (const storageName of STORAGE_NAMES) {
     try {
-      storage.setItem(key, requestId);
+      window[storageName].setItem(key, requestId);
       return true;
     } catch {
       // Continue to the next browser-owned persistence option.
@@ -103,9 +104,9 @@ function persistCreationRequest(experience: BusinessExperience, requestId: strin
 function clearPersistedCreationRequest(experience: BusinessExperience) {
   const key = creationRequestStorageKey(experience);
 
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  for (const storageName of STORAGE_NAMES) {
     try {
-      storage.removeItem(key);
+      window[storageName].removeItem(key);
     } catch {
       // A server-side idempotency record still prevents duplicate creation.
     }
