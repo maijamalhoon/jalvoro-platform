@@ -7,6 +7,7 @@ const defaultAllowedOrigins = [
   "https://jamals-finance-sable.vercel.app",
   "https://jalvoro-jamal-s-projects18.vercel.app",
   "https://jalvoro-git-main-jamal-s-projects18.vercel.app",
+  "https://jalvoro-git-design-command-center-dec-a2911b-jamal-s-projects18.vercel.app",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ];
