@@ -6,14 +6,21 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  CURRENCY_CHANGE_EVENT,
+  CURRENCY_STORAGE_KEY,
+  isSupportedCurrency,
+} from "@/lib/currency";
+import {
   FINANCE_DATA_IMPORTED_EVENT,
   MAX_FINANCE_BACKUP_BYTES,
   OPEN_FINANCE_DATA_IMPORT_EVENT,
   getBackupRecordCount,
   parseFinanceImportResult,
   validateFinanceBackup,
+  type FinanceBackupClientPreferences,
 } from "@/lib/data-backup";
 import { createClient } from "@/lib/supabase/client";
+import { applyThemePreference, isThemePreference } from "@/lib/theme";
 
 type TransferPhase =
   | "idle"
@@ -23,24 +30,15 @@ type TransferPhase =
   | "revealing"
   | "error";
 
-const ACCEPTED_FILE_EXTENSIONS = [".jfinance", ".json"];
 const IMPORT_IMPACT_DURATION_MS = 4_200;
 const IMPORT_REFRESH_SETTLE_MS = 180;
 const IMPORT_REVEAL_DURATION_MS = 1_450;
+const DATE_FORMAT_STORAGE_KEY = "jamal-date-format";
+const COMPACT_MODE_STORAGE_KEY = "jamal-compact-dashboard";
+const DATE_FORMATS = new Set(["MMM d, yyyy", "dd MMM yyyy", "yyyy-MM-dd"]);
 
 function hasFiles(event: DragEvent) {
   return Array.from(event.dataTransfer?.types ?? []).includes("Files");
-}
-
-function hasAcceptedBackupExtension(fileName: string) {
-  const originalDownloadName = fileName
-    .trim()
-    .replace(/\s*\(\d+\)$/, "")
-    .toLowerCase();
-
-  return ACCEPTED_FILE_EXTENSIONS.some((extension) =>
-    originalDownloadName.endsWith(extension),
-  );
 }
 
 function getFriendlyImportError(error: unknown) {
@@ -51,12 +49,26 @@ function getFriendlyImportError(error: unknown) {
         ? String(error.message)
         : "";
 
+  if (
+    /belongs to this account|same-account|recovery-only|delete all finance data/i.test(
+      message,
+    )
+  ) {
+    return "This backup belongs to this account. Delete its finance data first, then use the backup for recovery.";
+  }
+
+  if (
+    /seal|signature|issued by JALVORO|changed after export|tamper/i.test(message)
+  ) {
+    return "This backup is not an original sealed JALVORO export or its contents were changed. No data was added.";
+  }
+
   if (/too large|too many records/i.test(message)) {
     return "This backup is too large to import safely.";
   }
 
   if (/version/i.test(message)) {
-    return "This backup version is not supported.";
+    return "This backup version is not supported. Export a new sealed JALVORO backup.";
   }
 
   if (/integrity|complete-data|did not pass/i.test(message)) {
@@ -68,10 +80,46 @@ function getFriendlyImportError(error: unknown) {
   }
 
   if (/fetch|network|timeout|connection|could not be verified/i.test(message)) {
-    return "The import result could not be confirmed. Drop the same backup again; duplicate protection will verify it safely.";
+    return "The import result could not be confirmed. Drop the same sealed backup again; duplicate protection will verify it safely.";
   }
 
   return "This backup file is invalid or damaged. No data was changed.";
+}
+
+function applyImportedClientPreferences(
+  preferences: FinanceBackupClientPreferences | undefined,
+) {
+  if (!preferences) return;
+
+  if (isSupportedCurrency(preferences.currency)) {
+    window.localStorage.setItem(CURRENCY_STORAGE_KEY, preferences.currency);
+    window.dispatchEvent(
+      new CustomEvent(CURRENCY_CHANGE_EVENT, {
+        detail: { currency: preferences.currency },
+      }),
+    );
+  }
+
+  if (
+    typeof preferences.dateFormat === "string" &&
+    DATE_FORMATS.has(preferences.dateFormat)
+  ) {
+    window.localStorage.setItem(
+      DATE_FORMAT_STORAGE_KEY,
+      preferences.dateFormat,
+    );
+  }
+
+  if (typeof preferences.compactMode === "boolean") {
+    window.localStorage.setItem(
+      COMPACT_MODE_STORAGE_KEY,
+      String(preferences.compactMode),
+    );
+  }
+
+  if (isThemePreference(preferences.themeMode)) {
+    applyThemePreference(preferences.themeMode);
+  }
 }
 
 function prefersReducedMotion() {
@@ -162,15 +210,8 @@ export default function FinanceDataTransfer() {
       let impactPromise: Promise<void> | null = null;
 
       try {
-        if (!hasAcceptedBackupExtension(file.name)) {
-          const error = "Choose a .jfinance backup file.";
-          setStatusMessage(error);
-          setPhase("error");
-          toast.error(error);
-          scheduleReset(2200);
-          return;
-        }
-
+        // The filename and extension are intentionally ignored. Only the
+        // signed internal JALVORO payload decides whether the file is accepted.
         if (file.size <= 0 || file.size > MAX_FINANCE_BACKUP_BYTES) {
           const error = "This backup is empty or too large to import safely.";
           setStatusMessage(error);
@@ -182,7 +223,7 @@ export default function FinanceDataTransfer() {
 
         // One uninterrupted cinematic starts immediately. Parsing, validation,
         // duplicate protection and the RPC all run behind the same cardless layer.
-        setStatusMessage("Importing finance backup.");
+        setStatusMessage("Importing sealed finance backup.");
         impactPromise = playImpactToWhiteout();
 
         let parsed: unknown;
@@ -208,14 +249,15 @@ export default function FinanceDataTransfer() {
         if (error) throw error;
 
         const result = parseFinanceImportResult(data);
-        if (!result) {
-          throw new Error("Data import could not be verified.");
+        if (!result || !result.sealed) {
+          throw new Error("The sealed import result could not be verified.");
         }
 
         // Never expose stale page content. The screen reaches full white first,
         // then waits there until the verified import has completed.
         await impactPromise;
 
+        applyImportedClientPreferences(result.clientPreferences);
         window.dispatchEvent(
           new CustomEvent(FINANCE_DATA_IMPORTED_EVENT, { detail: result }),
         );
@@ -347,7 +389,6 @@ export default function FinanceDataTransfer() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".jfinance,.json,application/json"
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
