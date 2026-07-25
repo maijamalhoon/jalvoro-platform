@@ -54,10 +54,26 @@ class SealedBackupPersonalPlatformRepositoryTest {
         }
     """.trimIndent()
 
+    private val validLegacyBridge = validBackup
+        .replace("\"jalvoro-finance-backup\"", "\"jamals-finance-backup\"")
+        .replace("\"version\": 2", "\"version\": 1")
+        .replace(
+            "\"keyVersion\": 1,",
+            "\"keyVersion\": 1,\n            \"scope\": \"legacy-client-bridge-v1\",",
+        )
+
     @Test
     fun acceptsCompleteSealedV2Payload() {
         val valid = assertIs<BackupValidationResult.Valid>(
             validateSealedBackupPayload(validBackup),
+        )
+        assertEquals(2, valid.recordCount)
+    }
+
+    @Test
+    fun acceptsServerIssuedSealedV1BridgePayload() {
+        val valid = assertIs<BackupValidationResult.Valid>(
+            validateSealedBackupPayload(validLegacyBridge),
         )
         assertEquals(2, valid.recordCount)
     }
@@ -71,15 +87,28 @@ class SealedBackupPersonalPlatformRepositoryTest {
     }
 
     @Test
-    fun rejectsLegacyOrUnsealedPayloads() {
-        val legacy = assertIs<BackupValidationResult.Invalid>(
+    fun rejectsUnsignedOrWrongScopeLegacyFiles() {
+        val payload = defaultPersonalJson().parseToJsonElement(validLegacyBridge).jsonObject
+        val unsignedRaw = JsonObject(payload - "seal").toString()
+        val unsigned = assertIs<BackupValidationResult.Invalid>(
+            validateSealedBackupPayload(unsignedRaw),
+        )
+        assertTrue(unsigned.message.contains("sealed by JALVORO"))
+
+        val wrongScope = assertIs<BackupValidationResult.Invalid>(
             validateSealedBackupPayload(
-                validBackup
-                    .replace("\"jalvoro-finance-backup\"", "\"jamals-finance-backup\"")
-                    .replace("\"version\": 2", "\"version\": 1"),
+                validLegacyBridge.replace("legacy-client-bridge-v1", "unknown-legacy-scope"),
             ),
         )
-        assertTrue(legacy.message.contains("sealed JALVORO"))
+        assertTrue(wrongScope.message.contains("unsupported security seal"))
+    }
+
+    @Test
+    fun rejectsUnsupportedOrUnsealedPayloads() {
+        val unsupported = assertIs<BackupValidationResult.Invalid>(
+            validateSealedBackupPayload(validBackup.replace("\"version\": 2", "\"version\": 3")),
+        )
+        assertTrue(unsupported.message.contains("not supported"))
 
         val payload = defaultPersonalJson().parseToJsonElement(validBackup).jsonObject
         val unsealedRaw = JsonObject(payload - "seal").toString()
