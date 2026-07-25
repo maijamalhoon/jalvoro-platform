@@ -6,7 +6,7 @@ function Read-Lines {
     param([string]$Path)
     $lines = New-Object 'System.Collections.Generic.List[string]'
     $lines.AddRange([System.IO.File]::ReadAllLines($Path))
-    return $lines
+    return ,$lines
 }
 
 function Find-LineIndex {
