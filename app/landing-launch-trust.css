@@ -1,0 +1,4 @@
+/* Public landing values are demonstration figures, not live account data. */
+.jf-node4-landing .jf-live-pill {
+  display: none !important;
+}
