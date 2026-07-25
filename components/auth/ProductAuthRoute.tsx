@@ -2,6 +2,10 @@ import { notFound, redirect } from "next/navigation";
 
 import LoginPage from "@/app/login/page";
 import { getProductExperience } from "@/lib/product-experiences";
+import {
+  normalizeLoginReason,
+  sanitizeInternalRedirect,
+} from "@/lib/supabase/session";
 
 type SearchParamValue = string | string[] | undefined;
 type SearchParams = Record<string, SearchParamValue>;
@@ -16,11 +20,15 @@ function firstValue(value: SearchParamValue) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function appendSafeSearchParams(target: URLSearchParams, source: SearchParams) {
+function receivedSearchParams(source: SearchParams) {
+  const params = new URLSearchParams();
+
   for (const [key, value] of Object.entries(source)) {
     const first = firstValue(value);
-    if (typeof first === "string" && first) target.set(key, first);
+    if (typeof first === "string" && first) params.set(key, first);
   }
+
+  return params;
 }
 
 export default async function ProductAuthRoute({
@@ -35,19 +43,24 @@ export default async function ProductAuthRoute({
   const experience = getProductExperience(slug);
   if (!experience) notFound();
 
-  const next = firstValue(resolvedSearchParams.next);
+  const requestedNext = firstValue(resolvedSearchParams.next);
   const requestedMode = firstValue(resolvedSearchParams.mode);
-  const needsDestination = !next;
-  const needsSignupMode = mode === "signup" && requestedMode !== "signup";
+  const requestedReason = firstValue(resolvedSearchParams.reason);
+  const safeNext = sanitizeInternalRedirect(requestedNext, experience.destination);
+  const safeReason = normalizeLoginReason(requestedReason);
+  const canonicalMode =
+    mode === "signup" ? "signup" : requestedMode === "forgot" ? "forgot" : null;
+  const canonicalSearchParams = new URLSearchParams({ next: safeNext });
 
-  if (needsDestination || needsSignupMode) {
-    const nextSearchParams = new URLSearchParams();
-    appendSafeSearchParams(nextSearchParams, resolvedSearchParams);
-    if (needsDestination) nextSearchParams.set("next", experience.destination);
-    if (mode === "signup") nextSearchParams.set("mode", "signup");
+  if (canonicalMode) canonicalSearchParams.set("mode", canonicalMode);
+  if (safeReason) canonicalSearchParams.set("reason", safeReason);
 
+  if (
+    receivedSearchParams(resolvedSearchParams).toString() !==
+    canonicalSearchParams.toString()
+  ) {
     const route = mode === "signup" ? experience.signupPath : experience.loginPath;
-    redirect(`${route}?${nextSearchParams.toString()}`);
+    redirect(`${route}?${canonicalSearchParams.toString()}`);
   }
 
   return <LoginPage />;
