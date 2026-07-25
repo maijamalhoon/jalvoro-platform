@@ -11,7 +11,8 @@ describe("Control Plane owner management contracts", () => {
       "supabase/control-plane/functions/control-plane-create-operator/index.ts",
     );
     expect(source).toContain('rpc("get_my_control_plane_access")');
-    expect(source).toContain("auth.admin.createUser");
+    expect(source).toContain("auth.admin.listUsers");
+    expect(source).toContain("auth.admin.generateLink");
     expect(source).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
     expect(source).toContain("create_control_plane_invitation");
     expect(source).not.toMatch(/sb_secret_[A-Za-z0-9_-]+/);
@@ -28,6 +29,14 @@ describe("Control Plane owner management contracts", () => {
     expect(source).toContain("restore_control_plane_operator_by_reference");
     expect(source).toContain("revoke_control_plane_invitation");
     expect(source).toContain("revoke_control_plane_permission");
+  });
+
+  it("prevents duplicate invitations for established operators", () => {
+    const migration = read(
+      "supabase/control-plane/migrations/20260725214500_prevent_duplicate_operator_invitations.sql",
+    );
+    expect(migration).toContain("control_plane_operator_already_exists");
+    expect(migration).toContain("join private.control_plane_operators");
   });
 
   it("enforces recent password and TOTP for invitation acceptance", () => {
@@ -47,7 +56,9 @@ describe("Control Plane owner management contracts", () => {
     expect(source).toContain("window.location.hash");
     expect(source).toContain("window.history.replaceState");
     expect(source).toContain("window.sessionStorage.setItem");
+    expect(source).toContain("auth.verifyOtp");
     expect(source).toContain("auth.updateUser");
+    expect(source).toContain("auth.signInWithPassword");
     expect(source).toContain("mfa.enroll");
     expect(source).toContain("mfa.challenge");
     expect(source).toContain("mfa.verify");
