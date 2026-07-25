@@ -12,7 +12,9 @@ import {
 
 const PUBLIC_PAGE_ROUTES = [
   "/",
+  "/start",
   "/login",
+  "/signup",
   "/reset-password",
   "/auth/callback",
   "/privacy",
@@ -20,7 +22,7 @@ const PUBLIC_PAGE_ROUTES = [
   "/disclosures",
   "/support",
 ];
-const AUTH_ONLY_PAGE_ROUTES = ["/", "/login"];
+const AUTH_ONLY_PAGE_ROUTES = ["/", "/login", "/signup"];
 const PUBLIC_ASSET_ROUTES = [
   "/manifest.webmanifest",
   "/manifest.json",
