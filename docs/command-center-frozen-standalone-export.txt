@@ -1,0 +1,3 @@
+run_id=30151515929
+release_sha=fc0ee9538f6036904c71c999740834f9d0490bb1
+artifact=command-center-frozen-standalone-30151515929
