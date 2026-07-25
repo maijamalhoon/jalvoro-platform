@@ -21,6 +21,12 @@ Security boundaries:
 - invitation tokens are hashed in storage and delivered in URL fragments so they are not sent in HTTP request paths;
 - new operators verify a one-time Supabase invite, create a permanent password, perform a fresh password login, enroll MFA and accept the one-time expiring access invitation before authorization is created.
 
+Build boundary:
+
+- Control Plane Edge Functions use the Supabase Deno runtime and `npm:`/`jsr:` specifiers;
+- they are intentionally excluded from the Next.js TypeScript program so the web build does not reinterpret Deno modules;
+- repository contract tests inspect their security invariants, while deployment and post-deployment smoke checks validate the Deno runtime artifact.
+
 Release gates:
 
 1. deploy the exact reviewed Edge Function source only to `zzvpovvuybfihwgjrder`;
