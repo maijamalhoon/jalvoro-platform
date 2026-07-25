@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import AdminComplianceAuditPanel from "@/components/admin/AdminComplianceAuditPanel";
-import AdminControlCenter from "@/components/admin/AdminControlCenter";
+import AdminDecisionOverview from "@/components/admin/AdminDecisionOverview";
 import AdminIncidentOperationsPanel from "@/components/admin/AdminIncidentOperationsPanel";
 import AdminReleaseReadinessPanel, {
   type ReleaseActionResult,
@@ -244,44 +244,69 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   return (
     <>
-      <AdminControlCenter snapshot={snapshot} />
-      <AdminSecurityPosturePanel posture={securityPosture} />
-      <AdminReleaseReadinessPanel
-        readiness={releaseReadiness}
-        release={releaseSnapshot}
-        actionResult={releaseActionResult}
-      />
-      <AdminIncidentOperationsPanel
+      <AdminDecisionOverview
+        snapshot={snapshot}
+        posture={securityPosture}
         incidents={incidentOperations}
-        actionResult={incidentActionResult}
+        access={accessOperations}
+        billing={billingOperations}
       />
-      <AdminComplianceAuditPanel
-        audit={complianceAudit}
-        actionResult={complianceActionResult}
-        domainFilter={auditDomain}
-        statusFilter={auditStatus}
-      />
-      <section className="mx-auto w-full max-w-[1500px] pb-12">
+      <section id="admin-security" className="scroll-mt-24">
+        <AdminSecurityPosturePanel posture={securityPosture} />
+      </section>
+      <section id="admin-release" className="scroll-mt-24">
+        <AdminReleaseReadinessPanel
+          readiness={releaseReadiness}
+          release={releaseSnapshot}
+          actionResult={releaseActionResult}
+        />
+      </section>
+      <section id="admin-incidents" className="scroll-mt-24">
+        <AdminIncidentOperationsPanel
+          incidents={incidentOperations}
+          actionResult={incidentActionResult}
+        />
+      </section>
+      <section id="admin-compliance" className="scroll-mt-24">
+        <AdminComplianceAuditPanel
+          audit={complianceAudit}
+          actionResult={complianceActionResult}
+          domainFilter={auditDomain}
+          statusFilter={auditStatus}
+        />
+      </section>
+      <section
+        id="admin-access"
+        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
+      >
         <AdminTeamAccessPanel
           access={accessOperations}
           actionResult={accessActionResult}
         />
       </section>
-      <section className="mx-auto w-full max-w-[1500px] pb-12">
+      <section
+        id="admin-users"
+        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
+      >
         <AdminUserOperationsPanel operations={userOperations} />
       </section>
-      <section className="mx-auto w-full max-w-[1500px] pb-12">
+      <section
+        id="admin-billing"
+        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
+      >
         <BillingPlanOperations
           billing={billingOperations}
           actionResult={billingActionResult}
         />
       </section>
-      <PrivacyGovernancePanel privacy={snapshot.privacy} />
-      <section className="mx-auto w-full max-w-[1500px] pb-12">
-        <PrivacyRequestOperations
-          privacy={snapshot.privacy}
-          actionResult={privacyActionResult}
-        />
+      <section id="admin-privacy" className="scroll-mt-24">
+        <PrivacyGovernancePanel privacy={snapshot.privacy} />
+        <div className="mx-auto w-full max-w-[1500px] pb-12">
+          <PrivacyRequestOperations
+            privacy={snapshot.privacy}
+            actionResult={privacyActionResult}
+          />
+        </div>
       </section>
     </>
   );
