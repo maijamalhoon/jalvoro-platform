@@ -10,6 +10,22 @@ const defaultAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ];
+const existingUserErrorCodes = new Set([
+  "email_exists",
+  "user_already_exists",
+  "user_already_registered",
+]);
+const existingUserErrorMessages = new Set([
+  "user already registered",
+  "a user with this email address has already been registered",
+  "email address already registered",
+  "user with this email already exists",
+]);
+
+type AuthAdminErrorLike = {
+  code?: unknown;
+  message?: unknown;
+};
 
 function allowedOrigins() {
   const configured = (Deno.env.get("CONTROL_PLANE_ALLOWED_ORIGINS") ?? "")
@@ -97,18 +113,37 @@ function cleanExpiry(value: unknown) {
   return Number.isInteger(hours) && hours >= 1 && hours <= 168 ? hours : null;
 }
 
-function isExistingUserError(message: string | undefined) {
-  const value = message?.toLowerCase() ?? "";
-  return value.includes("already") || value.includes("exists") || value.includes("registered");
+function normalizeErrorText(value: unknown) {
+  return typeof value === "string"
+    ? value.trim().toLowerCase().replace(/\s+/g, " ")
+    : "";
+}
+
+function isExistingUserError(error: AuthAdminErrorLike | null | undefined) {
+  if (!error) return false;
+  const code = normalizeErrorText(error.code);
+  const message = normalizeErrorText(error.message);
+  return (
+    existingUserErrorCodes.has(code) ||
+    existingUserErrorMessages.has(message)
+  );
 }
 
 function parsePublishableKeys(value: string | undefined) {
   if (!value) return {} as Record<string, string>;
   try {
     const parsed = JSON.parse(value) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, string>
-      : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {} as Record<string, string>;
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed).flatMap(([key, candidate]) => {
+        if (typeof candidate !== "string") return [];
+        const normalized = candidate.trim();
+        return normalized ? [[key, normalized]] : [];
+      }),
+    );
   } catch {
     return {} as Record<string, string>;
   }
@@ -170,8 +205,8 @@ Deno.serve(async (request: Request) => {
     Deno.env.get("SUPABASE_PUBLISHABLE_KEYS"),
   );
   const publishableKey =
-    publishableKeys.default || Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    publishableKeys.default || Deno.env.get("SUPABASE_ANON_KEY")?.trim() || "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
 
   if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
     return json({ error: "control_plane_configuration_unavailable" }, 503, origin);
@@ -223,7 +258,7 @@ Deno.serve(async (request: Request) => {
   });
 
   if (authLinkResult.error) {
-    if (!isExistingUserError(authLinkResult.error.message)) {
+    if (!isExistingUserError(authLinkResult.error)) {
       return json({ error: "operator_account_creation_failed" }, 400, origin);
     }
   } else {
@@ -233,7 +268,7 @@ Deno.serve(async (request: Request) => {
       | null;
     authTokenHash =
       typeof properties?.hashed_token === "string"
-        ? properties.hashed_token
+        ? properties.hashed_token.trim()
         : "";
     accountCreated = Boolean(createdUserId && authTokenHash);
     if (!accountCreated) {
