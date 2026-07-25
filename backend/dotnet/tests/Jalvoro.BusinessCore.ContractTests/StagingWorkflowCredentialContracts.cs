@@ -19,10 +19,10 @@ internal static class StagingWorkflowCredentialContracts
       "The live smoke workflow must use the protected GitHub staging environment.");
     check(
       workflow.Contains("workflow_dispatch:", StringComparison.Ordinal) &&
-      workflow.Contains("agent/staging-business-smoke-readiness", StringComparison.Ordinal) &&
       !workflow.Contains("pull_request:", StringComparison.Ordinal) &&
-      !workflow.Contains("schedule:", StringComparison.Ordinal),
-      "The temporary OIDC proof trigger must remain restricted to the exact staging-readiness branch.");
+      !workflow.Contains("schedule:", StringComparison.Ordinal) &&
+      !workflow.Contains("\n  push:", StringComparison.Ordinal),
+      "The live staging smoke workflow must remain manual-only.");
     check(
       workflow.Contains("id-token: write", StringComparison.Ordinal) &&
       workflow.Contains("audience=jalvoro-staging-smoke", StringComparison.Ordinal),
