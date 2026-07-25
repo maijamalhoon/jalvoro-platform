@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 90
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
         working-directory: native
 
     steps:
