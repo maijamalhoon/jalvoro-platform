@@ -4,7 +4,7 @@
     "deploymentEnabled": {
       "*": false,
       "main": true,
-      "agent/global-command-center-launch-polish": true
+      "release/global-command-center-freeze-20260725": true
     }
   }
 }
