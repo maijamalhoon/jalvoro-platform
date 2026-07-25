@@ -46,19 +46,12 @@ jobs:
           gradle-version: "9.3.1"
 
       - name: Test, lint and compile native application
+        shell: cmd
         run: |
-          $ErrorActionPreference = "Continue"
-          & gradle `
-            :shared:testAndroidHostTest `
-            :androidApp:lintDebug `
-            :androidApp:lintRelease `
-            :androidApp:assembleDebug `
-            :androidApp:bundleRelease `
-            --stacktrace 2>&1 | Tee-Object -FilePath native-ci.log
-          $gradleExitCode = $LASTEXITCODE
-          if ($gradleExitCode -ne 0) {
-            exit $gradleExitCode
-          }
+          call gradle.bat :shared:testAndroidHostTest :androidApp:lintDebug :androidApp:lintRelease :androidApp:assembleDebug :androidApp:bundleRelease --stacktrace > native-ci.log 2>&1
+          set "GRADLE_EXIT=%ERRORLEVEL%"
+          type native-ci.log
+          exit /b %GRADLE_EXIT%
 
       - name: Prepare physical-device test APK
         env:
