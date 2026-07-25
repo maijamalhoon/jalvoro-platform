@@ -12,7 +12,7 @@ on:
       - ".github/scripts/apply-native-compose-compile-fixes.ps1"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: native-pr-${{ github.event.pull_request.number }}
@@ -33,34 +33,39 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
+          fetch-depth: 1
+          clean: false
 
-      - name: Apply targeted Compose compile fixes
-        env:
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+      - name: Apply targeted Compose and website parity fixes
         working-directory: .
         run: |
           $ErrorActionPreference = "Stop"
-          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-compose-compile-fixes.ps1"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          git diff --check
-          $changes = git status --porcelain -- `
+          $fixerLog = "$env:GITHUB_WORKSPACE\native\native-fixer.log"
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-compose-compile-fixes.ps1" *> $fixerLog
+          $fixerExit = $LASTEXITCODE
+          Get-Content $fixerLog
+          if ($fixerExit -ne 0) { exit $fixerExit }
+          git diff --check 2>&1 | Tee-Object -FilePath $fixerLog -Append
+          $diffExit = $LASTEXITCODE
+          git diff -- `
             native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
             native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt `
+            2>&1 | Tee-Object -FilePath $fixerLog -Append
+          if ($diffExit -ne 0) { exit $diffExit }
+
+      - name: Upload transformed native source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-parity-source-${{ github.run_id }}
+          path: |
+            native/native-fixer.log
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt
             native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
-          if ($changes) {
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add `
-              native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
-              native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
-              native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
-            git commit -m "Fix native Compose draw colors"
-            git push origin "HEAD:$env:PR_HEAD_REF"
-          }
-          git fetch origin $env:PR_BASE_REF
-          git merge --no-edit "origin/$env:PR_BASE_REF"
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -137,6 +142,7 @@ jobs:
         with:
           name: native-ci-log-${{ github.run_id }}
           path: |
+            native/native-fixer.log
             native/native-ci.log
             native/android-sdk-setup.log
             native/gradle-setup.log
