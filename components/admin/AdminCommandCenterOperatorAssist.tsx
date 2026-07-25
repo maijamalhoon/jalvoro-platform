@@ -1,13 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -217,7 +211,7 @@ export default function AdminCommandCenterOperatorAssist() {
   }, [announce]);
 
   useEffect(() => {
-    function handlePointerDown(event: Event) {
+    function rememberDialogTrigger(event: Event) {
       const target = event.target;
       if (!(target instanceof Element)) return;
 
@@ -233,8 +227,25 @@ export default function AdminCommandCenterOperatorAssist() {
       );
       const open = dialog !== null;
 
-      if (open && !externalDialogOpenRef.current) {
-        if (dialog?.classList.contains("cc-mobile-sheet")) {
+      if (open && !externalDialogOpenRef.current && dialog) {
+        if (!externalDialogTriggerRef.current) {
+          const activeElement =
+            document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null;
+          const fallbackLabel = dialog.classList.contains("cc-mobile-sheet")
+            ? "Open all Command Center modules"
+            : "Search Command Center";
+
+          externalDialogTriggerRef.current =
+            activeElement &&
+            activeElement !== document.body &&
+            !dialog.contains(activeElement)
+              ? activeElement
+              : findVisibleButton(fallbackLabel);
+        }
+
+        if (dialog.classList.contains("cc-mobile-sheet")) {
           window.requestAnimationFrame(() => {
             dialog
               .querySelector<HTMLButtonElement>(
@@ -253,15 +264,15 @@ export default function AdminCommandCenterOperatorAssist() {
       externalDialogOpenRef.current = open;
     }
 
-    document.addEventListener("pointerdown", handlePointerDown, true);
-    document.addEventListener("keydown", handlePointerDown, true);
+    document.addEventListener("pointerdown", rememberDialogTrigger, true);
+    document.addEventListener("keydown", rememberDialogTrigger, true);
     const observer = new MutationObserver(syncExternalDialog);
     observer.observe(document.body, { childList: true, subtree: true });
     syncExternalDialog();
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, true);
-      document.removeEventListener("keydown", handlePointerDown, true);
+      document.removeEventListener("pointerdown", rememberDialogTrigger, true);
+      document.removeEventListener("keydown", rememberDialogTrigger, true);
       observer.disconnect();
     };
   }, []);
@@ -282,20 +293,24 @@ export default function AdminCommandCenterOperatorAssist() {
           );
         if (activeDialog) {
           const focusable = getFocusableElements(activeDialog);
-          if (focusable.length > 0) {
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            const activeElement = document.activeElement;
-            if (event.shiftKey && activeElement === first) {
-              event.preventDefault();
-              last.focus();
-              return;
-            }
-            if (!event.shiftKey && activeElement === last) {
-              event.preventDefault();
-              first.focus();
-              return;
-            }
+          if (focusable.length === 0) {
+            event.preventDefault();
+            activeDialog.focus();
+            return;
+          }
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          const activeElement = document.activeElement;
+          if (event.shiftKey && activeElement === first) {
+            event.preventDefault();
+            last.focus();
+            return;
+          }
+          if (!event.shiftKey && activeElement === last) {
+            event.preventDefault();
+            first.focus();
+            return;
           }
         }
       }
@@ -354,28 +369,6 @@ export default function AdminCommandCenterOperatorAssist() {
       document.documentElement.classList.remove("cc-operator-help-open");
   }, [helpOpen]);
 
-  function handleDialogKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
-    if (event.key !== "Tab" || !helpDialogRef.current) return;
-
-    const focusable = getFocusableElements(helpDialogRef.current);
-    if (focusable.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const activeElement = document.activeElement;
-
-    if (event.shiftKey && activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   if (!mounted) return null;
 
   return createPortal(
@@ -416,11 +409,11 @@ export default function AdminCommandCenterOperatorAssist() {
             id="cc-operator-help"
             className="cc-operator-dialog"
             role="dialog"
+            tabIndex={-1}
             aria-modal="true"
             aria-labelledby="cc-operator-title"
             aria-describedby="cc-operator-description"
             onMouseDown={(event) => event.stopPropagation()}
-            onKeyDown={handleDialogKeyDown}
           >
             <header className="cc-operator-dialog-head">
               <div>
