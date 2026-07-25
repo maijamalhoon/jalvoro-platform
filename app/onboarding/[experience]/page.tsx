@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { AlertTriangle, ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 
 import AuthShell from "@/components/auth/AuthShell";
 import { getProductExperience } from "@/lib/product-experiences";
@@ -47,7 +47,6 @@ function PreparationError({
       progress="Preparation paused"
       title={`We could not prepare ${experienceName}`}
       description="No workspace records were merged or deleted. Retry when your connection is stable, or return to the workspace selector."
-      icon={AlertTriangle}
     >
       <div className="space-y-4 text-center" role="alert" aria-live="assertive">
         <p className="text-sm leading-6 text-text-secondary">
