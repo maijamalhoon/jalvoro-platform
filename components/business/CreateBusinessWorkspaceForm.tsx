@@ -33,7 +33,6 @@ const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as con
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type WorkspaceMode = "simple_shop" | "advanced_company";
 type BusinessExperience = Exclude<ProductExperienceSlug, "personal">;
 
 type CreateBusinessWorkspaceFormProps = {
@@ -52,6 +51,7 @@ export default function CreateBusinessWorkspaceForm({
     : "small-business";
   const experience = getProductExperience(businessExperience);
   const setupDefaults = getBusinessSetupDefaults(businessExperience);
+  const workspaceMode = setupDefaults.workspaceMode;
   const validSessionId =
     onboardingSessionId && UUID_PATTERN.test(onboardingSessionId)
       ? onboardingSessionId
@@ -59,9 +59,6 @@ export default function CreateBusinessWorkspaceForm({
 
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState(setupDefaults.businessType);
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(
-    setupDefaults.workspaceMode,
-  );
   const [countryCode, setCountryCode] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("PKR");
   const [timezone, setTimezone] = useState("UTC");
@@ -74,8 +71,7 @@ export default function CreateBusinessWorkspaceForm({
 
   useEffect(() => {
     setBusinessType(setupDefaults.businessType);
-    setWorkspaceMode(setupDefaults.workspaceMode);
-  }, [businessExperience, setupDefaults.businessType, setupDefaults.workspaceMode]);
+  }, [businessExperience, setupDefaults.businessType]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,45 +98,23 @@ export default function CreateBusinessWorkspaceForm({
 
     try {
       const { data: businessId, error } = await supabase.rpc(
-        "create_business_workspace_with_mode",
+        "create_business_workspace_for_experience",
         {
           p_name: cleanName,
           p_business_type: businessType,
-          p_workspace_mode: workspaceMode,
+          p_experience: businessExperience,
           p_country_code: cleanCountry || null,
           p_base_currency: baseCurrency,
           p_timezone: timezone,
+          p_session_id: validSessionId,
         },
       );
 
       if (error || typeof businessId !== "string") {
-        console.error("Business workspace creation failed", { code: error?.code });
-        toast.error("Business workspace could not be created. Please try again.");
-        return;
-      }
-
-      const contextResult = await supabase.rpc("apply_business_entry_experience", {
-        p_business_id: businessId,
-        p_experience: businessExperience,
-        p_session_id: validSessionId,
-      });
-
-      if (contextResult.error) {
-        console.error("Business experience context could not be finalized", {
-          code: contextResult.error.code,
-        });
-        const recoveryParams = new URLSearchParams({
-          setup_error: "context",
-          business_id: businessId,
-          experience: businessExperience,
-        });
-        if (validSessionId) recoveryParams.set("session", validSessionId);
-
-        toast.warning(
-          "Core workspace created. Tailored modules still need confirmation before the workspace is ready.",
+        console.error("Atomic business workspace creation failed", { code: error?.code });
+        toast.error(
+          "Workspace setup could not be completed. Nothing was partially created; check your details or connection and try again.",
         );
-        router.replace(`/business?${recoveryParams.toString()}`);
-        router.refresh();
         return;
       }
 
@@ -154,7 +128,7 @@ export default function CreateBusinessWorkspaceForm({
         console.error("Created business could not be resolved", {
           code: businessError?.code,
         });
-        toast.success("Business workspace created.");
+        toast.success("Business workspace created with tailored setup ready.");
         router.replace("/business");
         router.refresh();
         return;
@@ -171,7 +145,9 @@ export default function CreateBusinessWorkspaceForm({
       );
       router.refresh();
     } catch {
-      toast.error("Business workspace could not be created. Check your connection and try again.");
+      toast.error(
+        "Workspace setup could not be completed. Nothing was partially created; check your connection and try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -202,7 +178,7 @@ export default function CreateBusinessWorkspaceForm({
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
             Your selected experience sets a compatible starting workflow and module foundation.
-            The isolated workspace can expand later without creating another identity.
+            Creation is atomic: tailored setup must succeed before any workspace is kept.
           </p>
         </div>
       </div>
@@ -317,7 +293,7 @@ export default function CreateBusinessWorkspaceForm({
           </span>
           <span className="flex items-center gap-2">
             <Globe2 aria-hidden="true" className="size-4 text-primary" />
-            Workspace-level modules and configuration
+            Atomic workspace and module setup
           </span>
         </div>
 
