@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -118,8 +119,7 @@ public sealed class SupabaseOrganizationProfileCommandStore : IOrganizationProfi
   {
     var authorization = _httpContextAccessor.HttpContext?
       .Request
-      .Headers
-      .Authorization
+      .Headers["Authorization"]
       .FirstOrDefault();
     if (string.IsNullOrWhiteSpace(authorization) ||
         !authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -196,7 +196,7 @@ public sealed class SupabaseOrganizationProfileCommandStore : IOrganizationProfi
   private static bool TryReadString(
     JsonElement source,
     string propertyName,
-    out string? value)
+    [NotNullWhen(true)] out string? value)
   {
     if (
       source.ValueKind is not JsonValueKind.Object ||
