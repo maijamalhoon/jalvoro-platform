@@ -1,0 +1,538 @@
+/* Launch-safe Command Center refinement.
+ * This layer is intentionally additive: no operational contract, data source,
+ * permission boundary, or module registry behavior is changed here.
+ */
+
+.cc-world {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 78% -10%, color-mix(in srgb, var(--info) 15%, transparent), transparent 34rem),
+    radial-gradient(circle at 16% 112%, color-mix(in srgb, var(--success) 8%, transparent), transparent 36rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--background) 96%, var(--info)) 0%, var(--background) 48%, color-mix(in srgb, var(--background) 97%, var(--success)) 100%);
+}
+
+.cc-world::before,
+.cc-world::after {
+  position: fixed;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+}
+
+.cc-world::before {
+  inset: 0;
+  opacity: 0.34;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 22%, transparent) 1px, transparent 1px);
+  background-size: 3.25rem 3.25rem;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+.cc-world::after {
+  inset: -18rem -22rem auto auto;
+  width: 48rem;
+  height: 48rem;
+  border-radius: 999px;
+  opacity: 0.2;
+  background: color-mix(in srgb, var(--info) 42%, transparent);
+  filter: blur(110px);
+}
+
+.cc-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--background) 92%, var(--card))),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--info) 8%, transparent), transparent 18rem);
+  box-shadow:
+    22px 0 70px color-mix(in srgb, var(--background) 74%, transparent),
+    inset -1px 0 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.cc-brand-mark {
+  position: relative;
+  overflow: hidden;
+}
+
+.cc-brand-mark::after {
+  position: absolute;
+  inset: -45% auto auto -85%;
+  width: 80%;
+  height: 190%;
+  content: "";
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, white 24%, transparent), transparent);
+  transform: rotate(20deg);
+  animation: cc-brand-scan 7s ease-in-out infinite;
+}
+
+.cc-plane-status {
+  position: relative;
+  overflow: hidden;
+}
+
+.cc-plane-status::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--success) 58%, transparent), transparent);
+}
+
+.cc-live-dot,
+.cc-signal-dot {
+  animation: cc-live-pulse 2.6s ease-in-out infinite;
+}
+
+.cc-world[data-network="offline"] .cc-live-dot,
+.cc-signal[data-network="offline"] .cc-signal-dot {
+  background: var(--warning);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--warning) 14%, transparent);
+  animation: none;
+}
+
+.cc-sidebar-intelligence {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 88%, transparent), color-mix(in srgb, var(--surface-secondary) 62%, transparent));
+}
+
+.cc-sidebar-intelligence-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.66rem;
+}
+
+.cc-sidebar-intelligence-row strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-topbar {
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--background) 66%, transparent);
+}
+
+.cc-topbar::after {
+  position: absolute;
+  inset: auto 1.4rem 0;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--info) 30%, var(--border)), transparent);
+}
+
+.cc-operator-strip {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.cc-signal,
+.cc-clock-chip,
+.cc-theme-trigger,
+.cc-density-trigger {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--card) 84%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.69rem;
+  font-weight: 720;
+}
+
+.cc-signal,
+.cc-clock-chip {
+  padding: 0.52rem 0.75rem;
+}
+
+.cc-signal-dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow: 0 0 0 0.22rem color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.cc-clock-chip {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.55rem;
+}
+
+.cc-clock-chip > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.cc-clock-chip strong {
+  color: var(--foreground);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+}
+
+.cc-clock-chip small {
+  overflow: hidden;
+  max-width: 9rem;
+  margin-top: 0.08rem;
+  color: var(--muted-foreground);
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-theme-trigger,
+.cc-density-trigger {
+  cursor: pointer;
+  padding: 0.52rem 0.72rem;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.cc-theme-trigger:hover,
+.cc-density-trigger:hover {
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--info) 30%, var(--border));
+  background: color-mix(in srgb, var(--info) 8%, var(--card));
+  transform: translateY(-1px);
+}
+
+.cc-theme-trigger span,
+.cc-density-trigger span {
+  color: var(--foreground);
+  font-size: 0.68rem;
+}
+
+.cc-content {
+  position: relative;
+}
+
+.cc-content > * {
+  animation: cc-stage-enter 420ms cubic-bezier(0.2, 0.72, 0.2, 1) both;
+}
+
+.cc-content [data-slot="card"] {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, transparent), color-mix(in srgb, var(--surface-secondary) 35%, var(--card)));
+  box-shadow:
+    0 18px 52px color-mix(in srgb, var(--background) 64%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+@media (hover: hover) {
+  .cc-content [data-slot="card"]:hover {
+    border-color: color-mix(in srgb, var(--info) 24%, var(--border));
+    box-shadow:
+      0 24px 62px color-mix(in srgb, var(--background) 58%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+    transform: translateY(-2px);
+  }
+}
+
+.cc-command-palette {
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--info) 28%, var(--border));
+  background:
+    radial-gradient(circle at 80% 0%, color-mix(in srgb, var(--info) 12%, transparent), transparent 24rem),
+    color-mix(in srgb, var(--card) 96%, var(--background));
+  box-shadow:
+    0 34px 110px color-mix(in srgb, black 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+}
+
+.cc-command-head-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  margin-top: 0.55rem;
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.cc-command-quick {
+  padding: 0.15rem 1rem 0.85rem;
+}
+
+.cc-command-section-label {
+  margin: 0 0 0.55rem;
+  color: var(--muted-foreground);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.cc-command-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.cc-command-action {
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 3.65rem;
+  cursor: pointer;
+  padding: 0.62rem;
+  border: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+  border-radius: 1rem;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--surface-secondary) 46%, transparent);
+  text-align: left;
+  transition: 160ms ease;
+}
+
+.cc-command-action:hover {
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--info) 30%, var(--border));
+  background: color-mix(in srgb, var(--info) 8%, var(--card));
+  transform: translateY(-1px);
+}
+
+.cc-command-action-icon {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, currentColor 16%, var(--border));
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, currentColor 6%, var(--card));
+}
+
+.cc-command-action-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.cc-command-action-copy strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-command-action-copy small {
+  overflow: hidden;
+  margin-top: 0.18rem;
+  color: var(--muted-foreground);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-command-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.cc-command-statusbar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-world[data-sidebar-density="compact"] {
+  --cc-sidebar-width: 6.25rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-brand {
+  justify-content: center;
+  padding-inline: 0.65rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-brand-copy,
+.cc-world[data-sidebar-density="compact"] .cc-plane-status > span:last-child,
+.cc-world[data-sidebar-density="compact"] .cc-nav-group-label,
+.cc-world[data-sidebar-density="compact"] .cc-sidebar-intelligence,
+.cc-world[data-sidebar-density="compact"] .cc-search-trigger span,
+.cc-world[data-sidebar-density="compact"] .cc-search-trigger kbd,
+.cc-world[data-sidebar-density="compact"] .cc-exit-link span {
+  display: none;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-plane-status {
+  justify-content: center;
+  margin-inline: 0.72rem;
+  padding-inline: 0.55rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-sidebar-nav {
+  padding-inline: 0.6rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-nav-group + .cc-nav-group {
+  margin-top: 0.55rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-nav-link {
+  display: flex;
+  min-height: 3.2rem;
+  justify-content: center;
+  padding-inline: 0.38rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-nav-copy {
+  display: none;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-nav-link-active {
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--info) 78%, transparent);
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-sidebar-foot {
+  padding-inline: 0.65rem;
+}
+
+.cc-world[data-sidebar-density="compact"] .cc-search-trigger,
+.cc-world[data-sidebar-density="compact"] .cc-exit-link {
+  justify-content: center;
+  padding-inline: 0.55rem;
+}
+
+@keyframes cc-live-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.82);
+    opacity: 0.66;
+  }
+}
+
+@keyframes cc-brand-scan {
+  0%,
+  72%,
+  100% {
+    transform: translateX(0) rotate(20deg);
+  }
+  82% {
+    transform: translateX(270%) rotate(20deg);
+  }
+}
+
+@keyframes cc-stage-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1180px) {
+  .cc-clock-chip small,
+  .cc-theme-trigger span,
+  .cc-density-trigger span {
+    display: none;
+  }
+
+  .cc-theme-trigger,
+  .cc-density-trigger {
+    width: 2.7rem;
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .cc-operator-strip {
+    gap: 0.4rem;
+  }
+
+  .cc-signal,
+  .cc-clock-chip,
+  .cc-density-trigger {
+    display: none;
+  }
+
+  .cc-theme-trigger {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .cc-command-quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-command-statusbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .cc-theme-trigger {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .cc-world::before,
+  .cc-world::after,
+  .cc-brand-mark::after {
+    display: none;
+  }
+
+  .cc-sidebar,
+  .cc-topbar,
+  .cc-command-palette,
+  .cc-content [data-slot="card"] {
+    background: var(--background);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-live-dot,
+  .cc-signal-dot,
+  .cc-brand-mark::after,
+  .cc-content > * {
+    animation: none !important;
+  }
+
+  .cc-theme-trigger,
+  .cc-density-trigger,
+  .cc-command-action,
+  .cc-content [data-slot="card"] {
+    transition: none !important;
+  }
+}

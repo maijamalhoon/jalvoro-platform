@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import AdminCommandCenterShell from "@/components/admin/AdminCommandCenterShell";
 
 import "./command-center-world.css";
+import "./command-center-launch.css";
+import "./command-center-launch-mobile.css";
 import "./organization-operations.css";
 import "./organization-operations-detail.css";
 
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
     template: "%s | JALVORO Command Center",
   },
   description:
-    "JALVORO Global Admin & Operations Control Center for internal administration, analytics, observability, security, billing, support, governance, configuration, and operational control.",
+    "JALVORO Global Admin & Operations Control Center — the private Command Center for administration, analytics, observability, security, billing, support, governance, configuration, and operational control.",
   robots: {
     index: false,
     follow: false,
