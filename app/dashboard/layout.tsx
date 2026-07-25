@@ -116,6 +116,8 @@ import "./data-transfer-overlay.css";
 import "./data-transfer-airdrop-polish.css";
 // Successful imports use a cardless full-screen flash before exposing refreshed data.
 import "./data-transfer-flash-override.css";
+// Import selection/drop now produces exactly one cardless full-screen effect.
+import "./data-transfer-single-import-animation.css";
 // Physical left-edge lock stays absolutely last so generic sheet/dialog rules cannot recenter the drawer.
 import "./mobile-sidebar-edge-lock.css";
 

@@ -3,14 +3,6 @@
 import { APP_NAME } from "@/lib/brand";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Database,
-  Droplets,
-  Loader2,
-  Upload,
-} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -96,8 +88,7 @@ export default function FinanceDataTransfer() {
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phase, setPhase] = useState<TransferPhase>("idle");
-  const [message, setMessage] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const busy =
     phase === "validating" ||
     phase === "importing" ||
@@ -116,12 +107,11 @@ export default function FinanceDataTransfer() {
   }, []);
 
   const scheduleReset = useCallback(
-    (delay = 1500) => {
+    (delay = 500) => {
       clearResetTimer();
       resetTimerRef.current = setTimeout(() => {
         setPhase("idle");
-        setMessage("");
-        setFileName("");
+        setStatusMessage("");
         resetTimerRef.current = null;
       }, delay);
     },
@@ -145,76 +135,56 @@ export default function FinanceDataTransfer() {
 
       clearResetTimer();
       clearRevealTimer();
-      setFileName(file.name);
-      setMessage("Checking every section in this backup…");
-      setPhase("validating");
 
-      if (!hasAcceptedBackupExtension(file.name)) {
-        const error = "Choose a .jfinance backup file.";
-        setMessage(error);
-        setPhase("error");
-        toast.error(error);
-        busyRef.current = false;
-        scheduleReset(2200);
-        return;
-      }
-
-      if (file.size <= 0 || file.size > MAX_FINANCE_BACKUP_BYTES) {
-        const error = "This backup is empty or too large to import safely.";
-        setMessage(error);
-        setPhase("error");
-        toast.error(error);
-        busyRef.current = false;
-        scheduleReset(2200);
-        return;
-      }
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(await file.text());
-      } catch {
-        const error = "This backup file is invalid or damaged.";
-        setMessage(error);
-        setPhase("error");
-        toast.error(error);
-        busyRef.current = false;
-        scheduleReset(2200);
-        return;
-      }
-
-      const validation = validateFinanceBackup(parsed);
-      if (!validation.ok) {
-        setMessage(validation.error);
-        setPhase("error");
-        toast.error(validation.error);
-        busyRef.current = false;
-        scheduleReset(2600);
-        return;
-      }
-
-      const recordCount = getBackupRecordCount(validation.value);
-      if (recordCount > 100_000) {
-        const error = "This backup contains too many records to import safely.";
-        setMessage(error);
-        setPhase("error");
-        toast.error(error);
-        busyRef.current = false;
-        scheduleReset(2200);
-        return;
-      }
-
-      setMessage(
-        recordCount === 1
-          ? "Safely merging 1 finance record…"
-          : `Safely merging ${recordCount.toLocaleString()} finance records…`,
-      );
-      setPhase("importing");
+      let revealPromise: Promise<void> | null = null;
 
       try {
+        if (!hasAcceptedBackupExtension(file.name)) {
+          const error = "Choose a .jfinance backup file.";
+          setStatusMessage(error);
+          setPhase("error");
+          toast.error(error);
+          scheduleReset(2200);
+          return;
+        }
+
+        if (file.size <= 0 || file.size > MAX_FINANCE_BACKUP_BYTES) {
+          const error = "This backup is empty or too large to import safely.";
+          setStatusMessage(error);
+          setPhase("error");
+          toast.error(error);
+          scheduleReset(2200);
+          return;
+        }
+
+        // Start the single cardless full-screen effect immediately after a
+        // valid file is selected or dropped. Validation and import run behind it.
+        setStatusMessage("Importing finance backup.");
+        setPhase("validating");
+        revealPromise = playReveal();
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(await file.text());
+        } catch {
+          throw new Error("This backup file is invalid or damaged.");
+        }
+
+        const validation = validateFinanceBackup(parsed);
+        if (!validation.ok) {
+          throw new Error(validation.error);
+        }
+
+        const recordCount = getBackupRecordCount(validation.value);
+        if (recordCount > 100_000) {
+          throw new Error("This backup contains too many records to import safely.");
+        }
+
+        setPhase("importing");
+
         const { data, error } = await supabase.rpc("import_finance_backup", {
           p_backup: validation.value,
         });
-
         if (error) throw error;
 
         const result = parseFinanceImportResult(data);
@@ -222,44 +192,25 @@ export default function FinanceDataTransfer() {
           throw new Error("Data import could not be verified.");
         }
 
-        if (result.alreadyImported) {
-          const successMessage =
-            "This backup was already imported. No duplicate data was added.";
-          setMessage(successMessage);
-          setPhase("success");
-          toast.info(successMessage);
-          window.dispatchEvent(
-            new CustomEvent(FINANCE_DATA_IMPORTED_EVENT, { detail: result }),
-          );
-          router.refresh();
-          scheduleReset(1800);
-          return;
-        }
-
-        setMessage("Your complete finance history is flowing into place…");
         setPhase("revealing");
-        await playReveal();
-
-        const restoredTotal = Object.values(result.restored ?? {}).reduce(
-          (total, count) => total + count,
-          0,
-        );
-        const successMessage =
-          restoredTotal > 0
-            ? `Import complete — ${result.totalAdded.toLocaleString()} finance records and ${restoredTotal.toLocaleString()} settings restored.`
-            : `Import complete — ${result.totalAdded.toLocaleString()} finance records added.`;
+        await revealPromise;
 
         window.dispatchEvent(
           new CustomEvent(FINANCE_DATA_IMPORTED_EVENT, { detail: result }),
         );
         router.refresh();
-        setMessage(successMessage);
+
+        setStatusMessage(
+          result.alreadyImported
+            ? "Backup already imported. No duplicate data was added."
+            : "Import complete.",
+        );
         setPhase("success");
-        toast.success(successMessage);
-        scheduleReset(1200);
+        scheduleReset();
       } catch (error) {
+        clearRevealTimer();
         const friendlyError = getFriendlyImportError(error);
-        setMessage(friendlyError);
+        setStatusMessage(friendlyError);
         setPhase("error");
         toast.error(friendlyError);
         scheduleReset(3200);
@@ -279,14 +230,14 @@ export default function FinanceDataTransfer() {
 
   useEffect(() => {
     const shell = document.querySelector<HTMLElement>("[data-dashboard-shell]");
-    if (phase === "revealing") {
+    if (busy) {
       shell?.classList.add("is-finance-water-impact");
     } else {
       shell?.classList.remove("is-finance-water-impact");
     }
 
     return () => shell?.classList.remove("is-finance-water-impact");
-  }, [phase]);
+  }, [busy]);
 
   useEffect(() => {
     function openPicker() {
@@ -301,7 +252,6 @@ export default function FinanceDataTransfer() {
       if (!hasFiles(event) || busyRef.current) return;
       event.preventDefault();
       dragDepthRef.current += 1;
-      setMessage(`Drop your ${APP_NAME} backup anywhere`);
       setPhase("dragging");
     }
 
@@ -317,8 +267,6 @@ export default function FinanceDataTransfer() {
       dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
       if (dragDepthRef.current === 0) {
         setPhase("idle");
-        setMessage("");
-        setFileName("");
       }
     }
 
@@ -331,7 +279,7 @@ export default function FinanceDataTransfer() {
       const files = Array.from(event.dataTransfer?.files ?? []);
       if (files.length !== 1) {
         const error = `Drop one ${APP_NAME} backup file at a time.`;
-        setMessage(error);
+        setStatusMessage(error);
         setPhase("error");
         toast.error(error);
         scheduleReset(2200);
@@ -363,25 +311,7 @@ export default function FinanceDataTransfer() {
     scheduleReset,
   ]);
 
-  const visible = phase !== "idle";
-  const icon =
-    phase === "success" ? (
-      <CheckCircle2 size={46} strokeWidth={2.2} />
-    ) : phase === "error" ? (
-      <AlertTriangle size={46} strokeWidth={2.2} />
-    ) : phase === "validating" || phase === "importing" ? (
-      <Loader2
-        size={46}
-        strokeWidth={2.2}
-        className="finance-transfer-spin"
-      />
-    ) : phase === "revealing" ? (
-      <Droplets size={48} strokeWidth={2.05} />
-    ) : phase === "dragging" ? (
-      <Upload size={48} strokeWidth={2.2} />
-    ) : (
-      <Database size={46} strokeWidth={2.2} />
-    );
+  const visible = busy;
 
   return (
     <>
@@ -413,31 +343,9 @@ export default function FinanceDataTransfer() {
           <span className="finance-transfer-ripple finance-transfer-ripple-one" />
           <span className="finance-transfer-ripple finance-transfer-ripple-two" />
         </div>
-
-        <div className="finance-transfer-panel" role="status">
-          <span className="finance-transfer-icon" aria-hidden="true">
-            {icon}
-          </span>
-          <strong className="finance-transfer-title">
-            {phase === "dragging"
-              ? "Drop to Import"
-              : phase === "revealing"
-                ? "Fresh Water Restore"
-                : phase === "success"
-                  ? "Import Complete"
-                  : phase === "error"
-                    ? "Import Stopped"
-                    : phase === "validating"
-                      ? "Verifying Complete Backup"
-                      : "Merging Finance History"}
-          </strong>
-          <span className="finance-transfer-message">{message}</span>
-          {fileName ? (
-            <span className="finance-transfer-file" title={fileName}>
-              {fileName}
-            </span>
-          ) : null}
-        </div>
+        <span className="sr-only" role="status">
+          {statusMessage}
+        </span>
       </div>
     </>
   );
