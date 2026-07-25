@@ -19,35 +19,34 @@ internal static class StagingWorkflowCredentialContracts
       "The live smoke workflow must use the protected GitHub staging environment.");
     check(
       workflow.Contains("workflow_dispatch:", StringComparison.Ordinal) &&
+      workflow.Contains("agent/staging-business-smoke-readiness", StringComparison.Ordinal) &&
       !workflow.Contains("pull_request:", StringComparison.Ordinal) &&
-      !workflow.Contains("schedule:", StringComparison.Ordinal) &&
-      !workflow.Contains("\n  push:", StringComparison.Ordinal),
-      "The live staging smoke workflow must remain manual-only.");
+      !workflow.Contains("schedule:", StringComparison.Ordinal),
+      "The temporary OIDC proof trigger must remain restricted to the exact staging-readiness branch.");
+    check(
+      workflow.Contains("id-token: write", StringComparison.Ordinal) &&
+      workflow.Contains("audience=jalvoro-staging-smoke", StringComparison.Ordinal),
+      "The workflow must request a narrowly scoped GitHub OIDC token.");
     check(
       workflow.Contains(
-        "JALVORO_SUPABASE_STAGING_TEST_EMAIL: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_EMAIL }}",
-        StringComparison.Ordinal) &&
-      workflow.Contains(
-        "JALVORO_SUPABASE_STAGING_TEST_PASSWORD: ${{ secrets.JALVORO_SUPABASE_STAGING_TEST_PASSWORD }}",
+        "/functions/v1/jalvoro-github-staging-smoke-session",
         StringComparison.Ordinal),
-      "The workflow must obtain the dedicated staging identity from protected email/password secrets.");
+      "The workflow must exchange GitHub OIDC through the dedicated staging session broker.");
     check(
-      !workflow.Contains("secrets.JALVORO_SUPABASE_STAGING_TEST_JWT", StringComparison.Ordinal),
-      "A static expiring staging JWT must never be stored as a GitHub secret.");
+      !workflow.Contains("secrets.JALVORO_SUPABASE_STAGING", StringComparison.Ordinal) &&
+      !workflow.Contains("vars.JALVORO_SUPABASE_STAGING", StringComparison.Ordinal) &&
+      !workflow.Contains("/auth/v1/token?grant_type=password", StringComparison.Ordinal),
+      "The workflow must not store or directly use staging email, password, JWT, user, or tenant values in GitHub.");
     check(
-      workflow.Contains("/auth/v1/token?grant_type=password", StringComparison.Ordinal),
-      "The workflow must acquire a fresh short-lived Supabase session at runtime.");
+      workflow.Contains("::add-mask::$github_oidc_token", StringComparison.Ordinal) &&
+      workflow.Contains("::add-mask::$access_token", StringComparison.Ordinal) &&
+      workflow.Contains("::add-mask::$user_id", StringComparison.Ordinal) &&
+      workflow.Contains("::add-mask::$tenant_id", StringComparison.Ordinal),
+      "OIDC, access-token, subject, and tenant values must be masked before entering the process environment.");
     check(
-      workflow.Contains(
-        "returned_user_id\" != \"$JALVORO_SUPABASE_STAGING_TEST_USER_ID",
-        StringComparison.Ordinal),
-      "The fresh session subject must match the approved staging identity before the smoke test runs.");
-    check(
-      workflow.Contains("::add-mask::$access_token", StringComparison.Ordinal),
-      "The short-lived staging access token must be masked before entering the process environment.");
-    check(
-      !workflow.Contains("cat \"$response_file\"", StringComparison.Ordinal),
-      "The staging Auth response body must never be printed into workflow logs.");
+      !workflow.Contains("cat \"$oidc_response_file\"", StringComparison.Ordinal) &&
+      !workflow.Contains("cat \"$broker_response_file\"", StringComparison.Ordinal),
+      "OIDC and broker response bodies must never be printed into workflow logs.");
   }
 
   private static string? FindRepositoryFile(string relativePath)
