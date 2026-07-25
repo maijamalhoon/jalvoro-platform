@@ -18,14 +18,15 @@ import { createClient } from "@/lib/supabase/client";
 type TransferPhase =
   | "idle"
   | "dragging"
-  | "validating"
-  | "importing"
+  | "impact"
+  | "whiteout"
   | "revealing"
-  | "success"
   | "error";
 
 const ACCEPTED_FILE_EXTENSIONS = [".jfinance", ".json"];
-const IMPORT_REVEAL_DURATION_MS = 4_000;
+const IMPORT_IMPACT_DURATION_MS = 4_200;
+const IMPORT_REFRESH_SETTLE_MS = 180;
+const IMPORT_REVEAL_DURATION_MS = 1_450;
 
 function hasFiles(event: DragEvent) {
   return Array.from(event.dataTransfer?.types ?? []).includes("Files");
@@ -73,10 +74,20 @@ function getFriendlyImportError(error: unknown) {
   return "This backup file is invalid or damaged. No data was changed.";
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getImpactDelay() {
+  return prefersReducedMotion() ? 320 : IMPORT_IMPACT_DURATION_MS;
+}
+
+function getRefreshSettleDelay() {
+  return prefersReducedMotion() ? 50 : IMPORT_REFRESH_SETTLE_MS;
+}
+
 function getRevealDelay() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? 450
-    : IMPORT_REVEAL_DURATION_MS;
+  return prefersReducedMotion() ? 360 : IMPORT_REVEAL_DURATION_MS;
 }
 
 export default function FinanceDataTransfer() {
@@ -86,13 +97,11 @@ export default function FinanceDataTransfer() {
   const dragDepthRef = useRef(0);
   const busyRef = useRef(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cinematicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phase, setPhase] = useState<TransferPhase>("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const busy =
-    phase === "validating" ||
-    phase === "importing" ||
-    phase === "revealing";
+    phase === "impact" || phase === "whiteout" || phase === "revealing";
 
   const clearResetTimer = useCallback(() => {
     if (!resetTimerRef.current) return;
@@ -100,10 +109,10 @@ export default function FinanceDataTransfer() {
     resetTimerRef.current = null;
   }, []);
 
-  const clearRevealTimer = useCallback(() => {
-    if (!revealTimerRef.current) return;
-    clearTimeout(revealTimerRef.current);
-    revealTimerRef.current = null;
+  const clearCinematicTimer = useCallback(() => {
+    if (!cinematicTimerRef.current) return;
+    clearTimeout(cinematicTimerRef.current);
+    cinematicTimerRef.current = null;
   }, []);
 
   const scheduleReset = useCallback(
@@ -118,15 +127,29 @@ export default function FinanceDataTransfer() {
     [clearResetTimer],
   );
 
-  const playReveal = useCallback(async () => {
-    clearRevealTimer();
-    await new Promise<void>((resolve) => {
-      revealTimerRef.current = setTimeout(() => {
-        revealTimerRef.current = null;
-        resolve();
-      }, getRevealDelay());
-    });
-  }, [clearRevealTimer]);
+  const waitForCinematicDelay = useCallback(
+    (delay: number) =>
+      new Promise<void>((resolve) => {
+        clearCinematicTimer();
+        cinematicTimerRef.current = setTimeout(() => {
+          cinematicTimerRef.current = null;
+          resolve();
+        }, delay);
+      }),
+    [clearCinematicTimer],
+  );
+
+  const playImpactToWhiteout = useCallback(async () => {
+    setPhase("impact");
+    await waitForCinematicDelay(getImpactDelay());
+    setPhase("whiteout");
+  }, [waitForCinematicDelay]);
+
+  const playContentReveal = useCallback(async () => {
+    await waitForCinematicDelay(getRefreshSettleDelay());
+    setPhase("revealing");
+    await waitForCinematicDelay(getRevealDelay());
+  }, [waitForCinematicDelay]);
 
   const importFile = useCallback(
     async (file: File) => {
@@ -134,9 +157,9 @@ export default function FinanceDataTransfer() {
       busyRef.current = true;
 
       clearResetTimer();
-      clearRevealTimer();
+      clearCinematicTimer();
 
-      let revealPromise: Promise<void> | null = null;
+      let impactPromise: Promise<void> | null = null;
 
       try {
         if (!hasAcceptedBackupExtension(file.name)) {
@@ -157,11 +180,10 @@ export default function FinanceDataTransfer() {
           return;
         }
 
-        // Start the single cardless full-screen effect immediately after a
-        // valid file is selected or dropped. Validation and import run behind it.
+        // One uninterrupted cinematic starts immediately. Parsing, validation,
+        // duplicate protection and the RPC all run behind the same cardless layer.
         setStatusMessage("Importing finance backup.");
-        setPhase("validating");
-        revealPromise = playReveal();
+        impactPromise = playImpactToWhiteout();
 
         let parsed: unknown;
         try {
@@ -180,8 +202,6 @@ export default function FinanceDataTransfer() {
           throw new Error("This backup contains too many records to import safely.");
         }
 
-        setPhase("importing");
-
         const { data, error } = await supabase.rpc("import_finance_backup", {
           p_backup: validation.value,
         });
@@ -192,8 +212,9 @@ export default function FinanceDataTransfer() {
           throw new Error("Data import could not be verified.");
         }
 
-        setPhase("revealing");
-        await revealPromise;
+        // Never expose stale page content. The screen reaches full white first,
+        // then waits there until the verified import has completed.
+        await impactPromise;
 
         window.dispatchEvent(
           new CustomEvent(FINANCE_DATA_IMPORTED_EVENT, { detail: result }),
@@ -205,10 +226,12 @@ export default function FinanceDataTransfer() {
             ? "Backup already imported. No duplicate data was added."
             : "Import complete.",
         );
-        setPhase("success");
-        scheduleReset();
+        await playContentReveal();
+
+        setPhase("idle");
+        setStatusMessage("");
       } catch (error) {
-        clearRevealTimer();
+        clearCinematicTimer();
         const friendlyError = getFriendlyImportError(error);
         setStatusMessage(friendlyError);
         setPhase("error");
@@ -219,9 +242,10 @@ export default function FinanceDataTransfer() {
       }
     },
     [
+      clearCinematicTimer,
       clearResetTimer,
-      clearRevealTimer,
-      playReveal,
+      playContentReveal,
+      playImpactToWhiteout,
       router,
       scheduleReset,
       supabase,
@@ -230,14 +254,19 @@ export default function FinanceDataTransfer() {
 
   useEffect(() => {
     const shell = document.querySelector<HTMLElement>("[data-dashboard-shell]");
-    if (busy) {
-      shell?.classList.add("is-finance-water-impact");
+    const cinematicPhase =
+      phase === "impact" || phase === "whiteout" || phase === "revealing"
+        ? phase
+        : null;
+
+    if (cinematicPhase) {
+      shell?.setAttribute("data-finance-import-phase", cinematicPhase);
     } else {
-      shell?.classList.remove("is-finance-water-impact");
+      shell?.removeAttribute("data-finance-import-phase");
     }
 
-    return () => shell?.classList.remove("is-finance-water-impact");
-  }, [busy]);
+    return () => shell?.removeAttribute("data-finance-import-phase");
+  }, [phase]);
 
   useEffect(() => {
     function openPicker() {
@@ -302,16 +331,16 @@ export default function FinanceDataTransfer() {
       window.removeEventListener("dragleave", handleDragLeave);
       window.removeEventListener("drop", handleDrop);
       clearResetTimer();
-      clearRevealTimer();
+      clearCinematicTimer();
     };
   }, [
+    clearCinematicTimer,
     clearResetTimer,
-    clearRevealTimer,
     importFile,
     scheduleReset,
   ]);
 
-  const visible = busy;
+  const visible = phase === "dragging" || busy;
 
   return (
     <>
@@ -343,6 +372,18 @@ export default function FinanceDataTransfer() {
           <span className="finance-transfer-ripple finance-transfer-ripple-one" />
           <span className="finance-transfer-ripple finance-transfer-ripple-two" />
         </div>
+
+        <div className="finance-transfer-cinematic" aria-hidden="true">
+          <span className="finance-transfer-cinematic-mist" />
+          <span className="finance-transfer-cinematic-vortex" />
+          <span className="finance-transfer-cinematic-core" />
+          <span className="finance-transfer-cinematic-surge" />
+          <span className="finance-transfer-cinematic-shock finance-transfer-cinematic-shock-one" />
+          <span className="finance-transfer-cinematic-shock finance-transfer-cinematic-shock-two" />
+          <span className="finance-transfer-cinematic-shock finance-transfer-cinematic-shock-three" />
+          <span className="finance-transfer-cinematic-whiteout" />
+        </div>
+
         <span className="sr-only" role="status">
           {statusMessage}
         </span>
