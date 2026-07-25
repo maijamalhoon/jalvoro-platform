@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -46,11 +47,29 @@ public static class StagingOrganizationProfileWriteSmokeRunner
     output.WriteLine(
       $"[staging-write-smoke] target_ref={StagingSupabaseSafetyContract.AllowedProjectRef} mode=organization-profile-write-restore");
 
-    using var remoteClient = new HttpClient
+    using var remoteClient = CreateHttpClient();
+    var configurationState = CreateConfigurationState(configuration);
+    var identityVerifier = new SupabaseRemoteIdentityVerifier(remoteClient, configurationState);
+    var identityResult = await identityVerifier.VerifyAsync(
+      configuration.TestUserJwt,
+      cancellationToken);
+    if (
+      identityResult.Code is not SupabaseIdentityVerificationCode.Verified ||
+      identityResult.Identity is not { } identity)
     {
-      Timeout = Timeout.InfiniteTimeSpan,
-      MaxResponseContentBufferSize = MaximumResponseBytes,
-    };
+      error.WriteLine("[staging-write-smoke] identity_verification_failed");
+      return Result(identityResult.Code is SupabaseIdentityVerificationCode.Invalid
+        ? StagingSupabaseSmokeCode.AuthenticationRejected
+        : StagingSupabaseSmokeCode.DependencyUnavailable);
+    }
+
+    if (identity.SubjectId != configuration.ExpectedSubjectId)
+    {
+      error.WriteLine("[staging-write-smoke] identity_subject_mismatch");
+      return Result(StagingSupabaseSmokeCode.AuthenticationRejected);
+    }
+
+    output.WriteLine("[staging-write-smoke] identity_verified");
 
     OrganizationProfileState original;
     try
@@ -81,9 +100,8 @@ public static class StagingOrganizationProfileWriteSmokeRunner
     output.WriteLine("[staging-write-smoke] original_profile_captured");
 
     await using var host = await LiveWriteApiHost.StartAsync(configuration, cancellationToken);
-    var suffix = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+    var suffix = Guid.NewGuid().ToString("N");
     var updateKey = $"jalvoro-profile-update-{suffix}";
-    var conflictKey = updateKey;
     var staleKey = $"jalvoro-profile-stale-{suffix}";
     var crossTenantKey = $"jalvoro-profile-cross-{suffix}";
     var restoreKey = $"jalvoro-profile-restore-{suffix}";
@@ -94,8 +112,7 @@ public static class StagingOrganizationProfileWriteSmokeRunner
 
     var mutationApplied = false;
     var updatedVersion = original.Version;
-    var proofPassed = false;
-    var restorationPassed = false;
+    var proofResult = StagingSupabaseSmokeCode.Passed;
 
     try
     {
@@ -141,125 +158,123 @@ public static class StagingOrganizationProfileWriteSmokeRunner
             temporary,
             cancellationToken))
       {
+        proofResult = StagingSupabaseSmokeCode.ContractViolation;
         error.WriteLine("[staging-write-smoke] exact_replay_failed");
-        return Result(StagingSupabaseSmokeCode.ContractViolation);
       }
-
-      output.WriteLine("[staging-write-smoke] exact_replay_passed");
-
-      using var idempotencyConflictResponse = await SendProfileCommandAsync(
-        host.Client,
-        configuration,
-        configuration.TenantId,
-        conflictKey,
-        original.Version,
-        temporary with { Description = $"JALVORO staging conflict {suffix}" },
-        cancellationToken);
-      if (!await IsConflictAsync(
-            idempotencyConflictResponse,
-            "idempotency_conflict",
-            expectedCurrentVersion: null,
-            cancellationToken))
+      else
       {
-        error.WriteLine("[staging-write-smoke] idempotency_conflict_failed");
-        return Result(StagingSupabaseSmokeCode.ContractViolation);
+        output.WriteLine("[staging-write-smoke] exact_replay_passed");
       }
 
-      output.WriteLine("[staging-write-smoke] idempotency_conflict_passed");
-
-      using var versionConflictResponse = await SendProfileCommandAsync(
-        host.Client,
-        configuration,
-        configuration.TenantId,
-        staleKey,
-        original.Version,
-        temporary,
-        cancellationToken);
-      if (!await IsConflictAsync(
-            versionConflictResponse,
-            "version_conflict",
-            updatedVersion,
-            cancellationToken))
+      if (proofResult is StagingSupabaseSmokeCode.Passed)
       {
-        error.WriteLine("[staging-write-smoke] version_conflict_failed");
-        return Result(StagingSupabaseSmokeCode.ContractViolation);
+        using var idempotencyConflictResponse = await SendProfileCommandAsync(
+          host.Client,
+          configuration,
+          configuration.TenantId,
+          updateKey,
+          original.Version,
+          temporary with { Description = $"JALVORO staging conflict {suffix}" },
+          cancellationToken);
+        if (!await IsConflictAsync(
+              idempotencyConflictResponse,
+              "idempotency_conflict",
+              expectedCurrentVersion: null,
+              cancellationToken))
+        {
+          proofResult = StagingSupabaseSmokeCode.ContractViolation;
+          error.WriteLine("[staging-write-smoke] idempotency_conflict_failed");
+        }
+        else
+        {
+          output.WriteLine("[staging-write-smoke] idempotency_conflict_passed");
+        }
       }
 
-      output.WriteLine("[staging-write-smoke] version_conflict_passed");
-
-      using var crossTenantResponse = await SendProfileCommandAsync(
-        host.Client,
-        configuration,
-        BusinessTenantId.Create(Guid.NewGuid()),
-        crossTenantKey,
-        1,
-        temporary,
-        cancellationToken);
-      if (crossTenantResponse.StatusCode is not HttpStatusCode.Forbidden)
+      if (proofResult is StagingSupabaseSmokeCode.Passed)
       {
-        error.WriteLine("[staging-write-smoke] cross_tenant_denial_failed");
-        return Result(StagingSupabaseSmokeCode.ContractViolation);
+        using var versionConflictResponse = await SendProfileCommandAsync(
+          host.Client,
+          configuration,
+          configuration.TenantId,
+          staleKey,
+          original.Version,
+          temporary,
+          cancellationToken);
+        if (!await IsConflictAsync(
+              versionConflictResponse,
+              "version_conflict",
+              updatedVersion,
+              cancellationToken))
+        {
+          proofResult = StagingSupabaseSmokeCode.ContractViolation;
+          error.WriteLine("[staging-write-smoke] version_conflict_failed");
+        }
+        else
+        {
+          output.WriteLine("[staging-write-smoke] version_conflict_passed");
+        }
       }
 
-      output.WriteLine("[staging-write-smoke] cross_tenant_denial_passed");
-      proofPassed = true;
+      if (proofResult is StagingSupabaseSmokeCode.Passed)
+      {
+        using var crossTenantResponse = await SendProfileCommandAsync(
+          host.Client,
+          configuration,
+          BusinessTenantId.Create(Guid.NewGuid()),
+          crossTenantKey,
+          1,
+          temporary,
+          cancellationToken);
+        if (crossTenantResponse.StatusCode is not HttpStatusCode.Forbidden)
+        {
+          proofResult = StagingSupabaseSmokeCode.ContractViolation;
+          error.WriteLine("[staging-write-smoke] cross_tenant_denial_failed");
+        }
+        else
+        {
+          output.WriteLine("[staging-write-smoke] cross_tenant_denial_passed");
+        }
+      }
     }
     catch (HttpRequestException)
     {
+      proofResult = StagingSupabaseSmokeCode.DependencyUnavailable;
       error.WriteLine("[staging-write-smoke] command_dependency_unavailable");
     }
     catch (JsonException)
     {
+      proofResult = StagingSupabaseSmokeCode.ContractViolation;
       error.WriteLine("[staging-write-smoke] command_response_invalid");
     }
     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
     {
+      proofResult = StagingSupabaseSmokeCode.DependencyUnavailable;
       error.WriteLine("[staging-write-smoke] command_timeout");
     }
-    finally
-    {
-      if (mutationApplied)
-      {
-        using var restoreTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        try
-        {
-          using var restoreResponse = await SendProfileCommandAsync(
-            host.Client,
-            configuration,
-            configuration.TenantId,
-            restoreKey,
-            updatedVersion,
-            original,
-            restoreTimeout.Token);
-          restorationPassed = await IsSuccessfulProfileResponseAsync(
-            restoreResponse,
-            "updated",
-            replayed: false,
-            configuration.TenantId,
-            updatedVersion + 1,
-            original,
-            restoreTimeout.Token);
-        }
-        catch (Exception exception) when (
-          exception is HttpRequestException or JsonException or OperationCanceledException)
-        {
-          restorationPassed = false;
-        }
 
-        if (restorationPassed)
-        {
-          output.WriteLine("[staging-write-smoke] original_profile_restored");
-        }
-        else
-        {
-          error.WriteLine("[staging-write-smoke] original_profile_restore_failed");
-        }
-      }
+    if (!mutationApplied)
+    {
+      return Result(proofResult);
     }
 
-    if (!proofPassed || !restorationPassed)
+    var restored = await TryRestoreAsync(
+      host.Client,
+      configuration,
+      restoreKey,
+      updatedVersion,
+      original);
+    if (!restored)
     {
+      error.WriteLine("[staging-write-smoke] original_profile_restore_failed");
       return Result(StagingSupabaseSmokeCode.ContractViolation);
+    }
+
+    output.WriteLine("[staging-write-smoke] original_profile_restored");
+
+    if (proofResult is not StagingSupabaseSmokeCode.Passed)
+    {
+      return Result(proofResult);
     }
 
     try
@@ -273,10 +288,24 @@ public static class StagingOrganizationProfileWriteSmokeRunner
         return Result(StagingSupabaseSmokeCode.ContractViolation);
       }
     }
-    catch (Exception exception) when (
-      exception is HttpRequestException or InvalidDataException or UnauthorizedAccessException or OperationCanceledException)
+    catch (UnauthorizedAccessException)
     {
-      error.WriteLine("[staging-write-smoke] final_profile_verification_unavailable");
+      error.WriteLine("[staging-write-smoke] final_profile_verification_denied");
+      return Result(StagingSupabaseSmokeCode.AuthenticationRejected);
+    }
+    catch (InvalidDataException)
+    {
+      error.WriteLine("[staging-write-smoke] final_profile_contract_failed");
+      return Result(StagingSupabaseSmokeCode.ContractViolation);
+    }
+    catch (HttpRequestException)
+    {
+      error.WriteLine("[staging-write-smoke] final_profile_dependency_unavailable");
+      return Result(StagingSupabaseSmokeCode.DependencyUnavailable);
+    }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+      error.WriteLine("[staging-write-smoke] final_profile_timeout");
       return Result(StagingSupabaseSmokeCode.DependencyUnavailable);
     }
 
@@ -285,12 +314,53 @@ public static class StagingOrganizationProfileWriteSmokeRunner
     return Result(StagingSupabaseSmokeCode.Passed);
   }
 
+  private static async Task<bool> TryRestoreAsync(
+    HttpClient client,
+    StagingWriteConfiguration configuration,
+    string idempotencyKey,
+    long expectedVersion,
+    OrganizationProfileState original)
+  {
+    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+    try
+    {
+      using var response = await SendProfileCommandAsync(
+        client,
+        configuration,
+        configuration.TenantId,
+        idempotencyKey,
+        expectedVersion,
+        original,
+        timeout.Token);
+      return await IsSuccessfulProfileResponseAsync(
+        response,
+        "updated",
+        replayed: false,
+        configuration.TenantId,
+        expectedVersion + 1,
+        original,
+        timeout.Token);
+    }
+    catch (HttpRequestException)
+    {
+      return false;
+    }
+    catch (JsonException)
+    {
+      return false;
+    }
+    catch (OperationCanceledException)
+    {
+      return false;
+    }
+  }
+
   private static bool TryReadConfiguration(
     Func<string, string?> readVariable,
-    out StagingWriteConfiguration configuration,
+    [NotNullWhen(true)] out StagingWriteConfiguration? configuration,
     out string rejectionCode)
   {
-    configuration = null!;
+    configuration = null;
     rejectionCode = "unknown";
 
     if (!string.Equals(
@@ -390,6 +460,27 @@ public static class StagingOrganizationProfileWriteSmokeRunner
       TimeSpan.FromSeconds(timeoutSeconds));
     return true;
   }
+
+  private static SupabaseIdentityConfigurationState CreateConfigurationState(
+    StagingWriteConfiguration configuration)
+  {
+    var source = new ConfigurationBuilder()
+      .AddInMemoryCollection(new Dictionary<string, string?>
+      {
+        ["Jalvoro:Supabase:ProjectUrl"] = configuration.ProjectUrl.ToString(),
+        ["Jalvoro:Supabase:PublishableKey"] = configuration.PublishableKey,
+        ["Jalvoro:Supabase:RemoteCallTimeoutSeconds"] =
+          ((int)configuration.RemoteCallTimeout.TotalSeconds).ToString(CultureInfo.InvariantCulture),
+      })
+      .Build();
+    return SupabaseIdentityConfigurationState.FromConfiguration(source);
+  }
+
+  private static HttpClient CreateHttpClient() => new()
+  {
+    Timeout = Timeout.InfiniteTimeSpan,
+    MaxResponseContentBufferSize = MaximumResponseBytes,
+  };
 
   private static async Task<OrganizationProfileState> ReadProfileAsync(
     HttpClient client,
@@ -576,7 +667,7 @@ public static class StagingOrganizationProfileWriteSmokeRunner
   private static bool TryReadString(
     JsonElement source,
     string propertyName,
-    out string? value)
+    [NotNullWhen(true)] out string? value)
   {
     if (
       source.ValueKind is not JsonValueKind.Object ||
