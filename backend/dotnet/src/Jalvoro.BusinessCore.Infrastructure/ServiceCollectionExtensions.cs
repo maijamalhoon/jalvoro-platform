@@ -1,8 +1,10 @@
 using Jalvoro.BusinessCore.Application.Modules;
 using Jalvoro.BusinessCore.Application.Operations;
+using Jalvoro.BusinessCore.Application.Organizations;
 using Jalvoro.BusinessCore.Application.Security;
 using Jalvoro.BusinessCore.Application.Tenancy;
 using Jalvoro.BusinessCore.Infrastructure.Operations;
+using Jalvoro.BusinessCore.Infrastructure.Organizations;
 using Jalvoro.BusinessCore.Infrastructure.Security;
 using Jalvoro.BusinessCore.Infrastructure.Tenancy;
 using Microsoft.AspNetCore.Authentication;
@@ -29,6 +31,7 @@ public static class ServiceCollectionExtensions
     services.AddSingleton<BusinessMembershipPermissionMapper>();
     services.AddScoped<IBusinessContextResolver, SupabaseBusinessContextResolver>();
     services.AddScoped<IAuthenticatedBusinessContextProvider, SupabaseBusinessContextProvider>();
+    services.AddScoped<OrganizationProfileCommandHandler>();
     services.AddSingleton<IIdempotencyCoordinator, UnavailableIdempotencyCoordinator>();
     services.AddHttpContextAccessor();
     services
@@ -38,6 +41,11 @@ public static class ServiceCollectionExtensions
       });
     services
       .AddHttpClient<IBusinessMembershipProjectionReader, SupabaseMembershipProjectionReader>(client =>
+      {
+        client.Timeout = Timeout.InfiniteTimeSpan;
+      });
+    services
+      .AddHttpClient<IOrganizationProfileCommandStore, SupabaseOrganizationProfileCommandStore>(client =>
       {
         client.Timeout = Timeout.InfiniteTimeSpan;
       });
