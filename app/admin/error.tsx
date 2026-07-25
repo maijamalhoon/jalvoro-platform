@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { useEffect } from "react";
 
@@ -21,6 +22,16 @@ export default function AdminError({
   reset: () => void;
 }) {
   useEffect(() => {
+    Sentry.withScope((scope) => {
+      scope.setTag("jalvoro.surface", "command-center");
+      scope.setTag("jalvoro.boundary", "admin-error");
+      scope.setLevel("error");
+      if (error.digest) {
+        scope.setExtra("next_error_digest", error.digest);
+      }
+      Sentry.captureException(error);
+    });
+
     console.error("Admin Control Center failed", {
       digest: error.digest,
       name: error.name,
