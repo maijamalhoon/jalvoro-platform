@@ -81,13 +81,27 @@ describe("workspace foundation architecture", () => {
     expect(switchRouteSource).toContain("UUID_PATTERN.test(businessId)");
   });
 
-  it("starts database-backed onboarding and completes each workspace path", () => {
+  it("fails closed when onboarding preparation cannot be confirmed", () => {
+    expect(onboardingBridgeSource).toContain("PreparationError");
+    expect(onboardingBridgeSource).toContain(
+      "profileResult.error || preferenceResult.error || sessionResult.error",
+    );
+    expect(onboardingBridgeSource).toContain("preferenceWrite.error");
+    expect(onboardingBridgeSource).toContain("progressResult.error");
+    expect(onboardingBridgeSource).toContain("Retry preparation");
+    expect(onboardingBridgeSource).toContain("current workspace remains unchanged");
+  });
+
+  it("starts database-backed onboarding and provides bounded completion recovery", () => {
     expect(onboardingBridgeSource).toContain('supabase.rpc("begin_workspace_onboarding"');
     expect(onboardingBridgeSource).toContain("personalCompletionDestination");
     expect(onboardingCompletionPageSource).toContain("CompleteWorkspaceOnboarding");
     expect(onboardingCompletionClientSource).toContain(
       'supabase.rpc("update_workspace_onboarding_progress"',
     );
+    expect(onboardingCompletionClientSource).toContain("COMPLETION_TIMEOUT_MS");
+    expect(onboardingCompletionClientSource).toContain("Promise.race");
+    expect(onboardingCompletionClientSource).toContain("Open Personal Finance");
     expect(workspaceCreatorSource).toContain(
       'supabase.rpc("apply_business_entry_experience"',
     );
@@ -97,11 +111,26 @@ describe("workspace foundation architecture", () => {
     );
   });
 
-  it("makes workspace switching explicit, role-aware, and tenant-bound", () => {
+  it("keeps creation defaults compatible with the selected experience", () => {
+    expect(workspaceCreatorSource).toContain("Starting workflow:");
+    expect(workspaceCreatorSource).toContain("setWorkspaceMode(setupDefaults.workspaceMode)");
+    expect(workspaceCreatorSource).toContain("setBusinessType(setupDefaults.businessType)");
+    expect(workspaceCreatorSource).not.toContain(
+      'onClick={() => setWorkspaceMode("simple_shop")}',
+    );
+    expect(workspaceCreatorSource).not.toContain(
+      'onClick={() => setWorkspaceMode("advanced_company")}',
+    );
+    expect(workspaceCreatorSource).not.toContain("will finish the next time you open it");
+  });
+
+  it("makes workspace switching explicit, role-aware, tenant-bound, and honest", () => {
     expect(workspaceHubSource).toContain('action="/workspaces/switch"');
     expect(workspaceHubSource).toContain('method="post"');
     expect(workspaceHubSource).toContain("getMembershipRoleLabel");
-    expect(workspaceHubSource).toContain("Current");
+    expect(workspaceHubSource).toContain("currentStateKnown");
+    expect(workspaceHubSource).toContain("onboardingResult.error");
+    expect(workspaceHubSource).toContain("SWITCH_ERROR_MESSAGES");
     expect(workspaceHubSource).toContain("Join an existing workspace");
     expect(switchRouteSource).toContain("getBusinessWorkspaceHref");
     expect(switchRouteSource).toContain("isPathWithinRoute");
