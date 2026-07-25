@@ -54,6 +54,7 @@ export default function ControlPlaneConsole({
   const activeOperators = operators.filter((operator) => operator.status === "active");
   const pendingInvitations = directory?.pendingInvitations ?? [];
   const activeGrants = directory?.activeGrants ?? access.grants;
+  const ownerDirectoryUnavailable = access.role === "owner" && directory === null;
 
   return (
     <main className={`${styles.root} ${styles.consoleRoot}`}>
@@ -103,6 +104,13 @@ export default function ControlPlaneConsole({
           </div>
         </section>
 
+        {ownerDirectoryUnavailable ? (
+          <div className={styles.error} role="alert">
+            Owner directory verification failed. Re-authenticate before changing operators,
+            invitations, or permission scopes.
+          </div>
+        ) : null}
+
         <section className={styles.metricGrid} aria-label="Control Plane status">
           <article className={styles.metricCard}>
             <p className={styles.metricLabel}>Identity realm</p>
@@ -147,7 +155,9 @@ export default function ControlPlaneConsole({
               </ul>
             ) : (
               <p className={styles.muted}>
-                Directory details are owner-only and were not returned for this role.
+                {ownerDirectoryUnavailable
+                  ? "Owner directory data could not be verified. No management controls are shown from an incomplete snapshot."
+                  : "Directory details are owner-only and were not returned for this role."}
               </p>
             )}
           </article>
@@ -190,8 +200,8 @@ export default function ControlPlaneConsole({
                 <strong>Denied</strong>
               </li>
               <li className={styles.listItem}>
-                <span>Audit retention</span>
-                <strong>24 months</strong>
+                <span>Audit ledger access</span>
+                <strong>Private</strong>
               </li>
             </ul>
           </article>
