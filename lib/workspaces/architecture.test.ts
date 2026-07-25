@@ -76,6 +76,9 @@ describe("workspace foundation architecture", () => {
     expect(switchRouteSource).toContain('.eq("status", "active")');
     expect(switchRouteSource).toContain('.eq("business_id", businessId)');
     expect(switchRouteSource).toContain("sameOriginRequest");
+    expect(switchRouteSource).toContain('request.headers.get("sec-fetch-site")');
+    expect(switchRouteSource).toContain("preferenceResult.error");
+    expect(switchRouteSource).toContain("UUID_PATTERN.test(businessId)");
   });
 
   it("starts database-backed onboarding and completes each workspace path", () => {
@@ -101,7 +104,9 @@ describe("workspace foundation architecture", () => {
     expect(workspaceHubSource).toContain("Current");
     expect(workspaceHubSource).toContain("Join an existing workspace");
     expect(switchRouteSource).toContain("getBusinessWorkspaceHref");
-    expect(switchRouteSource).toContain(
+    expect(switchRouteSource).toContain("isPathWithinRoute");
+    expect(switchRouteSource).toContain("workspaceRoot");
+    expect(switchRouteSource).not.toContain(
       "requestedDestination.startsWith(`/business/${business.slug}`)",
     );
   });
