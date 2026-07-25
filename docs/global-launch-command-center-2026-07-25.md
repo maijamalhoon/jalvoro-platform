@@ -50,6 +50,8 @@ The exact synchronized head must pass:
 
 Automated success is necessary but does not replace the authenticated visual review or authorize production deployment.
 
-## Preview regeneration
+## Exact hardened-main synchronization
 
-A documentation-only synchronization checkpoint was added after Vercel build capacity returned to request an exact-head preview for authenticated visual acceptance. It does not change application runtime behavior.
+The Command Center branch now contains the hardened launch baseline from `main` and is zero commits behind it. Its remaining pull-request diff is limited to the Command Center presentation, shell behavior, route metadata, mobile treatment, and this acceptance record.
+
+The exact post-synchronization head must independently pass automated and authenticated preview acceptance before merge.
