@@ -45,16 +45,8 @@ export default function CompleteWorkspaceOnboarding({
         return;
       }
 
-      const request = supabase.rpc("update_workspace_onboarding_progress", {
+      const request = supabase.rpc("complete_personal_workspace_onboarding", {
         p_session_id: validSessionId,
-        p_current_step: 3,
-        p_completed_steps: [
-          "identity_verified",
-          "profile_ready",
-          "personal_workspace_ready",
-        ],
-        p_draft_data: {},
-        p_status: "completed",
       });
       const timeout = new Promise<{ error: { code: string } }>((resolve) => {
         timeoutId = window.setTimeout(() => {
@@ -67,7 +59,7 @@ export default function CompleteWorkspaceOnboarding({
       if (!active) return;
 
       if (result.error) {
-        console.error("Personal onboarding session completion failed", {
+        console.error("Personal onboarding atomic completion failed", {
           code: result.error.code,
         });
         setState("error");
@@ -93,8 +85,8 @@ export default function CompleteWorkspaceOnboarding({
           <AlertTriangle className="size-6" aria-hidden="true" />
         </span>
         <p className="text-sm leading-6 text-text-secondary">
-          Your profile and Personal data are saved, but the resumable setup marker could not be
-          finalized. Retrying will not duplicate any records.
+          Your profile and Personal data are saved, but JALVORO could not atomically confirm the
+          resumable setup marker and selected workspace. Retrying will not duplicate any records.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <Button
@@ -113,7 +105,7 @@ export default function CompleteWorkspaceOnboarding({
           </Link>
         </div>
         <p className="text-xs leading-5 text-text-tertiary">
-          Continuing is safe; only the resumable setup status may remain incomplete until a retry
+          Continuing is safe; only the resumable completion status may remain pending until a retry
           succeeds.
         </p>
       </div>
@@ -131,7 +123,7 @@ export default function CompleteWorkspaceOnboarding({
       </span>
       <p className="text-sm leading-6 text-text-secondary">
         {state === "saving"
-          ? "Saving your resumable setup state before opening Personal Finance."
+          ? "Atomically saving your resumable setup and selected workspace before opening Personal Finance."
           : "Personal Finance is ready."}
       </p>
     </div>
