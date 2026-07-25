@@ -238,7 +238,7 @@ begin
 
   perform public.update_workspace_onboarding_progress(
     p_session_id => p_session_id,
-    p_current_step => 3,
+    p_current_step => 3::smallint,
     p_completed_steps => array[
       'identity_verified',
       'profile_ready',
