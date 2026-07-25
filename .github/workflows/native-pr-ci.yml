@@ -28,73 +28,26 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Synchronize latest main and restore read-only workflow
+      - name: Synchronize latest main
         if: github.event.pull_request.head.repo.full_name == github.repository
         working-directory: .
         env:
           TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          mkdir -p native
-          {
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-            RESTORE_SOURCE=$(git rev-parse HEAD^)
-            git show "${RESTORE_SOURCE}:.github/workflows/native-pr-ci.yml" \
-              > "${RUNNER_TEMP}/native-pr-ci.yml"
-
-            git fetch origin main --no-tags
-            if ! git merge-base --is-ancestor origin/main HEAD; then
-              set +e
-              git merge --no-commit --no-ff origin/main
-              MERGE_STATUS=$?
-              set -e
-
-              if [ "${MERGE_STATUS}" -ne 0 ]; then
-                mapfile -t CONFLICTS < <(git diff --name-only --diff-filter=U)
-                printf 'Unresolved files:\n'
-                printf ' - %s\n' "${CONFLICTS[@]}"
-
-                if [ "${#CONFLICTS[@]}" -eq 1 ] && [ "${CONFLICTS[0]}" = "package.json" ]; then
-                  git checkout --theirs package.json
-                  python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          path = Path("package.json")
-          data = json.loads(path.read_text())
-          scripts = data.setdefault("scripts", {})
-          scripts["test:parity"] = "vitest run lib/finance-parity-contract.test.ts"
-          path.write_text(json.dumps(data, indent=2) + "\n")
-          PY
-                  git add package.json
-                else
-                  git merge --abort || true
-                  echo "Unknown latest-main conflicts; branch was not pushed."
-                  exit 1
-                fi
-              fi
-
-              if git diff --name-only --diff-filter=U | grep -q .; then
-                git merge --abort || true
-                echo "Unresolved conflicts remain; branch was not pushed."
-                exit 1
-              fi
-
-              git commit -m "Merge latest main into native website parity branch"
-            else
-              echo "PR branch already contains latest main."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            if ! git merge --no-edit -m "Merge latest main into native website parity branch" origin/main; then
+              git merge --abort || true
+              echo "Latest-main synchronization has conflicts; branch was not pushed."
+              exit 1
             fi
-
-            cp "${RUNNER_TEMP}/native-pr-ci.yml" .github/workflows/native-pr-ci.yml
-            git add .github/workflows/native-pr-ci.yml
-            if ! git diff --cached --quiet; then
-              git commit -m "Restore read-only native CI after latest-main synchronization"
-            fi
-
             git push origin "HEAD:${TARGET_BRANCH}"
-          } 2>&1 | tee native/sync.log
+          else
+            echo "PR branch already contains latest main."
+          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -149,8 +102,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-ci-log-${{ github.run_id }}
-          path: |
-            native/native-ci.log
-            native/sync.log
+          path: native/native-ci.log
           if-no-files-found: ignore
           retention-days: 3
