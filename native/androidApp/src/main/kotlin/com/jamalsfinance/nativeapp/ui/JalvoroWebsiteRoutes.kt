@@ -29,20 +29,44 @@ internal fun JalvoroWebsitePlanningRoute(
 
 @Composable
 internal fun JalvoroWebsiteInvestmentsRoute(
+    email: String,
     repository: InvestmentsAnalyticsRepository,
-    onBack: () -> Unit,
-) = JalvoroInvestmentsAnalyticsDashboard(
+    onOverview: () -> Unit,
+    onMoney: () -> Unit,
+    onPlanning: () -> Unit,
+    onReports: () -> Unit,
+    onSettings: () -> Unit,
+    onMore: () -> Unit,
+) = JalvoroWebsiteInvestmentsAnalyticsDashboard(
+    email = email,
     repository = repository,
-    onBack = onBack,
+    onOverview = onOverview,
+    onMoney = onMoney,
+    onPlanning = onPlanning,
+    onReports = onReports,
+    onSettings = onSettings,
+    onMore = onMore,
 )
 
 @Composable
 internal fun JalvoroWebsiteReportsRoute(
+    email: String,
     repository: ReportsInsightsRepository,
-    onBack: () -> Unit,
-) = ReportsInsightsDashboard(
+    onOverview: () -> Unit,
+    onMoney: () -> Unit,
+    onPlanning: () -> Unit,
+    onInvestments: () -> Unit,
+    onSettings: () -> Unit,
+    onMore: () -> Unit,
+) = JalvoroWebsiteReportsInsightsDashboard(
+    email = email,
     repository = repository,
-    onBack = onBack,
+    onOverview = onOverview,
+    onMoney = onMoney,
+    onPlanning = onPlanning,
+    onInvestments = onInvestments,
+    onSettings = onSettings,
+    onMore = onMore,
 )
 
 @Composable
