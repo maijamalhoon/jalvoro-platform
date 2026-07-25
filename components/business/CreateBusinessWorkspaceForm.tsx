@@ -72,6 +72,31 @@ export default function CreateBusinessWorkspaceForm({
     if (detected) setTimezone(detected);
   }, []);
 
+  useEffect(() => {
+    setBusinessType(setupDefaults.businessType);
+    setWorkspaceMode(setupDefaults.workspaceMode);
+  }, [businessExperience, setupDefaults.businessType, setupDefaults.workspaceMode]);
+
+  async function applyExperienceContext(businessId: string) {
+    const firstAttempt = await supabase.rpc("apply_business_entry_experience", {
+      p_business_id: businessId,
+      p_experience: businessExperience,
+      p_session_id: validSessionId,
+    });
+
+    if (!firstAttempt.error) return firstAttempt;
+
+    console.error("Business experience context first attempt failed", {
+      code: firstAttempt.error.code,
+    });
+
+    return supabase.rpc("apply_business_entry_experience", {
+      p_business_id: businessId,
+      p_experience: businessExperience,
+      p_session_id: validSessionId,
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
@@ -80,7 +105,11 @@ export default function CreateBusinessWorkspaceForm({
     const cleanCountry = countryCode.trim().toUpperCase();
 
     if (cleanName.length < 2 || cleanName.length > 120) {
-      toast.error("Business name must contain 2 to 120 characters.");
+      toast.error(
+        businessExperience === "freelancer"
+          ? "Professional name must contain 2 to 120 characters."
+          : "Business name must contain 2 to 120 characters.",
+      );
       return;
     }
 
@@ -110,11 +139,7 @@ export default function CreateBusinessWorkspaceForm({
         return;
       }
 
-      const contextResult = await supabase.rpc("apply_business_entry_experience", {
-        p_business_id: businessId,
-        p_experience: businessExperience,
-        p_session_id: validSessionId,
-      });
+      const contextResult = await applyExperienceContext(businessId);
 
       if (contextResult.error) {
         console.error("Business experience context could not be finalized", {
@@ -141,7 +166,7 @@ export default function CreateBusinessWorkspaceForm({
       setName("");
       if (contextResult.error) {
         toast.warning(
-          "Workspace created. Its product setup context will finish the next time you open it.",
+          "Core workspace created, but tailored modules could not be confirmed. Do not rely on module availability until setup is retried by an administrator.",
         );
       } else {
         toast.success(
@@ -161,15 +186,19 @@ export default function CreateBusinessWorkspaceForm({
     }
   }
 
+  const WorkspaceIcon = workspaceMode === "simple_shop" ? Store : Building2;
+  const workspaceStyleLabel =
+    workspaceMode === "simple_shop" ? "Simple Shop" : "Advanced Company";
+  const workspaceStyleDescription =
+    workspaceMode === "simple_shop"
+      ? "Fast counter sales, purchases, stock, returns, daily cash, and profit."
+      : "Connected accounting, contacts, sales, purchasing, inventory, CRM, reports, and team controls.";
+
   return (
     <section className="rounded-[var(--radius-card)] bg-surface px-4 py-5 shadow-[var(--shadow-sm)] sm:px-6 sm:py-6">
       <div className="flex items-start gap-3">
         <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary-soft text-primary">
-          {workspaceMode === "simple_shop" ? (
-            <Store aria-hidden="true" className="size-5" />
-          ) : (
-            <Building2 aria-hidden="true" className="size-5" />
-          )}
+          <WorkspaceIcon aria-hidden="true" className="size-5" />
         </span>
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
@@ -181,54 +210,33 @@ export default function CreateBusinessWorkspaceForm({
               : `Create ${experience?.productName ?? "a business workspace"}`}
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Experience controls the starting workflow and module entitlements. You can expand the
-            same isolated workspace later without creating another identity.
+            Your selected experience sets a compatible starting workflow and module foundation.
+            The isolated workspace can expand later without creating another identity.
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-bold text-text-primary">Workspace style</legend>
-          <div className="grid gap-3 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode("simple_shop")}
-              disabled={saving}
-              className={`finance-focus rounded-[var(--radius-button)] px-4 py-4 text-left transition-colors ${
-                workspaceMode === "simple_shop"
-                  ? "bg-primary-soft text-primary"
-                  : "bg-surface-secondary text-text-secondary"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Store aria-hidden="true" className="size-5 shrink-0" />
-                <strong className="text-sm">Simple Shop</strong>
-              </span>
-              <span className="mt-2 block text-xs leading-5 opacity-80">
-                Quick sale, purchase, stock, expenses, balances, returns, daily cash, and profit.
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode("advanced_company")}
-              disabled={saving}
-              className={`finance-focus rounded-[var(--radius-button)] px-4 py-4 text-left transition-colors ${
-                workspaceMode === "advanced_company"
-                  ? "bg-primary-soft text-primary"
-                  : "bg-surface-secondary text-text-secondary"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Layers3 aria-hidden="true" className="size-5 shrink-0" />
-                <strong className="text-sm">Advanced Company</strong>
-              </span>
-              <span className="mt-2 block text-xs leading-5 opacity-80">
-                Full accounting, contacts, sales, purchases, inventory, CRM, and reports modules.
-              </span>
-            </button>
+        <section
+          className="rounded-[var(--radius-button)] bg-primary-soft px-4 py-4"
+          aria-labelledby="starting-workflow-heading"
+        >
+          <div className="flex items-start gap-3">
+            <WorkspaceIcon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+            <div>
+              <p
+                id="starting-workflow-heading"
+                className="text-sm font-black text-text-primary"
+              >
+                Starting workflow: {workspaceStyleLabel}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-text-secondary">
+                {workspaceStyleDescription} Choose a different experience from the selector when a
+                different operating model is required.
+              </p>
+            </div>
           </div>
-        </fieldset>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <label className="space-y-2">
@@ -329,11 +337,7 @@ export default function CreateBusinessWorkspaceForm({
           loadingLabel="Creating workspace..."
           className="w-full sm:w-auto"
         >
-          {workspaceMode === "simple_shop" ? (
-            <Store aria-hidden="true" />
-          ) : (
-            <Building2 aria-hidden="true" />
-          )}
+          <WorkspaceIcon aria-hidden="true" />
           Create {experience?.productName ?? "Business workspace"}
         </Button>
       </form>
