@@ -2,6 +2,7 @@ import { BrainCircuit, ShieldCheck } from "lucide-react";
 
 import AIConsentGate from "@/components/ai-insights/AIConsentGate";
 import AIInsightsOnboarding from "@/components/ai-insights/AIInsightsOnboarding";
+import AIInsightsTrustCenter from "@/components/ai-insights/AIInsightsTrustCenter";
 import AISettingsPanel from "@/components/ai-insights/AISettingsPanel";
 import InsightsPanel from "@/components/ai-insights/InsightsPanel";
 
@@ -39,6 +40,8 @@ export default function AIInsightsPage() {
           </div>
           <AISettingsPanel />
         </section>
+
+        <AIInsightsTrustCenter />
 
         <div data-ai-insights-experience>
           <InsightsPanel />
