@@ -8,10 +8,6 @@ on:
         description: Type STAGING_ORGANIZATION_PROFILE_WRITE_RESTORE to confirm the isolated reversible write proof.
         required: true
         type: string
-  # Temporary exact-branch trigger used once to prove the OIDC-backed write path.
-  push:
-    branches:
-      - agent/idempotent-organization-profile-command
 
 permissions:
   contents: read
@@ -44,19 +40,8 @@ jobs:
           DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
-
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            if [ "$DISPATCH_CONFIRMATION" != "STAGING_ORGANIZATION_PROFILE_WRITE_RESTORE" ]; then
-              echo "The staging write smoke requires the exact restore confirmation." >&2
-              exit 1
-            fi
-          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            if [ "$GITHUB_REF" != "refs/heads/agent/idempotent-organization-profile-command" ]; then
-              echo "The temporary proof trigger is restricted to the exact command branch." >&2
-              exit 1
-            fi
-          else
-            echo "The staging write smoke rejected an unsupported event." >&2
+          if [ "$DISPATCH_CONFIRMATION" != "STAGING_ORGANIZATION_PROFILE_WRITE_RESTORE" ]; then
+            echo "The staging write smoke requires the exact restore confirmation." >&2
             exit 1
           fi
 
