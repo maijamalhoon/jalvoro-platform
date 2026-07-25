@@ -156,6 +156,37 @@ export default async function ExperienceOnboardingBridge({
     );
   }
 
+  const profileCompleted = Boolean(profileResult.data?.onboarding_completed);
+
+  if (profileCompleted && experience.workspaceKind === "personal") {
+    const progressResult = await supabase.rpc("update_workspace_onboarding_progress", {
+      p_session_id: sessionId,
+      p_current_step: 3,
+      p_completed_steps: [
+        "identity_verified",
+        "profile_ready",
+        "personal_workspace_ready",
+      ],
+      p_draft_data: {},
+      p_status: "completed",
+    });
+
+    if (progressResult.error) {
+      console.error("Completed Personal onboarding could not be finalized", {
+        code: progressResult.error.code,
+      });
+
+      return (
+        <PreparationError
+          experienceName={experience.productName}
+          retryHref={retryHref}
+          fallbackHref="/dashboard"
+          fallbackLabel="Open Personal Finance"
+        />
+      );
+    }
+  }
+
   const selectedWorkspace = experience.workspaceKind;
   const preferenceWrite = await supabase.from("business_workspace_preferences").upsert({
     user_id: user.id,
@@ -196,39 +227,10 @@ export default async function ExperienceOnboardingBridge({
 
   const resumableDestination = appendOnboardingSession(destination, sessionId);
 
-  if (profileResult.data?.onboarding_completed) {
-    if (experience.workspaceKind === "personal") {
-      const progressResult = await supabase.rpc("update_workspace_onboarding_progress", {
-        p_session_id: sessionId,
-        p_current_step: 3,
-        p_completed_steps: [
-          "identity_verified",
-          "profile_ready",
-          "personal_workspace_ready",
-        ],
-        p_draft_data: {},
-        p_status: "completed",
-      });
-
-      if (progressResult.error) {
-        console.error("Completed Personal onboarding could not be finalized", {
-          code: progressResult.error.code,
-        });
-
-        return (
-          <PreparationError
-            experienceName={experience.productName}
-            retryHref={retryHref}
-            fallbackHref="/dashboard"
-            fallbackLabel="Open Personal Finance"
-          />
-        );
-      }
-
-      redirect(destination);
-    }
-
-    redirect(resumableDestination);
+  if (profileCompleted) {
+    redirect(
+      experience.workspaceKind === "personal" ? destination : resumableDestination,
+    );
   }
 
   const genericOnboardingDestination =
