@@ -95,43 +95,41 @@ function Apply-WorkspaceDrawerParity {
     Update-TextFile -Path $Path -Transform {
         param($source)
 
+        $newline = if ($source.Contains("`r`n")) { "`r`n" } else { "`n" }
         if (-not $source.Contains("import androidx.compose.foundation.layout.heightIn")) {
-            $anchor = if ($source.Contains("`r`n")) {
-                "import androidx.compose.foundation.layout.fillMaxWidth`r`n"
-            } else {
-                "import androidx.compose.foundation.layout.fillMaxWidth`n"
-            }
-            $source = $source.Replace(
-                $anchor,
-                $anchor + "import androidx.compose.foundation.layout.heightIn" + $(if ($source.Contains("`r`n")) { "`r`n" } else { "`n" })
-            )
+            $anchor = "import androidx.compose.foundation.layout.fillMaxWidth${newline}"
+            $source = $source.Replace($anchor, $anchor + "import androidx.compose.foundation.layout.heightIn${newline}")
         }
 
-        $source = Replace-RequiredBlock -Source $source -Label "drawer close callback" -OldBlock @'
+        $oldBlock = @'
             JalvoroWebsiteDrawer(
                 email = email,
                 selected = selected,
-'@ -NewBlock @'
+'@
+        $newBlock = @'
             JalvoroWebsiteDrawer(
                 email = email,
                 selected = selected,
                 onClose = { scope.launch { drawerState.close() } },
 '@
+        $source = Replace-RequiredBlock -Source $source -OldBlock $oldBlock -NewBlock $newBlock -Label "drawer close callback"
 
-        $source = Replace-RequiredBlock -Source $source -Label "drawer close parameter" -OldBlock @'
+        $oldBlock = @'
 private fun JalvoroWebsiteDrawer(
     email: String,
     selected: JalvoroWebsiteDestination,
     onOverview: () -> Unit,
-'@ -NewBlock @'
+'@
+        $newBlock = @'
 private fun JalvoroWebsiteDrawer(
     email: String,
     selected: JalvoroWebsiteDestination,
     onClose: () -> Unit,
     onOverview: () -> Unit,
 '@
+        $source = Replace-RequiredBlock -Source $source -OldBlock $oldBlock -NewBlock $newBlock -Label "drawer close parameter"
 
-        $source = Replace-RequiredBlock -Source $source -Label "website drawer header" -OldBlock @'
+        $oldBlock = @'
             JalvoroWebsiteBrandLockup(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,7 +137,8 @@ private fun JalvoroWebsiteDrawer(
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 compact = true,
             )
-'@ -NewBlock @'
+'@
+        $newBlock = @'
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -171,8 +170,9 @@ private fun JalvoroWebsiteDrawer(
                 }
             }
 '@
+        $source = Replace-RequiredBlock -Source $source -OldBlock $oldBlock -NewBlock $newBlock -Label "website drawer header"
 
-        $source = Replace-RequiredBlock -Source $source -Label "workspace navigation grid" -OldBlock @'
+        $oldBlock = @'
                 workspaceItems.forEach { item ->
                     item(key = item.destination.name) {
                         JalvoroWebsiteDrawerItem(
@@ -181,7 +181,8 @@ private fun JalvoroWebsiteDrawer(
                         )
                     }
                 }
-'@ -NewBlock @'
+'@
+        $newBlock = @'
                 workspaceItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
                     item(key = "workspace-$rowIndex") {
                         Row(
@@ -200,8 +201,9 @@ private fun JalvoroWebsiteDrawer(
                     }
                 }
 '@
+        $source = Replace-RequiredBlock -Source $source -OldBlock $oldBlock -NewBlock $newBlock -Label "workspace navigation grid"
 
-        $source = Replace-RequiredBlock -Source $source -Label "account navigation grid" -OldBlock @'
+        $oldBlock = @'
                 accountItems.forEach { item ->
                     item(key = item.destination.name) {
                         JalvoroWebsiteDrawerItem(
@@ -210,7 +212,8 @@ private fun JalvoroWebsiteDrawer(
                         )
                     }
                 }
-'@ -NewBlock @'
+'@
+        $newBlock = @'
                 accountItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
                     item(key = "account-$rowIndex") {
                         Row(
@@ -229,15 +232,17 @@ private fun JalvoroWebsiteDrawer(
                     }
                 }
 '@
+        $source = Replace-RequiredBlock -Source $source -OldBlock $oldBlock -NewBlock $newBlock -Label "account navigation grid"
 
-        $source = Replace-RequiredBlock -Source $source -Label "drawer item signature and label" -OldBlock @'
+        $oldBlock = @'
 private fun JalvoroWebsiteDrawerItem(
     item: JalvoroWebsiteNavigationItem,
     selected: Boolean,
 ) {
     NavigationDrawerItem(
         label = { Text(item.label, fontWeight = FontWeight.Bold) },
-'@ -NewBlock @'
+'@
+        $newBlock = @'
 private fun JalvoroWebsiteDrawerItem(
     item: JalvoroWebsiteNavigationItem,
     selected: Boolean,
@@ -254,17 +259,15 @@ private fun JalvoroWebsiteDrawerItem(
             )
         },
 '@
+        $source = Replace-RequiredBlock -Source $source -OldBlock $oldBlock -NewBlock $newBlock -Label "drawer item signature and label"
 
         $source = $source.Replace(
             "color = if (selected) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surface,",
             "color = if (selected) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainer,"
         )
         $source = $source.Replace(
-            "modifier = Modifier.fillMaxWidth(),`r`n        shape = RoundedCornerShape(14.dp),",
-            "modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),`r`n        shape = RoundedCornerShape(14.dp),"
-        ).Replace(
-            "modifier = Modifier.fillMaxWidth(),`n        shape = RoundedCornerShape(14.dp),",
-            "modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),`n        shape = RoundedCornerShape(14.dp),"
+            "modifier = Modifier.fillMaxWidth(),${newline}        shape = RoundedCornerShape(14.dp),",
+            "modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),${newline}        shape = RoundedCornerShape(14.dp),"
         )
         $source = $source.Replace(
             "unselectedContainerColor = Color.Transparent,",
