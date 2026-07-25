@@ -8,9 +8,10 @@ on:
       - ".github/workflows/native-pr-ci.yml"
       - ".github/scripts/setup-android-sdk.ps1"
       - ".github/scripts/setup-android-sdk.cmd"
+      - ".github/scripts/apply-native-compose-compile-fixes.ps1"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: native-pr-${{ github.event.pull_request.number }}
@@ -27,8 +28,37 @@ jobs:
         working-directory: native
 
     steps:
-      - name: Check out repository
+      - name: Check out pull request branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Apply targeted Compose compile fixes
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        working-directory: .
+        run: |
+          $ErrorActionPreference = "Stop"
+          & "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-compose-compile-fixes.ps1"
+          git diff --check
+          $changes = git status --porcelain -- `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
+          if ($changes) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add `
+              native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
+              native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
+              native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
+            git commit -m "Fix native Compose draw colors"
+            git push origin "HEAD:$env:PR_HEAD_REF"
+          }
+          git fetch origin $env:PR_BASE_REF
+          git merge --no-edit "origin/$env:PR_BASE_REF"
 
       - name: Set up Java
         uses: actions/setup-java@v4
