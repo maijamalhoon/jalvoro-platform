@@ -27,6 +27,9 @@ export type ProductExperience = {
   setupNote: string;
 };
 
+const INTERNAL_ORIGIN = "https://jalvoro.local";
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
+
 const PRODUCT_EXPERIENCES: readonly ProductExperience[] = [
   {
     slug: "personal",
@@ -150,6 +153,29 @@ const PRODUCT_EXPERIENCES: readonly ProductExperience[] = [
   },
 ] as const;
 
+function parseInternalDestination(destination: string | null | undefined) {
+  if (
+    !destination ||
+    CONTROL_CHARACTER_PATTERN.test(destination) ||
+    destination.includes("\\") ||
+    !destination.startsWith("/") ||
+    destination.startsWith("//")
+  ) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(destination, INTERNAL_ORIGIN);
+    return parsed.origin === INTERNAL_ORIGIN ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function pathnameMatchesRoute(pathname: string, route: string) {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
 export function listProductExperiences() {
   return PRODUCT_EXPERIENCES;
 }
@@ -172,20 +198,20 @@ export function getProductExperienceFromPathname(pathname: string | null | undef
 }
 
 export function inferProductExperienceFromDestination(destination: string | null | undefined) {
-  if (!destination) return null;
+  const parsed = parseInternalDestination(destination);
+  if (!parsed) return null;
 
-  try {
-    const parsed = new URL(destination, "https://jalvoro.local");
-    const explicitExperience = getProductExperience(parsed.searchParams.get("experience"));
-    if (explicitExperience) return explicitExperience;
+  const explicitExperience = getProductExperience(parsed.searchParams.get("experience"));
+  if (explicitExperience) return explicitExperience;
 
-    const pathExperience = getProductExperienceFromPathname(parsed.pathname);
-    if (pathExperience) return pathExperience;
+  const pathExperience = getProductExperienceFromPathname(parsed.pathname);
+  if (pathExperience) return pathExperience;
 
-    if (parsed.pathname.startsWith("/dashboard")) return getProductExperience("personal");
-    if (parsed.pathname.startsWith("/business")) return getProductExperience("small-business");
-  } catch {
-    return null;
+  if (pathnameMatchesRoute(parsed.pathname, "/dashboard")) {
+    return getProductExperience("personal");
+  }
+  if (pathnameMatchesRoute(parsed.pathname, "/business")) {
+    return getProductExperience("small-business");
   }
 
   return null;
