@@ -7,6 +7,7 @@ set "TOOLS_URL=https://dl.google.com/android/repository/commandlinetools-win-%TO
 set "ARCHIVE=%RUNNER_TEMP%\commandlinetools-win-%TOOLS_REVISION%.zip"
 set "EXTRACT_ROOT=%RUNNER_TEMP%\android-command-line-tools-%TOOLS_REVISION%"
 set "SDK_MANAGER=%SDK_ROOT%\cmdline-tools\latest\bin\sdkmanager.bat"
+set "LICENSE_INPUT=%RUNNER_TEMP%\android-sdk-license-input.txt"
 set "SETUP_LOG=%GITHUB_WORKSPACE%\native\android-sdk-setup.log"
 
 >"%SETUP_LOG%" echo Android SDK setup started
@@ -51,8 +52,16 @@ set "ANDROID_SDK_ROOT=%SDK_ROOT%"
 >>"%GITHUB_PATH%" echo %SDK_ROOT%\cmdline-tools\latest\bin
 >>"%GITHUB_PATH%" echo %SDK_ROOT%\platform-tools
 
+call :log Stage: prepare Android SDK license input
+if exist "%LICENSE_INPUT%" del /f /q "%LICENSE_INPUT%"
+for /L %%i in (1,1,100) do @echo y>>"%LICENSE_INPUT%"
+if not exist "%LICENSE_INPUT%" (
+  call :log ERROR: Android SDK license input file was not created
+  exit /b 1
+)
+
 call :log Stage: accept Android SDK licenses
-(for /L %%i in (1,1,100) do @echo y) | call "%SDK_MANAGER%" --sdk_root="%SDK_ROOT%" --licenses >>"%SETUP_LOG%" 2>&1
+call "%SDK_MANAGER%" --sdk_root="%SDK_ROOT%" --licenses <"%LICENSE_INPUT%" >>"%SETUP_LOG%" 2>&1
 if errorlevel 1 goto failed
 
 call :log Stage: install Android SDK packages
