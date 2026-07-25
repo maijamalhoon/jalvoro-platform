@@ -23,5 +23,5 @@ as $$
     );
 $$;
 
-revoke all on function private.get_platform_admin_snapshot() from public, anon, authenticated;
-grant execute on function private.get_platform_admin_snapshot() to service_role;
+revoke all on function private.get_platform_admin_snapshot() from public, anon;
+grant execute on function private.get_platform_admin_snapshot() to authenticated, service_role;
