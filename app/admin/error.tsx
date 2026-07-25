@@ -4,15 +4,9 @@ import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { useEffect } from "react";
 
-import {
-  JalvoroRefreshIcon,
-} from "@/components/icons/jalvoro/components/actions";
-import {
-  JalvoroArrowLeftIcon,
-} from "@/components/icons/jalvoro/components/interface";
-import {
-  JalvoroWarningIcon,
-} from "@/components/icons/jalvoro/components/status";
+import { JalvoroRefreshIcon } from "@/components/icons/jalvoro/components/actions";
+import { JalvoroArrowLeftIcon } from "@/components/icons/jalvoro/components/interface";
+import { JalvoroWarningIcon } from "@/components/icons/jalvoro/components/status";
 
 export default function AdminError({
   error,
@@ -49,14 +43,14 @@ export default function AdminError({
           />
         </span>
         <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-destructive">
-          Control center unavailable
+          Command Center unavailable
         </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-          The private snapshot could not be loaded.
+          The private operational snapshot could not be loaded.
         </h1>
         <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
-          No finance action was affected. Retry the aggregate request or return
-          to the normal workspace.
+          No operator action was completed. Retry the verified aggregate request
+          or return to the normal workspace.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
@@ -80,7 +74,7 @@ export default function AdminError({
               context="compact"
               aria-hidden="true"
             />
-            Finance workspace
+            Normal workspace
           </Link>
         </div>
       </div>
