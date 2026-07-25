@@ -34,10 +34,12 @@ function PreparationError({
   experienceName,
   retryHref,
   fallbackHref,
+  fallbackLabel = "Choose another workspace",
 }: {
   experienceName: string;
   retryHref: string;
   fallbackHref: string;
+  fallbackLabel?: string;
 }) {
   return (
     <AuthShell
@@ -46,7 +48,7 @@ function PreparationError({
       eyebrow="Workspace setup"
       progress="Preparation paused"
       title={`We could not prepare ${experienceName}`}
-      description="No workspace records were merged or deleted. Retry when your connection is stable, or return to the workspace selector."
+      description="No workspace records were merged or deleted. Retry when your connection is stable, or use the safe fallback below."
     >
       <div className="space-y-4 text-center" role="alert" aria-live="assertive">
         <p className="text-sm leading-6 text-text-secondary">
@@ -66,7 +68,7 @@ function PreparationError({
             className="finance-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-surface-secondary px-4 text-sm font-black text-text-primary"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Choose another workspace
+            {fallbackLabel}
           </Link>
         </div>
       </div>
@@ -218,6 +220,7 @@ export default async function ExperienceOnboardingBridge({
             experienceName={experience.productName}
             retryHref={retryHref}
             fallbackHref="/dashboard"
+            fallbackLabel="Open Personal Finance"
           />
         );
       }
