@@ -72,7 +72,7 @@
 .field input:focus-visible,
 .field select:focus-visible,
 .rowActions select:focus-visible,
-button:focus-visible { outline: 2px solid #75a6ff; outline-offset: 2px; }
+.root button:focus-visible { outline: 2px solid #75a6ff; outline-offset: 2px; }
 
 .primaryButton,
 .secondaryButton,
@@ -95,7 +95,7 @@ button:focus-visible { outline: 2px solid #75a6ff; outline-offset: 2px; }
 .secretRow button { border: 1px solid rgba(147, 177, 225, 0.25); background: #122039; color: #eaf1ff; }
 .dangerButton { border: 1px solid rgba(251, 113, 133, 0.35); background: rgba(190, 24, 93, 0.14); color: #fecdd3; }
 .textButton { border: 0; background: transparent; color: #9dbbf5; justify-self: start; padding-inline: 0; }
-button:disabled { opacity: 0.55; cursor: not-allowed; }
+.root button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .error,
 .notice,
@@ -144,7 +144,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { scroll-behavior: auto !important; }
+  .root * { scroll-behavior: auto !important; }
 }
 
 @media (forced-colors: active) {
