@@ -1,0 +1,788 @@
+/*
+ * JALVORO AI Insights — paid-grade presentation layer.
+ *
+ * This stylesheet intentionally changes presentation only. It does not alter
+ * finance calculations, consent, provider routing, preferences, records, or
+ * payment behavior.
+ */
+
+[data-ai-insights-page] {
+  --jf-ai-primary: color-mix(in srgb, var(--active) 88%, #7c3aed 12%);
+  --jf-ai-cyan: color-mix(in srgb, var(--info) 82%, #06b6d4 18%);
+  --jf-ai-gold: color-mix(in srgb, var(--warning) 84%, #f59e0b 16%);
+  --jf-ai-rose: color-mix(in srgb, var(--danger) 84%, #ec4899 16%);
+  --jf-ai-mint: color-mix(in srgb, var(--success) 88%, #10b981 12%);
+  --jf-ai-shell-border: color-mix(in srgb, var(--active) 14%, var(--border));
+  --jf-ai-shell-shadow: 0 28px 80px
+    color-mix(in srgb, var(--text-primary) 8%, transparent);
+  --jf-ai-fine-shadow: 0 16px 42px
+    color-mix(in srgb, var(--text-primary) 5%, transparent);
+  --jf-ai-focus-ring: 0 0 0 3px
+    color-mix(in srgb, var(--active) 22%, transparent);
+  padding-bottom: clamp(2rem, 5vw, 4rem) !important;
+}
+
+[data-ai-insights-page]::after {
+  position: absolute;
+  inset: 12rem -6rem auto auto;
+  width: min(34rem, 72vw);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--jf-ai-cyan) 9%, transparent),
+    transparent 68%
+  );
+  content: "";
+  pointer-events: none;
+  z-index: -1;
+}
+
+[data-ai-command-world] {
+  gap: clamp(1rem, 2.8vw, 2.25rem) !important;
+}
+
+/* Premium command hero */
+[data-ai-insights-command-hero] {
+  grid-template-columns: minmax(0, 1.25fr) minmax(17rem, 0.75fr);
+  min-height: clamp(31rem, 52vw, 39rem) !important;
+  padding: clamp(1.25rem, 4.2vw, 3.5rem) !important;
+  border-color: color-mix(in srgb, var(--jf-ai-primary) 26%, var(--border)) !important;
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      color-mix(in srgb, var(--jf-ai-primary) 14%, transparent),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 86% 12%,
+      color-mix(in srgb, var(--jf-ai-cyan) 13%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 76% 92%,
+      color-mix(in srgb, var(--jf-ai-gold) 8%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface) 93%, var(--active) 7%),
+      color-mix(in srgb, var(--surface) 98%, var(--info) 2%) 56%,
+      color-mix(in srgb, var(--surface) 95%, var(--investment) 5%)
+    ) !important;
+  box-shadow:
+    0 38px 110px color-mix(in srgb, var(--text-primary) 11%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 42%, transparent) !important;
+}
+
+[data-ai-insights-command-hero]::after {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--border) 21%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--border) 21%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 4.5rem 4.5rem;
+  mask-image: linear-gradient(140deg, black, transparent 72%);
+  content: "";
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+[data-ai-command-brand] {
+  width: fit-content;
+  padding: 0.35rem 0.55rem 0.35rem 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--active) 17%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 32%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+[data-ai-command-copy] h1 {
+  max-width: 11.5ch !important;
+  font-size: clamp(2.15rem, 5vw, 4.55rem) !important;
+  line-height: 0.94 !important;
+  letter-spacing: -0.065em !important;
+}
+
+[data-ai-command-copy] > p:not([data-ai-command-brand]) {
+  max-width: 46rem !important;
+  font-size: clamp(0.9rem, 1.4vw, 1.05rem) !important;
+  line-height: 1.75 !important;
+}
+
+[data-ai-command-status] > span {
+  min-height: 2.35rem;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 28%, transparent);
+}
+
+[data-ai-command-controls] {
+  position: relative;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
+  box-shadow:
+    0 18px 46px color-mix(in srgb, var(--text-primary) 7%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 34%, transparent);
+  backdrop-filter: blur(22px);
+}
+
+[data-ai-command-controls]::before {
+  position: absolute;
+  inset: 0.65rem auto 0.65rem 0;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    var(--jf-ai-primary),
+    var(--jf-ai-cyan),
+    transparent
+  );
+  content: "";
+}
+
+[dir="rtl"] [data-ai-command-controls]::before {
+  inset: 0.65rem 0 0.65rem auto;
+}
+
+[data-ai-command-settings] > button,
+[data-ai-command-settings] > div > button {
+  width: 100%;
+  justify-content: center;
+  border-color: color-mix(in srgb, var(--active) 18%, var(--border)) !important;
+  background: color-mix(in srgb, var(--surface) 84%, transparent) !important;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+[data-ai-command-actions] a {
+  min-height: 3.15rem !important;
+  border-radius: 1rem !important;
+}
+
+[data-ai-command-actions] a:first-child {
+  background: linear-gradient(
+    135deg,
+    var(--jf-ai-primary),
+    color-mix(in srgb, var(--jf-ai-primary) 74%, var(--jf-ai-cyan))
+  ) !important;
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--active) 25%, transparent) !important;
+}
+
+/* Capability discovery rail */
+[data-ai-premium-capability-rail] {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: clamp(0.5rem, 1.8vw, 1.15rem);
+}
+
+[data-ai-premium-capability] {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 8.6rem;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 69%, transparent);
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--text-primary) 5%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 34%, transparent);
+  backdrop-filter: blur(20px);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+[data-ai-premium-capability]::after {
+  position: absolute;
+  inset: auto -2.1rem -2.4rem auto;
+  width: 6rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jf-ai-primary) 9%, transparent);
+  content: "";
+}
+
+[data-ai-premium-capability="actions"]::after {
+  background: color-mix(in srgb, var(--jf-ai-gold) 10%, transparent);
+}
+
+[data-ai-premium-capability="chat"]::after {
+  background: color-mix(in srgb, var(--jf-ai-cyan) 10%, transparent);
+}
+
+[data-ai-premium-capability="trust"]::after {
+  background: color-mix(in srgb, var(--jf-ai-mint) 10%, transparent);
+}
+
+[data-ai-premium-capability]:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--active) 24%, var(--border));
+  box-shadow: 0 22px 46px color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+[data-ai-premium-capability-icon] {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--jf-ai-primary) 12%, transparent);
+  color: var(--jf-ai-primary);
+}
+
+[data-ai-premium-capability="actions"] [data-ai-premium-capability-icon] {
+  background: color-mix(in srgb, var(--jf-ai-gold) 13%, transparent);
+  color: var(--jf-ai-gold);
+}
+
+[data-ai-premium-capability="chat"] [data-ai-premium-capability-icon] {
+  background: color-mix(in srgb, var(--jf-ai-cyan) 13%, transparent);
+  color: var(--jf-ai-cyan);
+}
+
+[data-ai-premium-capability="trust"] [data-ai-premium-capability-icon] {
+  background: color-mix(in srgb, var(--jf-ai-mint) 13%, transparent);
+  color: var(--jf-ai-mint);
+}
+
+[data-ai-premium-capability] h2 {
+  position: relative;
+  z-index: 1;
+  margin-top: 1.15rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+[data-ai-premium-capability] p {
+  position: relative;
+  z-index: 1;
+  display: -webkit-box;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  font-size: 0.68rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Trust and context */
+[data-ai-trust-zone] [data-ai-insights-trust-center] {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--jf-ai-cyan) 19%, var(--border)) !important;
+  background:
+    radial-gradient(
+      circle at 86% 8%,
+      color-mix(in srgb, var(--jf-ai-cyan) 8%, transparent),
+      transparent 29%
+    ),
+    linear-gradient(
+      125deg,
+      color-mix(in srgb, var(--surface) 96%, var(--info) 4%),
+      var(--surface)
+    ) !important;
+  box-shadow: var(--jf-ai-fine-shadow) !important;
+}
+
+[data-ai-trust-zone] [data-ai-insights-trust-center]::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--jf-ai-cyan), transparent 82%);
+  content: "";
+}
+
+[dir="rtl"] [data-ai-trust-zone] [data-ai-insights-trust-center]::before {
+  inset: 0 0 0 auto;
+}
+
+[data-ai-trust-zone]
+  [data-ai-insights-trust-center]
+  > div:nth-of-type(2)
+  > div {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+[data-ai-trust-zone]
+  [data-ai-insights-trust-center]
+  > div:nth-of-type(2)
+  > div:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--info) 20%, var(--border));
+  background: color-mix(in srgb, var(--surface-secondary) 88%, transparent) !important;
+}
+
+/* Premium overview and metrics */
+[data-ai-insights-experience] > div > section:first-child {
+  border-color: color-mix(in srgb, var(--jf-ai-primary) 18%, var(--border)) !important;
+  background:
+    radial-gradient(
+      circle at 8% 20%,
+      color-mix(in srgb, var(--jf-ai-primary) 8%, transparent),
+      transparent 28%
+    ),
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--surface) 95%, var(--active) 5%),
+      var(--surface) 62%
+    ) !important;
+  box-shadow: var(--jf-ai-shell-shadow) !important;
+}
+
+[data-ai-insights-experience] [role="progressbar"] {
+  padding: 0.28rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  box-shadow:
+    0 18px 36px color-mix(in srgb, var(--active) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
+}
+
+[data-ai-insights-experience] [data-mobile-summary-grid] > div {
+  border-color: color-mix(in srgb, var(--border) 69%, transparent) !important;
+  background: color-mix(in srgb, var(--surface-secondary) 82%, transparent) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+[data-ai-insights-experience] [data-mobile-summary-grid] > div::before {
+  position: absolute;
+  inset: 0.65rem auto 0.65rem 0;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--jf-ai-primary);
+  content: "";
+  opacity: 0.72;
+}
+
+[dir="rtl"]
+  [data-ai-insights-experience]
+  [data-mobile-summary-grid]
+  > div::before {
+  inset: 0.65rem 0 0.65rem auto;
+}
+
+[data-ai-insights-experience] [data-mobile-summary-grid] > div:nth-child(2)::before {
+  background: var(--jf-ai-gold);
+}
+
+[data-ai-insights-experience] [data-mobile-summary-grid] > div:nth-child(3)::before {
+  background: var(--jf-ai-cyan);
+}
+
+[data-ai-insights-experience] [data-mobile-summary-grid] > div:nth-child(4)::before {
+  background: var(--jf-ai-rose);
+}
+
+[data-ai-insights-experience] [data-mobile-summary-grid] > div:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--active) 19%, var(--border)) !important;
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+/* Main intelligence workspace */
+[data-ai-insights-experience] > div > div.grid:first-of-type {
+  grid-template-columns: minmax(0, 1.5fr) minmax(18rem, 0.72fr) !important;
+}
+
+[data-ai-insights-experience] > div > div.grid:first-of-type > section,
+[data-ai-insights-experience] > div > div.grid:first-of-type > aside {
+  border-color: var(--jf-ai-shell-border) !important;
+  box-shadow: var(--jf-ai-fine-shadow) !important;
+}
+
+[data-ai-insights-experience] > div > div.grid:first-of-type > aside {
+  position: sticky;
+  top: 1rem;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      color-mix(in srgb, var(--jf-ai-gold) 7%, transparent),
+      transparent 28%
+    ),
+    var(--surface) !important;
+}
+
+[data-ai-insights-experience] [data-ai-priority-queue] > div.grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+[data-ai-priority-bucket] {
+  height: 100%;
+  border-radius: 1.4rem !important;
+  background: color-mix(in srgb, var(--surface-secondary) 44%, transparent) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+}
+
+[data-ai-priority-bucket="act-now"] {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--danger) 6%, var(--surface)),
+      var(--surface)
+    ) !important;
+}
+
+[data-ai-priority-bucket="watch-closely"] {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--warning) 6%, var(--surface)),
+      var(--surface)
+    ) !important;
+}
+
+[data-ai-priority-bucket="doing-well"] {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--success) 6%, var(--surface)),
+      var(--surface)
+    ) !important;
+}
+
+[data-ai-insights-experience] article {
+  border-color: color-mix(in srgb, var(--border) 74%, transparent) !important;
+  background: color-mix(in srgb, var(--surface) 78%, transparent) !important;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+[data-ai-insights-experience] article:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--active) 20%, var(--border)) !important;
+  box-shadow: 0 20px 42px color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+[data-ai-insights-experience] article a {
+  background: linear-gradient(
+    135deg,
+    var(--jf-ai-primary),
+    color-mix(in srgb, var(--jf-ai-primary) 78%, var(--jf-ai-cyan))
+  ) !important;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--active) 19%, transparent);
+}
+
+/* Spending and trend analytics */
+[data-ai-insights-experience] > div > section.grid {
+  position: relative;
+  overflow: hidden;
+  padding: var(--jf-ai-card-padding);
+  border: 1px solid var(--jf-ai-shell-border);
+  border-radius: var(--jf-ai-card-radius);
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--jf-ai-cyan) 7%, transparent),
+      transparent 25%
+    ),
+    var(--surface);
+  box-shadow: var(--jf-ai-fine-shadow);
+}
+
+[data-ai-insights-experience]
+  > div
+  > section.grid
+  > div:first-child
+  > div.space-y-4
+  > div
+  > div:last-child {
+  height: 0.45rem !important;
+  background: color-mix(in srgb, var(--surface-secondary) 92%, transparent) !important;
+}
+
+[data-ai-insights-experience]
+  > div
+  > section.grid
+  > div:first-child
+  > div.space-y-4
+  > div
+  > div:last-child
+  > div {
+  background: linear-gradient(90deg, var(--jf-ai-primary), var(--jf-ai-cyan)) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--active) 24%, transparent);
+}
+
+/* Conversational finance workspace */
+[data-ai-insights-experience] > div > section:last-child {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1rem, 2.8vw, 1.8rem);
+  border: 1px solid color-mix(in srgb, var(--jf-ai-primary) 20%, var(--border));
+  border-radius: var(--jf-ai-card-radius);
+  background:
+    radial-gradient(
+      circle at 5% 0%,
+      color-mix(in srgb, var(--jf-ai-primary) 8%, transparent),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 95% 100%,
+      color-mix(in srgb, var(--jf-ai-cyan) 8%, transparent),
+      transparent 27%
+    ),
+    var(--surface);
+  box-shadow: var(--jf-ai-shell-shadow);
+}
+
+[data-ai-insights-experience] > div > section:last-child > h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem !important;
+  font-size: clamp(1.05rem, 2vw, 1.3rem) !important;
+}
+
+[data-ai-insights-experience] > div > section:last-child > h2::before {
+  display: block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: var(--jf-ai-mint);
+  box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--success) 11%, transparent);
+  content: "";
+}
+
+[data-ai-insights-experience]
+  > div
+  > section:last-child
+  > div[aria-live="polite"] {
+  min-height: 18rem;
+  max-height: 34rem !important;
+  padding: clamp(0.75rem, 2vw, 1.15rem);
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: 1.35rem;
+  background: color-mix(in srgb, var(--background) 48%, transparent);
+  scroll-behavior: smooth;
+}
+
+[data-ai-insights-experience]
+  > div
+  > section:last-child
+  > div[aria-live="polite"]
+  button {
+  border: 1px solid color-mix(in srgb, var(--border) 69%, transparent);
+  background: color-mix(in srgb, var(--surface) 76%, transparent) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+}
+
+[data-ai-insights-experience]
+  > div
+  > section:last-child
+  > div[aria-live="polite"]
+  button:hover {
+  border-color: color-mix(in srgb, var(--active) 23%, var(--border));
+  background: color-mix(in srgb, var(--active) 7%, var(--surface)) !important;
+}
+
+[data-ai-insights-experience] > div > section:last-child form {
+  margin-top: 0.85rem;
+  padding: 0.45rem !important;
+  border: 1px solid color-mix(in srgb, var(--active) 17%, var(--border));
+  background: color-mix(in srgb, var(--surface-secondary) 86%, transparent) !important;
+  box-shadow:
+    0 16px 34px color-mix(in srgb, var(--text-primary) 6%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 30%, transparent);
+}
+
+[data-ai-insights-experience] > div > section:last-child form:focus-within {
+  border-color: color-mix(in srgb, var(--active) 48%, var(--border));
+  box-shadow:
+    var(--jf-ai-focus-ring),
+    0 18px 38px color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+[data-ai-insights-experience] > div > section:last-child form button {
+  background: linear-gradient(
+    135deg,
+    var(--jf-ai-primary),
+    color-mix(in srgb, var(--jf-ai-primary) 72%, var(--jf-ai-cyan))
+  ) !important;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--active) 22%, transparent);
+}
+
+/* Global interaction quality */
+[data-ai-insights-page] :where(button, a, summary):focus-visible {
+  outline: none;
+  box-shadow: var(--jf-ai-focus-ring);
+}
+
+[data-ai-insights-page] :where(button, a, summary) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:is(.dark, [data-theme="dark"]) [data-ai-insights-page] {
+  --jf-ai-shell-shadow: 0 30px 90px rgba(0, 0, 0, 0.32);
+  --jf-ai-fine-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+:is(.dark, [data-theme="dark"]) [data-ai-insights-command-hero],
+:is(.dark, [data-theme="dark"])
+  [data-ai-insights-experience]
+  > div
+  > section:last-child {
+  box-shadow:
+    0 34px 100px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent) !important;
+}
+
+@media (max-width: 1180px) {
+  [data-ai-insights-command-hero] {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.65fr);
+  }
+
+  [data-ai-premium-capability-rail] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-ai-insights-experience] [data-ai-priority-queue] > div.grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  [data-ai-insights-command-hero] {
+    grid-template-columns: 1fr;
+    min-height: auto !important;
+  }
+
+  [data-ai-command-controls] {
+    width: 100%;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type {
+    grid-template-columns: 1fr !important;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-ai-insights-page] {
+    --jf-ai-card-padding: 0.9rem;
+    --jf-ai-card-radius: 1.35rem;
+  }
+
+  [data-ai-insights-command-hero] {
+    gap: 1.35rem !important;
+    padding: 1rem !important;
+    border-radius: 1.55rem !important;
+  }
+
+  [data-ai-command-copy] h1 {
+    max-width: 13ch !important;
+    font-size: clamp(2rem, 11vw, 3rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  [data-ai-command-copy] > p:not([data-ai-command-brand]) {
+    font-size: 0.84rem !important;
+    line-height: 1.65 !important;
+  }
+
+  [data-ai-command-controls] {
+    padding: 0.75rem;
+    border-radius: 1.15rem;
+  }
+
+  [data-ai-premium-capability-rail] {
+    display: flex;
+    grid-column: auto;
+    grid-column: 1 / -1;
+    gap: 0.65rem;
+    margin-inline: -0.15rem;
+    overflow-x: auto;
+    padding: 0.15rem 0.15rem 0.45rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  [data-ai-premium-capability-rail]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-ai-premium-capability] {
+    min-width: min(17rem, 82vw);
+    min-height: 8rem;
+    scroll-snap-align: start;
+  }
+
+  [data-ai-insights-experience] [data-mobile-summary-grid] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  [data-ai-insights-experience] [data-mobile-summary-grid] > div {
+    min-height: 7.2rem !important;
+    padding: 0.85rem !important;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type > section,
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside,
+  [data-ai-insights-experience] > div > section.grid,
+  [data-ai-insights-experience] > div > section:last-child {
+    padding: 0.9rem !important;
+    border-radius: 1.35rem !important;
+  }
+
+  [data-ai-insights-experience]
+    > div
+    > section:last-child
+    > div[aria-live="polite"] {
+    min-height: 15rem;
+    padding: 0.65rem;
+    border-radius: 1rem;
+  }
+}
+
+@media (max-width: 390px) {
+  [data-ai-insights-experience] [data-mobile-summary-grid] {
+    grid-template-columns: 1fr !important;
+  }
+
+  [data-ai-premium-capability] {
+    min-width: 88vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ai-insights-page] *,
+  [data-ai-insights-page] *::before,
+  [data-ai-insights-page] *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
