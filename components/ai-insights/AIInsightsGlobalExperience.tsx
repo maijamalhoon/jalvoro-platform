@@ -4,7 +4,7 @@ import {
   ArrowDown,
   BrainCircuit,
   Globe2,
-  ListChecks,
+  ListTodo,
   MessageSquareText,
   ShieldCheck,
   Sparkles,
@@ -30,7 +30,7 @@ export default function AIInsightsGlobalExperience() {
     },
     {
       key: "actions",
-      icon: ListChecks,
+      icon: ListTodo,
       label: copy.panel.nextMoves,
       description: actionableCopy.description,
     },
