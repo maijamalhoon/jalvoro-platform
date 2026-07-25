@@ -59,14 +59,16 @@ internal data class JalvoroMotionTokens(
     val deliberateMillis: Int get() = scaled(310)
     val chartMillis: Int get() = scaled(540)
     val goalProgressMillis: Int get() = scaled(820)
-    val staggerMillis: Int get() = scaled(12)
-    val delayMillis: Int get() = scaled(6)
+    // Mirrors the website's short 0/35/70/105 ms entrance cascade.
+    val staggerMillis: Int get() = scaled(35)
+    val delayMillis: Int get() = scaled(0)
+    val entranceMillis: Int get() = scaled(320)
 
     fun scaled(authoredMillis: Int): Int =
         if (!enabled) 0 else (authoredMillis * durationScale).roundToInt().coerceAtLeast(1)
 
     fun staggerDelay(index: Int): Long =
-        if (!enabled) 0L else (delayMillis + staggerMillis * index.coerceAtLeast(0)).toLong()
+        if (!enabled) 0L else (delayMillis + staggerMillis * index.coerceIn(0, 3)).toLong()
 }
 
 internal val JalvoroMotionEasing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
@@ -232,7 +234,7 @@ internal fun JalvoroEntrance(
     content: @Composable () -> Unit,
 ) {
     val motion = LocalJalvoroMotion.current
-    val offsetPx = with(LocalDensity.current) { 5.dp.toPx() }
+    val offsetPx = with(LocalDensity.current) { 10.dp.toPx() }
     var entered by remember(key, motion.enabled, motion.mode) {
         mutableStateOf(!motion.enabled)
     }
@@ -251,7 +253,7 @@ internal fun JalvoroEntrance(
         targetValue = if (entered) 1f else 0f,
         animationSpec = if (motion.enabled) {
             tween(
-                durationMillis = motion.fastMillis,
+                durationMillis = motion.entranceMillis,
                 easing = JalvoroMotionEasing,
             )
         } else {
@@ -263,7 +265,7 @@ internal fun JalvoroEntrance(
         targetValue = if (entered) 0f else offsetPx,
         animationSpec = if (motion.enabled) {
             tween(
-                durationMillis = motion.fastMillis,
+                durationMillis = motion.entranceMillis,
                 easing = JalvoroMotionEasing,
             )
         } else {

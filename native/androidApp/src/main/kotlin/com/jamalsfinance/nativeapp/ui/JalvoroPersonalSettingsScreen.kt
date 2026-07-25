@@ -6,12 +6,16 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -20,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -214,24 +219,27 @@ internal fun JalvoroPersonalSettingsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
-                title = {
-                    Column {
-                        Text(
-                            "Personal Settings",
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                        Text(
-                            "JALVORO account and device preferences",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shadowElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    JalvoroIconAction(
+                        icon = JalvoroIcons.ArrowLeft,
+                        label = "Back to overview",
+                        onClick = onBack,
+                    )
+                    JalvoroBrandLockup(
+                        modifier = Modifier.weight(1f),
+                        subtitle = "Settings",
+                        compact = true,
+                    )
+                    JalvoroIconAction(
+                        icon = JalvoroIcons.Refresh,
+                        label = if (busy == "refresh") "Refreshing settings" else "Refresh settings",
                         enabled = busy == null,
                         onClick = {
                             scope.launch {
@@ -243,9 +251,9 @@ internal fun JalvoroPersonalSettingsScreen(
                                 busy = null
                             }
                         },
-                    ) { Text("Refresh") }
-                },
-            )
+                    )
+                }
+            }
         },
     ) { padding ->
         when {
@@ -281,133 +289,144 @@ internal fun JalvoroPersonalSettingsScreen(
                 }
             }
             snapshot != null -> {
-                LazyColumn(
+                BoxWithConstraints(
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(
-                        start = 18.dp,
-                        end = 18.dp,
-                        top = if (localPreferences.compactMode) 8.dp else 16.dp,
-                        bottom = 32.dp,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(
-                        if (localPreferences.compactMode) 9.dp else 14.dp,
-                    ),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
-                    item {
-                        PersonalSettingsSummaryCard(
-                            snapshot = snapshot,
-                            local = localPreferences,
-                        )
-                    }
-                    item { PersonalSectionLabel("Profile") }
-                    item {
-                        PersonalProfileCard(
-                            snapshot = snapshot,
-                            avatarBitmap = avatarBitmap,
-                            busy = busy != null,
-                            onChoosePhoto = {
-                                chooseAvatar.launch(arrayOf("image/jpeg", "image/png", "image/webp"))
-                            },
-                            onEditName = {
-                                draftName = snapshot.profile.displayName
-                                nameDialog = true
-                            },
-                        )
-                    }
-                    item { PersonalSectionLabel("Preferences") }
-                    item {
-                        PersonalPreferencesCard(
-                            snapshot = snapshot,
-                            local = localPreferences,
-                            busy = busy != null,
-                            onCurrency = { currencyDialog = true },
-                            onTheme = { themeDialog = true },
-                            onDateFormat = { dateDialog = true },
-                            onCompactChanged = {
-                                preferences.setCompactMode(it)
-                                announce(if (it) "Compact spacing enabled." else "Comfortable spacing enabled.")
-                            },
-                        )
-                    }
-                    item { PersonalSectionLabel("Notifications") }
-                    item {
-                        PersonalNotificationCard(
-                            snapshot = snapshot,
-                            busy = busy != null,
-                            onGoalAlerts = { enabled ->
-                                runAction("goal-alerts", "Goal alerts updated.") {
-                                    repository.updateNotificationPreferences(
-                                        goalAlertsEnabled = enabled,
-                                        payableAlertsEnabled = snapshot.notificationPreferences.payableAlertsEnabled,
-                                    )
-                                }
-                            },
-                            onPayableAlerts = { enabled ->
-                                runAction("payable-alerts", "Payable alerts updated.") {
-                                    repository.updateNotificationPreferences(
-                                        goalAlertsEnabled = snapshot.notificationPreferences.goalAlertsEnabled,
-                                        payableAlertsEnabled = enabled,
-                                    )
-                                }
-                            },
-                            onAlertClick = { alert ->
-                                if (!alert.read) {
-                                    runAction("alert", "Notification marked as read.") {
-                                        repository.markAlertRead(alert.id)
-                                    }
-                                }
-                            },
-                        )
-                    }
-                    item { PersonalSectionLabel("Data portability") }
-                    item {
-                        PersonalDataCard(
-                            busy = busy != null,
-                            onExport = {
-                                if (busy == null) scope.launch {
-                                    busy = "export"
-                                    when (val result = repository.exportBackup(preferences.clientPreferences())) {
-                                        is BackupExportResult.Success -> {
-                                            pendingExport = result
-                                            createBackup.launch(
-                                                "jalvoro-personal-backup-${jalvoroTodayKey()}.jfinance",
+                    val wideLayout = maxWidth >= 720.dp
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().widthIn(max = 1_080.dp),
+                        contentPadding = PaddingValues(
+                            start = if (wideLayout) 24.dp else 18.dp,
+                            end = if (wideLayout) 24.dp else 18.dp,
+                            top = if (localPreferences.compactMode) 8.dp else 16.dp,
+                            bottom = 32.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(
+                            if (localPreferences.compactMode) 9.dp else 14.dp,
+                        ),
+                    ) {
+                        item {
+                            JalvoroEntrance(index = 0, key = "settings-summary:${snapshot.profile.preferredCurrency}:${snapshot.unreadAlertCount}:${localPreferences.themeMode}") {
+                                PersonalSettingsSummaryCard(snapshot = snapshot, local = localPreferences)
+                            }
+                        }
+                        item { JalvoroEntrance(index = 1, key = "settings-profile-label") { PersonalSectionLabel("Profile") } }
+                        item {
+                            JalvoroEntrance(index = 2, key = "settings-profile:${snapshot.profile.displayName}:${snapshot.profile.avatarPath}") {
+                                PersonalProfileCard(
+                                    snapshot = snapshot,
+                                    avatarBitmap = avatarBitmap,
+                                    busy = busy != null,
+                                    onChoosePhoto = { chooseAvatar.launch(arrayOf("image/jpeg", "image/png", "image/webp")) },
+                                    onEditName = {
+                                        draftName = snapshot.profile.displayName
+                                        nameDialog = true
+                                    },
+                                )
+                            }
+                        }
+                        item { JalvoroEntrance(index = 3, key = "settings-preferences-label") { PersonalSectionLabel("Preferences") } }
+                        item {
+                            JalvoroEntrance(index = 3, key = "settings-preferences:${snapshot.profile.preferredCurrency}:${localPreferences.themeMode}:${localPreferences.dateFormat}:${localPreferences.compactMode}") {
+                                PersonalPreferencesCard(
+                                    snapshot = snapshot,
+                                    local = localPreferences,
+                                    busy = busy != null,
+                                    onCurrency = { currencyDialog = true },
+                                    onTheme = { themeDialog = true },
+                                    onDateFormat = { dateDialog = true },
+                                    onCompactChanged = {
+                                        preferences.setCompactMode(it)
+                                        announce(if (it) "Compact spacing enabled." else "Comfortable spacing enabled.")
+                                    },
+                                )
+                            }
+                        }
+                        item { JalvoroEntrance(index = 3, key = "settings-notifications-label") { PersonalSectionLabel("Notifications") } }
+                        item {
+                            JalvoroEntrance(index = 3, key = "settings-notifications:${snapshot.unreadAlertCount}:${snapshot.notificationPreferences}") {
+                                PersonalNotificationCard(
+                                    snapshot = snapshot,
+                                    busy = busy != null,
+                                    onGoalAlerts = { enabled ->
+                                        runAction("goal-alerts", "Goal alerts updated.") {
+                                            repository.updateNotificationPreferences(
+                                                goalAlertsEnabled = enabled,
+                                                payableAlertsEnabled = snapshot.notificationPreferences.payableAlertsEnabled,
                                             )
                                         }
-                                        is BackupExportResult.Failure -> announce(result.message)
-                                    }
-                                    busy = null
-                                }
-                            },
-                            onImport = { if (busy == null) openBackup.launch(arrayOf("*/*")) },
-                        )
-                    }
-                    item { PersonalSectionLabel("Account security") }
-                    item {
-                        PersonalSecurityCard(
-                            email = snapshot.profile.email,
-                            busy = busy != null,
-                            onPassword = {
-                                password = ""
-                                confirmation = ""
-                                passwordDialog = true
-                            },
-                            onSignOut = {
-                                if (busy == null) scope.launch {
-                                    busy = "sign-out"
-                                    onSignOut()
-                                    busy = null
-                                }
-                            },
-                        )
-                    }
-                    if (state is PersonalPlatformState.Failure) {
+                                    },
+                                    onPayableAlerts = { enabled ->
+                                        runAction("payable-alerts", "Payable alerts updated.") {
+                                            repository.updateNotificationPreferences(
+                                                goalAlertsEnabled = snapshot.notificationPreferences.goalAlertsEnabled,
+                                                payableAlertsEnabled = enabled,
+                                            )
+                                        }
+                                    },
+                                    onAlertClick = { alert ->
+                                        if (!alert.read) {
+                                            runAction("alert", "Notification marked as read.") { repository.markAlertRead(alert.id) }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        item { JalvoroEntrance(index = 3, key = "settings-data-label") { PersonalSectionLabel("Data portability") } }
                         item {
-                            Text(
-                                (state as PersonalPlatformState.Failure).message,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                            )
+                            JalvoroEntrance(index = 3, key = "settings-data") {
+                                PersonalDataCard(
+                                    busy = busy != null,
+                                    onExport = {
+                                        if (busy == null) scope.launch {
+                                            busy = "export"
+                                            when (val result = repository.exportBackup(preferences.clientPreferences())) {
+                                                is BackupExportResult.Success -> {
+                                                    pendingExport = result
+                                                    createBackup.launch("jalvoro-personal-backup-${jalvoroTodayKey()}.jfinance")
+                                                }
+                                                is BackupExportResult.Failure -> announce(result.message)
+                                            }
+                                            busy = null
+                                        }
+                                    },
+                                    onImport = { if (busy == null) openBackup.launch(arrayOf("*/*")) },
+                                )
+                            }
+                        }
+                        item { JalvoroEntrance(index = 3, key = "settings-security-label") { PersonalSectionLabel("Account security") } }
+                        item {
+                            JalvoroEntrance(index = 3, key = "settings-security:${snapshot.profile.email}") {
+                                PersonalSecurityCard(
+                                    email = snapshot.profile.email,
+                                    busy = busy != null,
+                                    onPassword = {
+                                        password = ""
+                                        confirmation = ""
+                                        passwordDialog = true
+                                    },
+                                    onSignOut = {
+                                        if (busy == null) scope.launch {
+                                            busy = "sign-out"
+                                            onSignOut()
+                                            busy = null
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        if (state is PersonalPlatformState.Failure) {
+                            item {
+                                JalvoroAnimatedReveal(visible = true) {
+                                    Text(
+                                        (state as PersonalPlatformState.Failure).message,
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

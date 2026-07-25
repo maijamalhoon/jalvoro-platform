@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -210,31 +211,37 @@ fun JalvoroFinanceDashboard(
                         scope.launch { financeRepository.refresh(force = true) }
                     },
                 )
-                snapshot != null -> when (section) {
-                    JalvoroMoneySection.Accounts -> JalvoroAccountsScreen(
-                        snapshot = snapshot,
-                        onEdit = { editAccount = it },
-                        onArchive = { archiveAccount = it },
-                        onTransfer = { transfer = true },
-                    )
-                    JalvoroMoneySection.Transactions -> JalvoroTransactionsScreen(
-                        snapshot = snapshot,
-                        onEdit = { entry ->
-                            scope.launch {
-                                val editable = financeRepository.loadEditableTransaction(entry.id)
-                                if (editable == null) {
-                                    snackbar.showSnackbar("Transaction could not be edited.")
-                                } else {
-                                    editTransaction = editable
+                snapshot != null -> JalvoroAnimatedSwap(
+                    targetState = section,
+                    modifier = Modifier.fillMaxSize(),
+                    label = "jalvoro-money-section",
+                ) { currentSection ->
+                    when (currentSection) {
+                        JalvoroMoneySection.Accounts -> JalvoroAccountsScreen(
+                            snapshot = snapshot,
+                            onEdit = { editAccount = it },
+                            onArchive = { archiveAccount = it },
+                            onTransfer = { transfer = true },
+                        )
+                        JalvoroMoneySection.Transactions -> JalvoroTransactionsScreen(
+                            snapshot = snapshot,
+                            onEdit = { entry ->
+                                scope.launch {
+                                    val editable = financeRepository.loadEditableTransaction(entry.id)
+                                    if (editable == null) {
+                                        snackbar.showSnackbar("Transaction could not be edited.")
+                                    } else {
+                                        editTransaction = editable
+                                    }
                                 }
-                            }
-                        },
-                        onDelete = { deleteEntry = it },
-                    )
-                    JalvoroMoneySection.Profile -> JalvoroFinanceProfile(
-                        email = email,
-                        onSignOut = { scope.launch { onSignOut() } },
-                    )
+                            },
+                            onDelete = { deleteEntry = it },
+                        )
+                        JalvoroMoneySection.Profile -> JalvoroFinanceProfile(
+                            email = email,
+                            onSignOut = { scope.launch { onSignOut() } },
+                        )
+                    }
                 }
                 else -> JalvoroMoneyProgress()
             }
@@ -401,15 +408,21 @@ private fun JalvoroMoneyHeader(
                 label = "Back to overview",
                 onClick = onBack,
             )
-            JalvoroBrandLockup(
-                modifier = Modifier.weight(1f),
-                subtitle = when (section) {
+            JalvoroAnimatedSwap(
+                targetState = when (section) {
                     JalvoroMoneySection.Accounts -> "Accounts"
                     JalvoroMoneySection.Transactions -> "Transactions"
                     JalvoroMoneySection.Profile -> "Finance profile"
                 },
-                compact = true,
-            )
+                modifier = Modifier.weight(1f),
+                label = "money-header-subtitle",
+            ) { subtitle ->
+                JalvoroBrandLockup(
+                    modifier = Modifier.fillMaxWidth(),
+                    subtitle = subtitle,
+                    compact = true,
+                )
+            }
             JalvoroIconAction(
                 icon = JalvoroIcons.Refresh,
                 label = "Refresh finance data",
@@ -433,6 +446,7 @@ private fun JalvoroAccountsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
+            JalvoroEntrance(index = 0, key = "accounts-summary:${snapshot.totalActiveBalance}") {
             JalvoroSurfaceCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(20.dp),
@@ -457,11 +471,16 @@ private fun JalvoroAccountsScreen(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text(
-                                formatPkr(snapshot.totalActiveBalance),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                            )
+                            JalvoroAnimatedSwap(
+                                targetState = formatPkr(snapshot.totalActiveBalance),
+                                label = "money-total-active-balance",
+                            ) { value ->
+                                Text(
+                                    value,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
                         }
                     }
                     Text(
@@ -484,6 +503,7 @@ private fun JalvoroAccountsScreen(
                     }
                 }
             }
+            }
         }
 
         if (snapshot.activeAccounts.isEmpty()) {
@@ -494,8 +514,10 @@ private fun JalvoroAccountsScreen(
                 )
             }
         } else {
-            items(snapshot.activeAccounts, key = { it.id }) { account ->
-                JalvoroAccountCard(account, onEdit, onArchive)
+            itemsIndexed(snapshot.activeAccounts, key = { _, account -> account.id }) { index, account ->
+                JalvoroEntrance(index = index + 1, key = "active-${account.id}:${account.balance}") {
+                    JalvoroAccountCard(account, onEdit, onArchive)
+                }
             }
         }
 
@@ -512,8 +534,13 @@ private fun JalvoroAccountsScreen(
                 }
             }
             if (archivedVisible) {
-                items(snapshot.archivedAccounts, key = { "archived-${it.id}" }) { account ->
-                    JalvoroAccountCard(account, onEdit, onArchive)
+                itemsIndexed(
+                    snapshot.archivedAccounts,
+                    key = { _, account -> "archived-${account.id}" },
+                ) { index, account ->
+                    JalvoroEntrance(index = index, key = "archived-${account.id}:${account.balance}") {
+                        JalvoroAccountCard(account, onEdit, onArchive)
+                    }
                 }
             }
         }
@@ -560,10 +587,12 @@ private fun JalvoroAccountCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    formatPkr(account.balance),
-                    fontWeight = FontWeight.Bold,
-                )
+                JalvoroAnimatedSwap(
+                    targetState = formatPkr(account.balance),
+                    label = "account-${account.id}-balance",
+                ) { value ->
+                    Text(value, fontWeight = FontWeight.Bold)
+                }
             }
             account.accountNumber?.takeLast(4)?.let { lastFour ->
                 Text(
@@ -622,6 +651,7 @@ private fun JalvoroTransactionsScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
+            JalvoroEntrance(index = 0, key = "transaction-search") {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -638,8 +668,10 @@ private fun JalvoroTransactionsScreen(
                 shape = RoundedCornerShape(14.dp),
                 colors = jalvoroFinanceFieldColors(),
             )
+            }
         }
         item {
+            JalvoroEntrance(index = 1, key = "transaction-filter-${filter.name}") {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 JalvoroLedgerFilter.entries.forEach { option ->
                     FilterChip(
@@ -660,6 +692,7 @@ private fun JalvoroTransactionsScreen(
                     )
                 }
             }
+            }
         }
         if (rows.isEmpty()) {
             item {
@@ -669,8 +702,13 @@ private fun JalvoroTransactionsScreen(
                 )
             }
         } else {
-            items(rows, key = { "${it.type}-${it.id}" }) { entry ->
-                JalvoroLedgerCard(entry, onEdit, onDelete)
+            itemsIndexed(rows, key = { _, entry -> "${entry.type}-${entry.id}" }) { index, entry ->
+                JalvoroEntrance(
+                    index = index + 2,
+                    key = "${filter.name}:${query.trim()}:${entry.type}:${entry.id}:${entry.amount}",
+                ) {
+                    JalvoroLedgerCard(entry, onEdit, onDelete)
+                }
             }
         }
     }
@@ -740,11 +778,16 @@ private fun JalvoroLedgerCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    "$sign${formatPkr(entry.amount)}",
-                    fontWeight = FontWeight.Bold,
-                    color = tone,
-                )
+                JalvoroAnimatedSwap(
+                    targetState = "$sign${formatPkr(entry.amount)}",
+                    label = "ledger-${entry.type}-${entry.id}-amount",
+                ) { value ->
+                    Text(
+                        value,
+                        fontWeight = FontWeight.Bold,
+                        color = tone,
+                    )
+                }
             }
             listOfNotNull(
                 entry.sourceName,

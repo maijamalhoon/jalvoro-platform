@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -207,12 +208,16 @@ fun JalvoroOverviewDashboard(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
-                    OverviewGreeting(email = email)
+                    JalvoroEntrance(index = 0, key = "overview-greeting") {
+                        OverviewGreeting(email = email)
+                    }
                 }
 
                 if (failures.isNotEmpty()) {
                     item {
-                        OverviewDataNotice(messages = failures)
+                        JalvoroEntrance(index = 1, key = failures.joinToString("|")) {
+                            OverviewDataNotice(messages = failures)
+                        }
                     }
                 }
 
@@ -232,13 +237,24 @@ fun JalvoroOverviewDashboard(
                     }
                 } else {
                     item {
-                        OverviewBalanceHero(
-                            totalBalance = totalBalance,
-                            accountBalance = accountBalance,
-                            portfolioValue = portfolioValue,
-                            onOpenFinance = onOpenFinance,
-                            onOpenInvestments = onOpenInvestments,
-                        )
+                        JalvoroEntrance(index = 2, key = "overview-balance") {
+                            OverviewBalanceHero(
+                                totalBalance = totalBalance,
+                                accountBalance = accountBalance,
+                                portfolioValue = portfolioValue,
+                                onOpenFinance = onOpenFinance,
+                                onOpenInvestments = onOpenInvestments,
+                            )
+                        }
+                    }
+
+                    item {
+                        JalvoroEntrance(index = 3, key = "overview-month-heading") {
+                            OverviewSectionHeading(
+                                title = "This month",
+                                description = "Month-to-date totals use the same refund and savings rules as the website.",
+                            )
+                        }
                     }
 
                     val metrics = listOf(
@@ -273,29 +289,37 @@ fun JalvoroOverviewDashboard(
                             tone = OverviewMetricTone.Investment,
                         ),
                     )
-                    items(
-                        items = if (twoColumns) metrics.chunked(2) else metrics.map(::listOf),
-                        key = { row -> row.joinToString("|") { it.title } },
-                    ) { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    val metricRows = if (twoColumns) metrics.chunked(2) else metrics.map(::listOf)
+                    itemsIndexed(
+                        items = metricRows,
+                        key = { _, row -> row.joinToString("|") { it.title } },
+                    ) { rowIndex, row ->
+                        JalvoroEntrance(
+                            index = 4 + rowIndex,
+                            key = row.joinToString("|") { "${it.title}:${it.amount}" },
                         ) {
-                            row.forEach { metric ->
-                                OverviewMetricCard(
-                                    metric = metric,
-                                    modifier = Modifier.weight(1f),
-                                )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { metric ->
+                                    OverviewMetricCard(
+                                        metric = metric,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
                             }
-                            if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
 
                     item {
-                        OverviewSectionHeading(
-                            title = "Your workspaces",
-                            description = "Open the same finance areas available on the website.",
-                        )
+                        JalvoroEntrance(index = 6, key = "overview-workspaces-heading") {
+                            OverviewSectionHeading(
+                                title = "Your workspaces",
+                                description = "Open the same finance areas available on the website.",
+                            )
+                        }
                     }
 
                     val actions = listOf(
@@ -324,37 +348,47 @@ fun JalvoroOverviewDashboard(
                             onClick = onOpenReports,
                         ),
                     )
-                    items(
-                        items = if (twoColumns) actions.chunked(2) else actions.map(::listOf),
-                        key = { row -> row.joinToString("|") { it.title } },
-                    ) { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    val actionRows = if (twoColumns) actions.chunked(2) else actions.map(::listOf)
+                    itemsIndexed(
+                        items = actionRows,
+                        key = { _, row -> row.joinToString("|") { it.title } },
+                    ) { rowIndex, row ->
+                        JalvoroEntrance(
+                            index = 7 + rowIndex,
+                            key = row.joinToString("|") { it.title },
                         ) {
-                            row.forEach { action ->
-                                OverviewActionCard(
-                                    action = action,
-                                    modifier = Modifier.weight(1f),
-                                )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { action ->
+                                    OverviewActionCard(
+                                        action = action,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
                             }
-                            if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
 
                     item {
-                        OverviewGoalsCard(
-                            snapshot = goalsSnapshot,
-                            onOpenPlanning = onOpenPlanning,
-                        )
+                        JalvoroEntrance(index = 9, key = "overview-goals:${goalsSnapshot?.goals?.size}") {
+                            OverviewGoalsCard(
+                                snapshot = goalsSnapshot,
+                                onOpenPlanning = onOpenPlanning,
+                            )
+                        }
                     }
 
                     item {
-                        OverviewRecentActivity(
-                            entries = recentEntries,
-                            dataAvailable = financeSnapshot != null,
-                            onOpenFinance = onOpenFinance,
-                        )
+                        JalvoroEntrance(index = 10, key = "overview-recent:${recentEntries.joinToString { it.id }}") {
+                            OverviewRecentActivity(
+                                entries = recentEntries,
+                                dataAvailable = financeSnapshot != null,
+                                onOpenFinance = onOpenFinance,
+                            )
+                        }
                     }
                 }
             }
@@ -490,11 +524,16 @@ private fun OverviewBalanceHero(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(
-                        text = formatPkrOrUnavailable(totalBalance),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    JalvoroAnimatedSwap(
+                        targetState = formatPkrOrUnavailable(totalBalance),
+                        label = "overview-total-balance",
+                    ) { value ->
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
 
@@ -573,13 +612,18 @@ private fun OverviewMetricCard(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text = formatPkrOrUnavailable(metric.amount),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            JalvoroAnimatedSwap(
+                targetState = formatPkrOrUnavailable(metric.amount),
+                label = "overview-${metric.title}-amount",
+            ) { value ->
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = metric.helper,
                 style = MaterialTheme.typography.bodySmall,
@@ -692,8 +736,12 @@ private fun OverviewGoalsCard(
                     text = "${formatPkrOrUnavailable(snapshot.totalGoalSaved)} of ${formatPkrOrUnavailable(snapshot.totalGoalTarget)} saved",
                     fontWeight = FontWeight.SemiBold,
                 )
+                val animatedOverallProgress = rememberJalvoroAnimatedProgress(
+                    target = overallProgress.toFloat(),
+                    label = "overview-goals-progress",
+                )
                 LinearProgressIndicator(
-                    progress = { overallProgress.toFloat() },
+                    progress = { animatedOverallProgress },
                     modifier = Modifier.fillMaxWidth().height(8.dp),
                     color = MaterialTheme.colorScheme.secondary,
                     trackColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -703,8 +751,9 @@ private fun OverviewGoalsCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                snapshot.goals.take(3).forEach { goal ->
-                    Row(
+                snapshot.goals.take(3).forEachIndexed { index, goal ->
+                    JalvoroEntrance(index = index, key = "overview-goal-${goal.row.id}:${goal.progress}") {
+                        Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -720,6 +769,7 @@ private fun OverviewGoalsCard(
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.secondary,
                         )
+                    }
                     }
                 }
             }
@@ -767,7 +817,9 @@ private fun OverviewRecentActivity(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 else -> entries.forEachIndexed { index, entry ->
-                    RecentActivityRow(entry = entry)
+                    JalvoroEntrance(index = index, key = "recent-${entry.type}-${entry.id}") {
+                        RecentActivityRow(entry = entry)
+                    }
                     if (index != entries.lastIndex) {
                         Surface(
                             modifier = Modifier.fillMaxWidth().height(1.dp),

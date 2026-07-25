@@ -54,7 +54,7 @@ internal fun PersonalSectionLabel(title: String) {
 @Composable
 private fun PersonalPanel(content: @Composable () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 1.dp,
@@ -138,7 +138,12 @@ private fun SettingsStatusChip(label: String, value: String, modifier: Modifier)
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 11.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(value, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            JalvoroAnimatedSwap(
+                targetState = value,
+                label = "settings-status-$label",
+            ) { current ->
+                Text(current, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
@@ -194,13 +199,18 @@ internal fun PersonalProfileCard(
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        snapshot.profile.displayName,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    JalvoroAnimatedSwap(
+                        targetState = snapshot.profile.displayName,
+                        label = "settings-display-name",
+                    ) { displayName ->
+                        Text(
+                            displayName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Text(
                         snapshot.profile.email,
                         style = MaterialTheme.typography.bodySmall,
@@ -261,7 +271,12 @@ private fun Stat(label: String, value: Any, modifier: Modifier) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 11.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(value.toString(), fontWeight = FontWeight.Bold, maxLines = 1)
+            JalvoroAnimatedSwap(
+                targetState = value.toString(),
+                label = "settings-stat-$label",
+            ) { current ->
+                Text(current, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
@@ -415,11 +430,16 @@ private fun AlertRow(alert: PersonalAlert, enabled: Boolean, onClick: () -> Unit
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Text(
-            if (alert.read) "Read" else "Mark read",
-            style = MaterialTheme.typography.labelSmall,
-            color = if (alert.read) MaterialTheme.colorScheme.onSurfaceVariant else color,
-        )
+        JalvoroAnimatedSwap(
+            targetState = if (alert.read) "Read" else "Mark read",
+            label = "settings-alert-${alert.id}",
+        ) { current ->
+            Text(
+                current,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (alert.read) MaterialTheme.colorScheme.onSurfaceVariant else color,
+            )
+        }
     }
 }
 
@@ -522,12 +542,17 @@ private fun PersonalCardHeading(
             )
         }
         if (trailing != null) {
-            Text(
-                trailing,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            JalvoroAnimatedSwap(
+                targetState = trailing,
+                label = "settings-heading-trailing",
+            ) { current ->
+                Text(
+                    current,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }
@@ -564,12 +589,17 @@ private fun ActionRow(
                 fontWeight = FontWeight.Black,
             )
         }
-        Text(
-            value,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 2,
-        )
+        JalvoroAnimatedSwap(
+            targetState = value,
+            label = "settings-action-$title",
+        ) { current ->
+            Text(
+                current,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 2,
+            )
+        }
     }
 }
 
