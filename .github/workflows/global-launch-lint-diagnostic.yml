@@ -1,27 +1,60 @@
-name: Global launch source diagnostic
+name: Apply exact AI Insights compiler repair
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - release/global-launch-verification-20260725
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  source:
+  repair:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check out repository
+      - name: Check out release branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          persist-credentials: false
+          ref: release/global-launch-verification-20260725
           show-progress: false
 
-      - name: Upload AI Insights source
-        uses: actions/upload-artifact@v4
-        with:
-          name: global-launch-ai-insights-source
-          path: components/ai-insights/AIInsightsExplainablePanel.tsx
-          if-no-files-found: error
-          retention-days: 1
+      - name: Apply exact dependency-list repair
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          target = Path('components/ai-insights/AIInsightsExplainablePanel.tsx')
+          source = target.read_text()
+          old = '    [copy.panel.unavailable, copy.server.emptyMessage, currency, language, live, rate],'
+          new = '''    [
+                copy.panel.unavailable,
+                copy.server.emptyMessage,
+                currency,
+                language,
+                live,
+                rate,
+                setData,
+                setEmptyMessage,
+                setError,
+                setLoading,
+                setRegenerating,
+                setSummary,
+                setSummaryCards,
+              ],'''
+          if source.count(old) != 1:
+              raise SystemExit('Expected exactly one AI Insights callback dependency list.')
+          target.write_text(source.replace(old, new, 1))
+          PY
+          rm .github/workflows/global-launch-lint-diagnostic.yml
+
+      - name: Commit repaired source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/ai-insights/AIInsightsExplainablePanel.tsx .github/workflows/global-launch-lint-diagnostic.yml
+          git commit -m "Fix AI Insights callback compiler dependencies"
+          git push origin HEAD:release/global-launch-verification-20260725
