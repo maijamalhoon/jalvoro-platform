@@ -161,7 +161,9 @@ Deno.serve(async (request: Request) => {
   }
 
   const bodyResult = await readBody(request, origin);
-  if (bodyResult.response || !bodyResult.body) return bodyResult.response;
+  if (bodyResult.response) return bodyResult.response;
+  const body = bodyResult.body;
+  if (!body) return json({ error: "invalid_json" }, 400, origin);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const publishableKeys = parsePublishableKeys(
@@ -198,9 +200,9 @@ Deno.serve(async (request: Request) => {
     return json({ error: "root_owner_reauthentication_required" }, 403, origin);
   }
 
-  const email = cleanEmail(bodyResult.body.email);
-  const role = cleanRole(bodyResult.body.role);
-  const expiresInHours = cleanExpiry(bodyResult.body.expiresInHours);
+  const email = cleanEmail(body.email);
+  const role = cleanRole(body.role);
+  const expiresInHours = cleanExpiry(body.expiresInHours);
   if (!email || !role || expiresInHours === null) {
     return json({ error: "invalid_operator_invitation" }, 400, origin);
   }
