@@ -48,20 +48,68 @@ type CreateBusinessWorkspaceFormProps = {
 };
 
 function createRequestId() {
-  if (typeof window.crypto.randomUUID === "function") {
-    return window.crypto.randomUUID();
-  }
+  try {
+    if (typeof window.crypto?.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
 
-  const bytes = new Uint8Array(16);
-  window.crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    if (typeof window.crypto?.getRandomValues !== "function") return null;
+
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  } catch {
+    return null;
+  }
 }
 
 function creationRequestStorageKey(experience: BusinessExperience) {
   return `${CREATION_REQUEST_STORAGE_PREFIX}:${experience}`;
+}
+
+function readPersistedCreationRequest(experience: BusinessExperience) {
+  const key = creationRequestStorageKey(experience);
+
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      const stored = storage.getItem(key);
+      if (stored && UUID_PATTERN.test(stored)) return stored;
+    } catch {
+      // Continue to the next browser-owned persistence option.
+    }
+  }
+
+  return null;
+}
+
+function persistCreationRequest(experience: BusinessExperience, requestId: string) {
+  const key = creationRequestStorageKey(experience);
+
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      storage.setItem(key, requestId);
+      return true;
+    } catch {
+      // Continue to the next browser-owned persistence option.
+    }
+  }
+
+  return false;
+}
+
+function clearPersistedCreationRequest(experience: BusinessExperience) {
+  const key = creationRequestStorageKey(experience);
+
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      storage.removeItem(key);
+    } catch {
+      // A server-side idempotency record still prevents duplicate creation.
+    }
+  }
 }
 
 export default function CreateBusinessWorkspaceForm({
@@ -83,6 +131,7 @@ export default function CreateBusinessWorkspaceForm({
       : null;
 
   const [creationRequestId, setCreationRequestId] = useState<string | null>(null);
+  const [requestPersistenceError, setRequestPersistenceError] = useState(false);
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState(setupDefaults.businessType);
   const [countryCode, setCountryCode] = useState("");
@@ -100,24 +149,27 @@ export default function CreateBusinessWorkspaceForm({
   }, [businessExperience, setupDefaults.businessType]);
 
   useEffect(() => {
-    const storageKey = creationRequestStorageKey(businessExperience);
-    const stored = window.sessionStorage.getItem(storageKey);
-    const requestId = stored && UUID_PATTERN.test(stored) ? stored : createRequestId();
+    const stored = readPersistedCreationRequest(businessExperience);
+    const requestId = stored ?? createRequestId();
 
-    window.sessionStorage.setItem(storageKey, requestId);
+    if (!requestId || !persistCreationRequest(businessExperience, requestId)) {
+      setCreationRequestId(null);
+      setRequestPersistenceError(true);
+      return;
+    }
+
+    setRequestPersistenceError(false);
     setCreationRequestId(requestId);
   }, [businessExperience]);
-
-  function clearCreationRequest() {
-    window.sessionStorage.removeItem(creationRequestStorageKey(businessExperience));
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submissionLockRef.current || saving) return;
 
     if (!creationRequestId) {
-      toast.error("Secure creation request is still preparing. Please try again.");
+      toast.error(
+        "Secure retry protection is unavailable in this browser session. Enable browser storage or use another secure browser before creating a workspace.",
+      );
       return;
     }
 
@@ -164,7 +216,7 @@ export default function CreateBusinessWorkspaceForm({
         return;
       }
 
-      clearCreationRequest();
+      clearPersistedCreationRequest(businessExperience);
 
       const { data: business, error: businessError } = await supabase
         .from("businesses")
@@ -233,6 +285,16 @@ export default function CreateBusinessWorkspaceForm({
         </div>
       </div>
 
+      {requestPersistenceError ? (
+        <div
+          className="mt-5 rounded-[var(--radius-button)] bg-danger-soft px-4 py-3 text-sm leading-6 text-danger"
+          role="alert"
+        >
+          Workspace creation is paused because this browser cannot persist a secure retry token.
+          Enable browser storage or use another secure browser; existing workspaces are unaffected.
+        </div>
+      ) : null}
+
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <section
           className="rounded-[var(--radius-button)] bg-primary-soft px-4 py-4"
@@ -272,7 +334,7 @@ export default function CreateBusinessWorkspaceForm({
               }
               autoComplete="organization"
               maxLength={120}
-              disabled={saving}
+              disabled={saving || requestPersistenceError}
               required
             />
           </label>
@@ -283,7 +345,7 @@ export default function CreateBusinessWorkspaceForm({
               value={businessType}
               onChange={(event) => setBusinessType(event.target.value as typeof businessType)}
               className="field-input min-h-11 w-full"
-              disabled={saving}
+              disabled={saving || requestPersistenceError}
             >
               {BUSINESS_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -299,7 +361,7 @@ export default function CreateBusinessWorkspaceForm({
               value={baseCurrency}
               onChange={(event) => setBaseCurrency(event.target.value)}
               className="field-input min-h-11 w-full"
-              disabled={saving}
+              disabled={saving || requestPersistenceError}
             >
               {BASE_CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>
@@ -318,7 +380,7 @@ export default function CreateBusinessWorkspaceForm({
               inputMode="text"
               autoCapitalize="characters"
               maxLength={2}
-              disabled={saving}
+              disabled={saving || requestPersistenceError}
             />
           </label>
 
@@ -330,7 +392,7 @@ export default function CreateBusinessWorkspaceForm({
               placeholder="Asia/Karachi"
               autoComplete="off"
               maxLength={80}
-              disabled={saving}
+              disabled={saving || requestPersistenceError}
               required
             />
           </label>
@@ -352,7 +414,7 @@ export default function CreateBusinessWorkspaceForm({
           size="lg"
           loading={saving}
           loadingLabel="Creating workspace..."
-          disabled={!creationRequestId}
+          disabled={!creationRequestId || requestPersistenceError}
           className="w-full sm:w-auto"
         >
           <WorkspaceIcon aria-hidden="true" />
