@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import ControlPlaneConsole from "@/components/control-plane/ControlPlaneConsole";
+import ControlPlaneOwnerManagement from "@/components/control-plane/ControlPlaneOwnerManagement";
 import {
   parseControlPlaneAccess,
   parseControlPlaneDirectory,
@@ -43,5 +44,12 @@ export default async function ControlPlanePage() {
     }
   }
 
-  return <ControlPlaneConsole access={access} directory={directory} />;
+  return (
+    <>
+      <ControlPlaneConsole access={access} directory={directory} />
+      {access.isRootOwner && directory ? (
+        <ControlPlaneOwnerManagement directory={directory} />
+      ) : null}
+    </>
+  );
 }
