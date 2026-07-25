@@ -24,6 +24,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "audit:ci": "node scripts/dependency-audit-policy.ts",
     "brand:sync": "node scripts/sync-brand.mjs",
     "check": "npm run check:brand && npm run lint && npm run typecheck && npm test",
     "check:brand": "node scripts/sync-brand.mjs --check && node scripts/check-brand.mjs",

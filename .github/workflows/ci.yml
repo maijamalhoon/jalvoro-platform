@@ -45,22 +45,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --silent
 
-      - name: Enforce dependency vulnerability policy
-        run: node scripts/enforce-dependency-audit.mjs
+      - name: Enforce dependency audit policy
+        run: npm run audit:ci
 
       - name: Lint
-        run: |
-          set -o pipefail
-          npm run lint 2>&1 | tee lint.log
-
-      - name: Upload lint diagnostics
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: lint-diagnostics-${{ github.run_id }}
-          path: lint.log
-          if-no-files-found: error
-          retention-days: 3
+        run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck
@@ -69,18 +58,7 @@ jobs:
         run: npx vitest run lib/security-hardening.test.ts
 
       - name: Run complete application suite
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee test.log
-
-      - name: Upload test diagnostics
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: test-diagnostics-${{ github.run_id }}
-          path: test.log
-          if-no-files-found: error
-          retention-days: 3
+        run: npm test
 
       - name: Build production application
         run: npm run build
