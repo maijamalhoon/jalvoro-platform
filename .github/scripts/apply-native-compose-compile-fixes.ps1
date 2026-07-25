@@ -4,7 +4,9 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 function Read-Lines {
     param([string]$Path)
-    return New-Object 'System.Collections.Generic.List[string]' (,[System.IO.File]::ReadAllLines($Path))
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    $lines.AddRange([System.IO.File]::ReadAllLines($Path))
+    return $lines
 }
 
 function Find-LineIndex {
