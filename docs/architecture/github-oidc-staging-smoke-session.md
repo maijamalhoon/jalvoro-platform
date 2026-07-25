@@ -14,14 +14,14 @@ The staging-only Edge Function `jalvoro-github-staging-smoke-session` verifies a
 - customized protected-environment subject: `repo:maijamalhoon@150429791/jalvoro-platform@1269849875:environment:staging`
 - workflow path: `.github/workflows/dotnet-staging-supabase-smoke.yml`
 - branch: `agent/staging-business-smoke-readiness`
-- allowed workflow event
+- event: `workflow_dispatch`
 - approved actor
 - bounded token expiry
 - unique one-time `jti`
 
 The broker stores only the OIDC replay identifier and non-secret workflow metadata in the private schema. The table is not exposed to `PUBLIC`, `anon`, `authenticated`, or `service_role`.
 
-During initial proof validation, sanitized claim outcomes may be written to `private.github_oidc_staging_smoke_diagnostics`. It stores claim values and the rejection reason only; it never stores the encoded JWT, signature, access token, password, Vault secret, or refresh token. All exposed-role privileges are revoked.
+During initial proof validation, sanitized claim outcomes were written to `private.github_oidc_staging_smoke_diagnostics`. It stores claim values and the rejection reason only; it never stores the encoded JWT, signature, access token, password, Vault secret, or refresh token. All exposed-role privileges are revoked.
 
 ## Credential flow
 
@@ -34,9 +34,20 @@ During initial proof validation, sanitized claim outcomes may be written to `pri
 
 No service-role key is returned to GitHub, and no production project is called.
 
-## Temporary proof trigger
+## Live proof
 
-The branch-scoped `push` trigger exists only to execute the first OIDC proof without adding static GitHub secrets. After a successful live run, the trigger is removed and the workflow returns to manual-only `workflow_dispatch` operation.
+GitHub Actions run `30146141995` completed successfully on July 25, 2026. The run passed:
+
+- explicit staging-only execution guard
+- GitHub OIDC token acquisition
+- OIDC-to-Vault staging session exchange
+- repository checkout
+- .NET 10 setup
+- staging harness restore
+- warnings-as-errors build
+- exact read-only Auth and tenant-context smoke
+
+The temporary branch `push` trigger was removed after the proof. The workflow is now manual-only through `workflow_dispatch`, and the broker accepts only that event.
 
 ## Preservation
 
