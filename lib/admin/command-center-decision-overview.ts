@@ -144,11 +144,16 @@ export function deriveCommandCenterDecisionOverview({
   const pendingReviewsHref =
     access.counts.pendingInvitations > 0 ? "#admin-access" : "#admin-privacy";
   const freshness = deriveCommandCenterFreshness(snapshot.generatedAt, nowMs);
+  const connectedPastDue =
+    billing.providerConnected && snapshot.billing.pastDueUsers > 0;
+  const dormantPastDue =
+    !billing.providerConnected && snapshot.billing.pastDueUsers > 0;
 
   const hasCriticalSignal =
     incidents.counts.criticalOpen > 0 ||
     posture.overall === "critical" ||
     snapshot.privacy.overdueRequests > 0 ||
+    connectedPastDue ||
     freshness.tone === "critical";
   const hasAttentionSignal =
     openIncidents > 0 ||
@@ -156,7 +161,7 @@ export function deriveCommandCenterDecisionOverview({
     snapshot.telemetry.failedOperations7d > 0 ||
     snapshot.telemetry.poorPerformanceSignals7d > 0 ||
     pendingReviews > 0 ||
-    snapshot.billing.pastDueUsers > 0 ||
+    dormantPastDue ||
     freshness.tone === "attention";
 
   const systemTone: CommandCenterDecisionTone = hasCriticalSignal
