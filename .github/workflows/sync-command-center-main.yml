@@ -1,0 +1,38 @@
+name: Sync Command Center with latest main
+
+on:
+  push:
+    branches:
+      - ops/command-center-local-acceptance
+    paths:
+      - .github/workflows/sync-command-center-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/command-center-local-acceptance
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge latest main into immutable Command Center branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main release/global-command-center-freeze-20260725
+          git checkout -B release/global-command-center-freeze-20260725 origin/release/global-command-center-freeze-20260725
+          git merge --no-edit origin/main
+          git push origin HEAD:release/global-command-center-freeze-20260725
+      - name: Remove this one-shot workflow
+        if: always()
+        run: |
+          set -euo pipefail
+          git checkout -B ops/command-center-local-acceptance origin/ops/command-center-local-acceptance
+          git rm .github/workflows/sync-command-center-main.yml
+          git commit -m "Remove one-shot Command Center sync workflow"
+          git push origin HEAD:ops/command-center-local-acceptance
