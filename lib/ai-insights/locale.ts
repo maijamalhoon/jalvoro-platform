@@ -22,19 +22,6 @@ const DEFAULT_LOCALE = "en-US";
 const DEFAULT_TIME_ZONE = "UTC";
 const RTL_LANGUAGES = new Set(["ar", "fa", "he", "ps", "ur"]);
 
-function isRecognizedLanguage(language: string) {
-  try {
-    const displayNames = new Intl.DisplayNames([DEFAULT_LOCALE], {
-      type: "language",
-      fallback: "none",
-    });
-
-    return Boolean(displayNames.of(language));
-  } catch {
-    return false;
-  }
-}
-
 function canonicalizeLocale(value: string | null | undefined) {
   if (!value) return null;
 
@@ -42,15 +29,11 @@ function canonicalizeLocale(value: string | null | undefined) {
     const canonical = Intl.getCanonicalLocales(value)[0] ?? null;
     if (!canonical) return null;
 
-    const locale = new Intl.Locale(canonical);
-    const isDateTimeLocaleSupported =
-      Intl.DateTimeFormat.supportedLocalesOf([canonical], {
-        localeMatcher: "lookup",
-      }).length === 1;
+    const supported = Intl.DateTimeFormat.supportedLocalesOf([canonical], {
+      localeMatcher: "lookup",
+    });
 
-    return isDateTimeLocaleSupported && isRecognizedLanguage(locale.language)
-      ? canonical
-      : null;
+    return supported.length > 0 ? canonical : null;
   } catch {
     return null;
   }
