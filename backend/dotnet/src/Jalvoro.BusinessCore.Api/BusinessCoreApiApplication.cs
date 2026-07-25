@@ -15,6 +15,19 @@ namespace Jalvoro.BusinessCore.Api;
 
 public static class BusinessCoreApiApplication
 {
+  private static readonly string[] ActiveWriteCommands =
+  [
+    "organization.profile.update.v1",
+  ];
+
+  private static readonly string[] PublishedPermissions =
+  [
+    BusinessPermissions.OrganizationRead.Value,
+    BusinessPermissions.OrganizationManage.Value,
+    BusinessPermissions.MembershipRead.Value,
+    BusinessPermissions.MembershipManage.Value,
+  ];
+
   public static WebApplicationBuilder AddJalvoroBusinessCoreApi(
     this WebApplicationBuilder builder)
   {
@@ -122,20 +135,15 @@ public static class BusinessCoreApiApplication
             exactTenantMatchRequired = true,
             exactPermissionMatchRequired = true,
             idempotencyRequiredForWrites = BusinessRequestPolicy.RequireIdempotencyForWrites,
+            idempotencyStorageConfigured = supabaseConfiguration.IsConfigured,
             idempotencyStorage = "supabase-transactional-rpc",
-            activeWriteCommands = new[]
-            {
-              "organization.profile.update.v1",
-            },
+            activeWriteCommands = ActiveWriteCommands,
             legacyWritePathsPreserved = true,
+            businessCoreWriteEndpointMapped = true,
+            writeEndpointsActive = false,
+            productionWriteTrafficActive = false,
             requestTimeoutSeconds = (int)BusinessRequestPolicy.MaximumExecutionTime.TotalSeconds,
-            permissions = new[]
-            {
-              BusinessPermissions.OrganizationRead.Value,
-              BusinessPermissions.OrganizationManage.Value,
-              BusinessPermissions.MembershipRead.Value,
-              BusinessPermissions.MembershipManage.Value,
-            },
+            permissions = PublishedPermissions,
           }))
       .WithName("GetBusinessCoreSecurityContract");
 
