@@ -26,7 +26,14 @@ function canonicalizeLocale(value: string | null | undefined) {
   if (!value) return null;
 
   try {
-    return Intl.getCanonicalLocales(value)[0] ?? null;
+    const canonical = Intl.getCanonicalLocales(value)[0] ?? null;
+    if (!canonical) return null;
+
+    const supported = Intl.DateTimeFormat.supportedLocalesOf([canonical], {
+      localeMatcher: "lookup",
+    });
+
+    return supported.length > 0 ? canonical : null;
   } catch {
     return null;
   }
