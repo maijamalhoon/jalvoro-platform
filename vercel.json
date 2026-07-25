@@ -4,8 +4,7 @@
     "deploymentEnabled": {
       "*": false,
       "main": true,
-      "release/global-command-center-freeze-20260725": true,
-      "design/command-center-decision-first-overview": true
+      "release/global-command-center-freeze-20260725": true
     }
   }
 }
