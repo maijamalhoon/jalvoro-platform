@@ -42,7 +42,8 @@ jobs:
         working-directory: .
         run: |
           $ErrorActionPreference = "Stop"
-          & "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-compose-compile-fixes.ps1"
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-compose-compile-fixes.ps1"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --check
           $changes = git status --porcelain -- `
             native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
@@ -138,5 +139,6 @@ jobs:
           path: |
             native/native-ci.log
             native/android-sdk-setup.log
+            native/gradle-setup.log
           if-no-files-found: ignore
           retention-days: 3
