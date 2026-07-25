@@ -20,7 +20,6 @@ import {
   OPEN_FINANCE_DATA_IMPORT_EVENT,
   isRecord,
   validateFinanceBackup,
-  withFinanceBackupManifest,
 } from "@/lib/data-backup";
 import { mapAuthError } from "@/lib/settings/security";
 import { createClient } from "@/lib/supabase/client";
@@ -101,7 +100,8 @@ export default function SettingsDataTransferSection({
     }
 
     window.addEventListener("jamal-profile-updated", handleProfileUpdate);
-    return () => window.removeEventListener("jamal-profile-updated", handleProfileUpdate);
+    return () =>
+      window.removeEventListener("jamal-profile-updated", handleProfileUpdate);
   }, []);
 
   async function handleExport() {
@@ -110,49 +110,38 @@ export default function SettingsDataTransferSection({
     setExportPhase("preparing");
 
     try {
-      const { data, error } = await supabase.rpc("export_finance_backup");
-      if (error || !isRecord(data)) {
-        throw error ?? new Error("Backup could not be prepared.");
-      }
-
       const storedDateFormat = window.localStorage.getItem("jamal-date-format");
       const dateFormat: DateFormat =
-        storedDateFormat === "dd MMM yyyy" || storedDateFormat === "yyyy-MM-dd"
+        storedDateFormat === "dd MMM yyyy" ||
+        storedDateFormat === "yyyy-MM-dd"
           ? storedDateFormat
           : "MMM d, yyyy";
       const compactMode =
         window.localStorage.getItem("jamal-compact-dashboard") === "true";
       const themeMode = getStoredThemePreference();
 
-      const profileSnapshot = isRecord(data.profileSnapshot)
-        ? data.profileSnapshot
-        : {};
-      const preferencesSnapshot = isRecord(data.preferencesSnapshot)
-        ? data.preferencesSnapshot
-        : {};
-
-      const payload = {
-        ...data,
-        profileSnapshot: {
-          ...profileSnapshot,
-          auth: { email, displayName: profileName },
+      // The server builds and seals the final payload. Nothing is appended or
+      // rewritten in the browser after the HMAC has been generated.
+      const { data, error } = await supabase.rpc("export_finance_backup", {
+        p_client_snapshot: {
+          currency,
+          dateFormat,
+          compactMode,
+          themeMode,
+          displayName: profileName,
+          email,
         },
-        preferencesSnapshot: {
-          ...preferencesSnapshot,
-          client: { currency, dateFormat, compactMode, themeMode },
-        },
-      };
+      });
+      if (error || !isRecord(data)) {
+        throw error ?? new Error("Backup could not be prepared.");
+      }
 
-      const validation = validateFinanceBackup(payload);
+      const validation = validateFinanceBackup(data);
       if (!validation.ok) throw new Error(validation.error);
 
-      const completeBackup = withFinanceBackupManifest(validation.value);
-      const integrityCheck = validateFinanceBackup(completeBackup);
-      if (!integrityCheck.ok) throw new Error(integrityCheck.error);
-
-      const serialized = JSON.stringify(integrityCheck.value, null, 2);
+      const serialized = JSON.stringify(validation.value);
       const blob = new Blob([serialized], {
-        type: "application/vnd.jamals-finance.backup+json",
+        type: "application/vnd.jalvoro.backup+json",
       });
 
       if (blob.size > MAX_FINANCE_BACKUP_BYTES) {
@@ -165,9 +154,9 @@ export default function SettingsDataTransferSection({
       try {
         const link = document.createElement("a");
         link.href = url;
-        link.download = `jamals-finance-backup-${new Date()
+        link.download = `jalvoro-finance-backup-${new Date()
           .toISOString()
-          .slice(0, 10)}.jfinance`;
+          .slice(0, 10)}.jalvoro`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -179,7 +168,7 @@ export default function SettingsDataTransferSection({
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, getExportCompletionDelay());
       });
-      toast.success("Complete finance backup downloaded and verified.");
+      toast.success("Sealed JALVORO finance backup downloaded.");
     } catch (error) {
       setExportPhase("idle");
       const message =
@@ -242,8 +231,8 @@ export default function SettingsDataTransferSection({
         </div>
         <span className="sr-only" role="status">
           {exportPhase === "complete"
-            ? "Finance backup downloaded and verified."
-            : "Preparing and verifying your complete finance backup."}
+            ? "Sealed finance backup downloaded."
+            : "Preparing and cryptographically sealing your complete finance backup."}
         </span>
       </div>
 
@@ -264,8 +253,8 @@ export default function SettingsDataTransferSection({
                 <Download size={21} strokeWidth={2.35} />
               )
             }
-            title={isExporting ? "Verifying Complete Backup…" : "Export Data"}
-            description="Download every account, goal, payable, investment, transaction and linked record"
+            title={isExporting ? "Sealing Complete Backup…" : "Export Data"}
+            description="Download every account, goal, payable, investment, transaction, linked record and finance setting"
             onClick={() => void handleExport()}
             disabled={dataActionsDisabled}
           />
@@ -285,7 +274,8 @@ export default function SettingsDataTransferSection({
             <Upload size={25} strokeWidth={2.3} aria-hidden="true" />
           </button>
           <span className="sr-only">
-            Choose a backup file, or drag and drop it anywhere on this screen.
+            Choose a backup file with any name, or drag and drop it anywhere on
+            this screen.
           </span>
         </div>
 
