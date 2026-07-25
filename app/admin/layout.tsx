@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import AdminCommandCenterOperatorAssist from "@/components/admin/AdminCommandCenterOperatorAssist";
 import AdminCommandCenterShell from "@/components/admin/AdminCommandCenterShell";
 
 import "./command-center-world.css";
@@ -7,6 +8,7 @@ import "./command-center-launch.css";
 import "./command-center-launch-mobile.css";
 import "./organization-operations.css";
 import "./organization-operations-detail.css";
+import "./command-center-audit-fixes.css";
 
 export const metadata: Metadata = {
   title: {
@@ -34,5 +36,10 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AdminCommandCenterShell>{children}</AdminCommandCenterShell>;
+  return (
+    <>
+      <AdminCommandCenterShell>{children}</AdminCommandCenterShell>
+      <AdminCommandCenterOperatorAssist />
+    </>
+  );
 }
