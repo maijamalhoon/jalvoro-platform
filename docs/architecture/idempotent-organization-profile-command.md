@@ -17,13 +17,13 @@ This node introduces the first bounded Business Core write command without routi
 
 The application boundary rejects malformed tenant IDs, invalid idempotency keys, invalid profile documents, missing identity, tenant mismatch, missing permission, and unavailable identity or membership dependencies before invoking the write store.
 
-The Supabase RPC then independently verifies `auth.uid()`, the exact active owner membership, the expected profile version, and the request fingerprint. A per-command advisory transaction lock serializes duplicate races.
+The Supabase RPC independently verifies `auth.uid()`, locks the exact business row, verifies the current owner and active owner membership, and only then reads or deletes idempotency state. The authenticated actor is part of the request fingerprint and must match the actor stored with a replay record. A per-command advisory transaction lock serializes duplicate races.
 
 Outcomes are explicit:
 
 - `updated`: one successful mutation and one audit row
-- `replayed`: the stored successful response for the same key and payload
-- `idempotency_conflict`: the same key was reused with another payload
+- `replayed`: the stored successful response for the same actor, key, and payload
+- `idempotency_conflict`: the key belongs to another actor or was reused with another payload
 - `version_conflict`: the caller used a stale profile version
 - `forbidden`: authenticated subject is not the exact active owner
 - `validation_failed`, `not_found`, or temporary dependency failure
@@ -41,8 +41,27 @@ The additive migrations provide:
 - no table grants to `anon`, `authenticated`, or `service_role`
 - authenticated execution only for the bounded RPC
 - fixed function search path and no dynamic SQL
+- authorization-before-replay ordering
+- actor-bound fingerprints and stored replay responses
 
-Supabase Security Advisor reports the authenticated `SECURITY DEFINER` RPC because signed-in users can invoke it. This is intentional and bounded: the function has a fixed search path, reads the actor from `auth.uid()`, rechecks exact active-owner authorization inside the function, exposes no general table access, and returns only the command result. Converting it to `SECURITY INVOKER` would require exposing private idempotency and audit storage and would weaken the boundary.
+Supabase Security Advisor reports the authenticated `SECURITY DEFINER` RPC because signed-in users can invoke it. This is intentional and bounded: the function has a fixed search path, reads the actor from `auth.uid()`, locks and rechecks exact active-owner authorization before touching replay state, exposes no general table access, and returns only the command result. `PUBLIC`, `anon`, and `service_role` execution remain revoked. Converting it to `SECURITY INVOKER` would require exposing private idempotency and audit storage and would weaken the boundary.
+
+## Security correction found during final audit
+
+The first staging version checked stored idempotency state before its owner and membership checks. The .NET handler remained fail-closed, but an authenticated caller could invoke the exposed PostgREST RPC directly and reach the replay branch before database authorization.
+
+Migration `20260725072000_harden_business_profile_replay_authorization.sql` corrects that order and permanently locks the following contract:
+
+1. bind the actor from `auth.uid()`;
+2. compute an actor-bound request fingerprint;
+3. acquire the command advisory lock;
+4. lock the business row;
+5. require current ownership;
+6. lock and require the active owner membership;
+7. only then clean up or read replay state;
+8. require the stored replay actor to match the current actor.
+
+A live staging negative test used an unrelated authenticated subject against an existing replay record and received `forbidden`. The test produced no profile, audit, or idempotency mutation.
 
 ## Reversible staging proof
 
@@ -64,7 +83,9 @@ GitHub Actions run `30148432330` completed successfully. Independent staging dat
 - exactly two successful audit rows;
 - exactly two idempotency records;
 - no duplicate audit record for replay;
-- current profile equal to the original captured profile after restoration.
+- current profile equal to the original captured profile after restoration;
+- zero invalid audit-version rows;
+- zero replay records without an actor.
 
 ## Environment isolation
 
