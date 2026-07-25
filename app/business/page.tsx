@@ -78,6 +78,15 @@ type OnboardingSessionRow = {
   updated_at: string;
 };
 
+const SWITCH_ERROR_MESSAGES = {
+  preference:
+    "Your workspace preference could not be saved. The previously active workspace remains unchanged.",
+  access:
+    "That organization is no longer available to this identity, or your membership is not active.",
+  invalid:
+    "The workspace request was incomplete or invalid. Choose a workspace from the list below.",
+} as const;
+
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -113,6 +122,11 @@ function selectedExperienceFrom(
   }
 
   return "small-business";
+}
+
+function getSwitchErrorMessage(value: string | undefined) {
+  if (!value || !(value in SWITCH_ERROR_MESSAGES)) return null;
+  return SWITCH_ERROR_MESSAGES[value as keyof typeof SWITCH_ERROR_MESSAGES];
 }
 
 export default async function BusinessWorkspacesPage({
@@ -177,7 +191,9 @@ export default async function BusinessWorkspacesPage({
         Boolean(item.business),
     );
   const preference = preferenceResult.data as PreferenceRow | null;
-  const activeSessions = (onboardingResult.data ?? []) as OnboardingSessionRow[];
+  const activeSessions = onboardingResult.error
+    ? []
+    : ((onboardingResult.data ?? []) as OnboardingSessionRow[]);
   const selectedExperience = selectedExperienceFrom(
     firstValue(query.experience),
     activeSessions,
@@ -189,8 +205,13 @@ export default async function BusinessWorkspacesPage({
       session.experience === selectedExperience &&
       (!requestedSession || session.id === requestedSession),
   );
-  const isPersonalCurrent = preference?.default_workspace !== "business";
-  const switchError = firstValue(query.switch_error);
+  const currentStateKnown = !preferenceResult.error;
+  const isPersonalCurrent =
+    currentStateKnown && preference?.default_workspace !== "business";
+  const switchErrorMessage = getSwitchErrorMessage(firstValue(query.switch_error));
+  const hasWorkspaceLoadError = Boolean(
+    membershipResult.error || preferenceResult.error || onboardingResult.error,
+  );
 
   return (
     <main className="min-h-dvh bg-background px-4 py-5 text-foreground sm:px-6 sm:py-7 lg:px-8 lg:py-8">
@@ -231,20 +252,22 @@ export default async function BusinessWorkspacesPage({
           </p>
         </header>
 
-        {switchError ? (
+        {switchErrorMessage ? (
           <section
             role="alert"
             className="mt-6 rounded-[var(--radius-card)] bg-danger-soft px-4 py-4 text-sm text-danger sm:px-5"
           >
-            Workspace switching could not be completed. Your current workspace and data were not
-            changed.
+            {switchErrorMessage}
           </section>
         ) : null}
 
-        {membershipResult.error || preferenceResult.error ? (
-          <section className="mt-6 rounded-[var(--radius-card)] bg-danger-soft px-4 py-4 text-sm text-danger sm:px-5">
-            Some workspace details could not be loaded right now. Your Personal and organization
-            data remain isolated and unchanged.
+        {hasWorkspaceLoadError ? (
+          <section
+            role="status"
+            className="mt-6 rounded-[var(--radius-card)] bg-warning-soft px-4 py-4 text-sm text-warning sm:px-5"
+          >
+            Some workspace details could not be confirmed. Current badges and resumable setup cards
+            may be hidden, but your Personal and organization records remain isolated and unchanged.
           </section>
         ) : null}
 
@@ -261,7 +284,10 @@ export default async function BusinessWorkspacesPage({
                 Your role is shown before you enter an organization.
               </p>
             </div>
-            <span className="text-sm font-black tabular-nums text-text-secondary">
+            <span
+              className="text-sm font-black tabular-nums text-text-secondary"
+              aria-label={`${workspaces.length + 1} available workspaces`}
+            >
               {workspaces.length + 1}
             </span>
           </div>
@@ -316,6 +342,7 @@ export default async function BusinessWorkspacesPage({
               const roleLabel = getMembershipRoleLabel(membership.role);
               const workspaceExperience = getProductExperience(business.entry_experience);
               const isCurrent =
+                currentStateKnown &&
                 preference?.default_workspace === "business" &&
                 preference.active_business_id === business.id;
               const canViewTeam =
@@ -347,7 +374,8 @@ export default async function BusinessWorkspacesPage({
                   </h3>
                   <p className="mt-1 text-sm text-text-secondary">
                     {workspaceExperience?.productName ??
-                      (simpleShop ? "Retail & POS" : "Business Operations")}{" "}· {roleLabel}
+                      (simpleShop ? "Retail & POS" : "Business Operations")}{" "}
+                    · {roleLabel}
                   </p>
 
                   <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
@@ -395,7 +423,10 @@ export default async function BusinessWorkspacesPage({
 
         {activeSessions.length > 0 ? (
           <section className="mt-8" aria-labelledby="resume-setup-heading">
-            <h2 id="resume-setup-heading" className="text-base font-black text-text-primary sm:text-lg">
+            <h2
+              id="resume-setup-heading"
+              className="text-base font-black text-text-primary sm:text-lg"
+            >
               Continue setup
             </h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -450,6 +481,12 @@ export default async function BusinessWorkspacesPage({
               The selected experience controls the starting workflow. Modules can be added later
               without migrating or merging records.
             </p>
+            <Link
+              href="#create-workspace"
+              className="finance-focus mt-4 inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-button)] bg-primary px-4 text-sm font-black text-white"
+            >
+              Go to setup <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
           </article>
           <article className="rounded-[var(--radius-card)] bg-surface-secondary px-5 py-5">
             <span className="grid size-10 place-items-center rounded-[var(--radius-button)] bg-primary-soft text-primary">
@@ -463,8 +500,9 @@ export default async function BusinessWorkspacesPage({
           </article>
         </section>
 
-        <div className="mt-8">
+        <div id="create-workspace" className="mt-8 scroll-mt-6">
           <CreateBusinessWorkspaceForm
+            key={`${selectedExperience}:${selectedSession?.id ?? "new"}`}
             initialExperience={selectedExperience}
             onboardingSessionId={selectedSession?.id ?? null}
           />

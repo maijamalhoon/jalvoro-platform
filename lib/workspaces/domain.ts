@@ -87,6 +87,9 @@ export type BusinessSetupDefaults = {
   modules: readonly WorkspaceModuleKey[];
 };
 
+const INTERNAL_ORIGIN = "https://jalvoro.local";
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
+
 const EXPERIENCE_MODULE_DEFAULTS: Record<
   Exclude<ProductExperienceSlug, "personal">,
   BusinessSetupDefaults
@@ -170,6 +173,25 @@ const ROLE_LABELS: Record<WorkspaceMembershipRole, string> = {
   viewer: "Viewer",
 };
 
+function parseInternalWorkspacePath(value: string | null | undefined) {
+  if (
+    !value ||
+    CONTROL_CHARACTER_PATTERN.test(value) ||
+    value.includes("\\") ||
+    !value.startsWith("/") ||
+    value.startsWith("//")
+  ) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value, INTERNAL_ORIGIN);
+    return parsed.origin === INTERNAL_ORIGIN ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function isWorkspaceModuleKey(value: string): value is WorkspaceModuleKey {
   return WORKSPACE_MODULE_KEYS.includes(value as WorkspaceModuleKey);
 }
@@ -208,7 +230,21 @@ export function getBusinessWorkspaceHref(
 }
 
 export function isInternalWorkspacePath(value: string | null | undefined) {
-  return Boolean(value && value.startsWith("/") && !value.startsWith("//"));
+  return Boolean(parseInternalWorkspacePath(value));
+}
+
+export function isPathWithinRoute(
+  value: string | null | undefined,
+  route: string,
+) {
+  const parsedValue = parseInternalWorkspacePath(value);
+  const parsedRoute = parseInternalWorkspacePath(route);
+  if (!parsedValue || !parsedRoute) return false;
+
+  const routePath = parsedRoute.pathname.replace(/\/$/, "") || "/";
+  const valuePath = parsedValue.pathname.replace(/\/$/, "") || "/";
+
+  return valuePath === routePath || valuePath.startsWith(`${routePath}/`);
 }
 
 export function appendOnboardingSession(
@@ -217,11 +253,9 @@ export function appendOnboardingSession(
 ) {
   if (!sessionId) return destination;
 
-  try {
-    const parsed = new URL(destination, "https://jalvoro.local");
-    parsed.searchParams.set("session", sessionId);
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return destination;
-  }
+  const parsed = parseInternalWorkspacePath(destination);
+  if (!parsed) return destination;
+
+  parsed.searchParams.set("session", sessionId);
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }

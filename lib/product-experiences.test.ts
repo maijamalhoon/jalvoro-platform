@@ -73,10 +73,11 @@ describe("JALVORO product experience architecture", () => {
     expect(labels.join(" ")).not.toMatch(/large company|for you/i);
   });
 
-  it("resolves path and legacy destination context without mixing modules", () => {
+  it("resolves only internal, route-bounded destination context", () => {
     expect(getProductExperienceFromPathname("/login/personal")?.slug).toBe("personal");
     expect(getProductExperienceFromPathname("/signup/enterprise")?.slug).toBe("enterprise");
     expect(inferProductExperienceFromDestination("/dashboard")?.slug).toBe("personal");
+    expect(inferProductExperienceFromDestination("/dashboard/accounts")?.slug).toBe("personal");
     expect(inferProductExperienceFromDestination("/business")?.slug).toBe("small-business");
     expect(
       inferProductExperienceFromDestination(
@@ -88,6 +89,12 @@ describe("JALVORO product experience architecture", () => {
         "/onboarding/enterprise?next=%2Fbusiness%3Fsetup%3D1",
       )?.slug,
     ).toBe("enterprise");
+    expect(inferProductExperienceFromDestination("/dashboard-admin")).toBeNull();
+    expect(inferProductExperienceFromDestination("/business-tools")).toBeNull();
+    expect(
+      inferProductExperienceFromDestination("https://evil.example/dashboard"),
+    ).toBeNull();
+    expect(inferProductExperienceFromDestination("//evil.example/business")).toBeNull();
     expect(getProductExperience("unknown")).toBeNull();
   });
 
@@ -116,12 +123,16 @@ describe("JALVORO product experience architecture", () => {
     expect(signupRouteSource).not.toContain("| ${APP_NAME}");
   });
 
-  it("keeps every dedicated page on the existing shared authentication engine", () => {
+  it("keeps every dedicated page on the shared, canonical auth engine", () => {
     expect(loginRouteSource).toContain('mode="login"');
     expect(signupRouteSource).toContain('mode="signup"');
     expect(productAuthRouteSource).toContain('import LoginPage from "@/app/login/page"');
     expect(productAuthRouteSource).toContain("return <LoginPage />");
+    expect(productAuthRouteSource).toContain("sanitizeInternalRedirect");
+    expect(productAuthRouteSource).toContain("normalizeLoginReason");
+    expect(productAuthRouteSource).toContain('requestedMode === "forgot"');
     expect(productAuthRouteSource).not.toMatch(/createClient|signInWithPassword|signUp\(/);
+    expect(productAuthRouteSource).not.toContain("appendSafeSearchParams");
     expect(authShellSource).toContain("getProductExperienceFromPathname");
     expect(authShellSource).toContain("One account · separate workspaces");
     expect(authShellSource).toContain("displayTitle");
