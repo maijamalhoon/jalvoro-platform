@@ -91,6 +91,27 @@ begin
     end if;
 
     if p_session_id is not null then
+      if not exists (
+        select 1
+        from public.workspace_onboarding_sessions session
+        where session.id = p_session_id
+          and session.user_id = current_user_id
+          and session.experience = normalized_experience
+          and session.workspace_kind = 'business'
+          and (
+            (
+              session.business_id is null
+              and session.status in ('not_started', 'in_progress')
+            )
+            or (
+              session.business_id = existing_business_id
+              and session.status = 'completed'
+            )
+          )
+      ) then
+        raise exception 'Active onboarding session not found.' using errcode = 'P0002';
+      end if;
+
       perform public.apply_business_entry_experience(
         p_business_id => existing_business_id,
         p_experience => normalized_experience,
@@ -232,6 +253,7 @@ begin
       and session.experience = 'personal'
       and session.workspace_kind = 'personal'
       and session.business_id is null
+      and session.status in ('not_started', 'in_progress', 'completed')
   ) then
     raise exception 'Personal onboarding session not found.' using errcode = 'P0002';
   end if;
