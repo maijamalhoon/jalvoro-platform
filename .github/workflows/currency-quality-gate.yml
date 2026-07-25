@@ -79,29 +79,8 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
 
-      - name: Capture TypeScript diagnostics
-        id: typecheck
-        shell: bash
-        run: |
-          set +e
-          npm run typecheck > typescript.log 2>&1
-          status=$?
-          set -e
-          printf 'exit_code=%s\n' "$status" >> "$GITHUB_OUTPUT"
-
-      - name: Upload TypeScript diagnostics
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: organization-profile-typescript-diagnostics
-          path: typescript.log
-          retention-days: 1
-          if-no-files-found: error
-
-      - name: Enforce TypeScript result
-        env:
-          TYPECHECK_EXIT_CODE: ${{ steps.typecheck.outputs.exit_code }}
-        run: exit "${TYPECHECK_EXIT_CODE:-1}"
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Test currency conversions
         run: npx vitest run lib/currency.test.ts
