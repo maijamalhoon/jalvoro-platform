@@ -35,7 +35,7 @@ export const ACCOUNT_TYPES: {
   { value: "bank", label: "Bank Account", icon: Landmark, tone: "text-transfer bg-transfer-soft" },
   { value: "jazzcash", label: "JazzCash", icon: Smartphone, tone: "text-payables bg-payables-soft" },
   { value: "easypaisa", label: "Easypaisa", icon: Smartphone, tone: "text-secondary-brand bg-primary-soft" },
-  { value: "sadapay", label: "Sadapay", icon: CreditCard, tone: "text-primary bg-primary-soft" },
+  { value: "sadapay", label: "SadaPay", icon: CreditCard, tone: "text-primary bg-primary-soft" },
   { value: "nayapay", label: "NayaPay", icon: CreditCard, tone: "text-info bg-info-soft" },
   { value: "wallet", label: "Other Wallet", icon: Banknote, tone: "text-investment bg-investment-soft" },
   { value: "freelance", label: "Freelance", icon: Briefcase, tone: "text-primary bg-primary-soft" },
@@ -90,10 +90,11 @@ export function getPayableStatus(payable: {
   status: string;
   remaining_amount: number | string;
   due_date: string | null;
+  today?: string;
 }) {
   const remaining = Number(payable.remaining_amount);
   if (remaining <= 0) return "completed";
-  if (payable.due_date && payable.due_date < getAppDateKey()) {
+  if (payable.due_date && payable.due_date < (payable.today ?? getAppDateKey())) {
     return "overdue";
   }
   return payable.status === "completed" ? "partial" : payable.status;

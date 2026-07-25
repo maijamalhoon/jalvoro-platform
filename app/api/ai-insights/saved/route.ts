@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { buildSavedInsightKey } from "@/lib/ai-insights/saved-key";
-import type { WorkspaceInsight } from "@/lib/ai-insights/workspace";
 import type {
   InsightAttention,
   InsightTopic,
 } from "@/lib/ai-insights/actionable";
+import { buildSavedInsightKey } from "@/lib/ai-insights/saved-key";
+import type { WorkspaceInsight } from "@/lib/ai-insights/workspace";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -101,8 +101,7 @@ function parseInsight(value: unknown): WorkspaceInsight | null {
         ? value.confidence
         : undefined,
     dataThrough,
-    stateKey:
-      cleanText(value.stateKey, 180) || `${topic}:${attention}`,
+    stateKey: cleanText(value.stateKey, 180) || `${topic}:${attention}`,
   };
 }
 
@@ -159,7 +158,14 @@ export async function GET() {
       code: error.code,
       message: error.message,
     });
-    return json({ available: false, insights: [] });
+    return json(
+      {
+        available: false,
+        error: "saved_insights_unavailable",
+        message: "Saved AI insights are temporarily unavailable.",
+      },
+      503,
+    );
   }
 
   return json({

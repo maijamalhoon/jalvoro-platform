@@ -68,7 +68,7 @@ function getCoverageConfidence(counts: CoverageCounts): CoverageConfidence {
 
 function getLatestTransactionDate(value: unknown) {
   if (!isRecord(value)) return null;
-  return typeof value.date === "string" && value.date.length > 0
+  return typeof value.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.date)
     ? value.date
     : null;
 }
@@ -88,7 +88,10 @@ export async function GET(request: NextRequest) {
       },
       {
         status: 401,
-        headers: { "Cache-Control": "no-store" },
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          "X-Content-Type-Options": "nosniff",
+        },
       },
     );
   }
@@ -99,7 +102,6 @@ export async function GET(request: NextRequest) {
   const displayCurrency = isSupportedCurrency(currencyValue)
     ? currencyValue
     : BASE_CURRENCY;
-  const rateLive = request.nextUrl.searchParams.get("rateLive") === "true";
 
   const [
     transactionCountResult,
@@ -113,7 +115,8 @@ export async function GET(request: NextRequest) {
       .from("transactions")
       .select("*", { count: "exact", head: true })
       .gte("date", trendStart)
-      .lte("date", lastDay),
+      .lte("date", lastDay)
+      .is("deleted_at", null),
     supabase.from("goals").select("*", { count: "exact", head: true }),
     supabase.from("investments").select("*", { count: "exact", head: true }),
     supabase.from("liabilities").select("*", { count: "exact", head: true }),
@@ -124,6 +127,7 @@ export async function GET(request: NextRequest) {
     supabase
       .from("transactions")
       .select("date")
+      .is("deleted_at", null)
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -173,18 +177,20 @@ export async function GET(request: NextRequest) {
         readOnly: true,
         rawRowsSharedWithProvider: false,
         providerMode: process.env.GEMINI_API_KEY?.trim()
-          ? "gemini"
+          ? "gemini-on-explicit-request"
           : "safe-local-fallback",
       },
       display: {
         currency: displayCurrency,
-        exchangeRateLive: rateLive,
+        exchangeRateLive: null,
+        exchangeRateAuthority: "currency-provider",
       },
       limitations: TRUST_LIMITATIONS,
     },
     {
       headers: {
         "Cache-Control": "private, no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
       },
     },
   );

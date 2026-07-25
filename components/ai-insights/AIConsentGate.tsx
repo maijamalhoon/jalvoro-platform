@@ -1,34 +1,156 @@
 "use client";
 
-import { BrainCircuit, ShieldCheck, X } from "lucide-react";
+import { BrainCircuit, Loader2, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useLanguage } from "@/components/i18n/LanguageProvider";
-import { getAIInsightsConsentCopy } from "@/lib/ai-insights/consent-copy";
 import { APP_NAME } from "@/lib/brand";
+import {
+  AI_CONSENT_STORAGE_KEY,
+  LEGACY_AI_CONSENT_STORAGE_KEY,
+  type AIConsentState,
+} from "@/lib/ai-insights/consent";
+import { getAIInsightsConsentCopy } from "@/lib/ai-insights/consent-copy";
 
-const AI_CONSENT_KEY = "jamals-finance-ai-summary-consent-v1";
+type ConsentResponse = {
+  consent?: AIConsentState;
+  message?: string;
+};
+
+function readLegacyConsent() {
+  try {
+    return (
+      window.localStorage.getItem(LEGACY_AI_CONSENT_STORAGE_KEY) ===
+      "accepted"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function persistConsentHint(enabled: boolean) {
+  try {
+    if (enabled) {
+      window.localStorage.setItem(AI_CONSENT_STORAGE_KEY, "accepted");
+      window.localStorage.removeItem(LEGACY_AI_CONSENT_STORAGE_KEY);
+    } else {
+      window.localStorage.removeItem(AI_CONSENT_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_AI_CONSENT_STORAGE_KEY);
+    }
+  } catch {
+    // Server consent remains authoritative when browser storage is unavailable.
+  }
+}
+
+async function readConsent(signal?: AbortSignal) {
+  const response = await fetch("/api/ai-insights/consent", {
+    cache: "no-store",
+    signal,
+  });
+  const body = (await response.json().catch(() => null)) as ConsentResponse | null;
+  if (!response.ok || !body?.consent) {
+    throw new Error(body?.message ?? "AI consent is temporarily unavailable.");
+  }
+  return body.consent;
+}
+
+async function saveConsent(migratedFrom?: string) {
+  const response = await fetch("/api/ai-insights/consent", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ migratedFrom: migratedFrom ?? null }),
+  });
+  const body = (await response.json().catch(() => null)) as ConsentResponse | null;
+  if (!response.ok || !body?.consent?.accepted) {
+    throw new Error(body?.message ?? "AI consent could not be saved.");
+  }
+  return body.consent;
+}
 
 export default function AIConsentGate({ children }: { children: ReactNode }) {
   const { language, option } = useLanguage();
   const copy = getAIInsightsConsentCopy(language);
   const [ready, setReady] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setEnabled(window.localStorage.getItem(AI_CONSENT_KEY) === "accepted");
-    setReady(true);
+    const controller = new AbortController();
+
+    async function load() {
+      setError("");
+      try {
+        let consent = await readConsent(controller.signal);
+        if (!consent.accepted && readLegacyConsent()) {
+          consent = await saveConsent("local-storage-v1");
+        }
+        if (controller.signal.aborted) return;
+        setEnabled(consent.accepted);
+        persistConsentHint(consent.accepted);
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setEnabled(false);
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "AI consent is temporarily unavailable.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setReady(true);
+      }
+    }
+
+    load();
+    return () => controller.abort();
   }, []);
 
-  function enable() {
-    window.localStorage.setItem(AI_CONSENT_KEY, "accepted");
-    setEnabled(true);
+  async function enable() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await saveConsent();
+      persistConsentHint(true);
+      setEnabled(true);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "AI consent could not be saved.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function disable() {
-    window.localStorage.removeItem(AI_CONSENT_KEY);
-    setEnabled(false);
+  async function disable() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/ai-insights/consent", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      const body = (await response.json().catch(() => null)) as
+        | ConsentResponse
+        | null;
+      if (!response.ok) {
+        throw new Error(body?.message ?? "AI Insights could not be disabled.");
+      }
+      persistConsentHint(false);
+      setEnabled(false);
+    } catch (disableError) {
+      setError(
+        disableError instanceof Error
+          ? disableError.message
+          : "AI Insights could not be disabled.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!ready) {
@@ -87,13 +209,27 @@ export default function AIConsentGate({ children }: { children: ReactNode }) {
             <p>{copy.warning}</p>
           </div>
 
+          {error ? (
+            <p className="mt-4 rounded-[16px] bg-danger/10 px-4 py-3 text-sm text-danger" role="status">
+              {error}
+            </p>
+          ) : null}
+
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={enable}
-              className="finance-focus primary-action min-h-12 flex-1 rounded-[18px] px-5 text-sm font-semibold"
+              disabled={saving}
+              className="finance-focus primary-action min-h-12 flex-1 rounded-[18px] px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {copy.enable}
+              {saving ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  {copy.loading}
+                </span>
+              ) : (
+                copy.enable
+              )}
             </button>
             <Link
               href="/dashboard"
@@ -128,14 +264,26 @@ export default function AIConsentGate({ children }: { children: ReactNode }) {
   return (
     <div dir={option.direction} className="min-w-0">
       <div className="mb-6 flex min-w-0 items-start justify-between gap-3 rounded-[18px] bg-info/10 px-4 py-3 text-xs leading-5 text-text-secondary sm:items-center">
-        <p className="min-w-0">{copy.enabled}</p>
+        <div className="min-w-0">
+          <p>{copy.enabled}</p>
+          {error ? (
+            <p className="mt-1 text-danger" role="status">
+              {error}
+            </p>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={disable}
-          className="finance-focus inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-background/70 px-3 font-semibold text-text-primary hover:bg-hover"
+          disabled={saving}
+          className="finance-focus inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-background/70 px-3 font-semibold text-text-primary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60"
           aria-label={copy.disableAria}
         >
-          <X size={14} aria-hidden="true" />
+          {saving ? (
+            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <X size={14} aria-hidden="true" />
+          )}
           {copy.disable}
         </button>
       </div>

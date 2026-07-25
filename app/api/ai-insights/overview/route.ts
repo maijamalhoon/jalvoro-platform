@@ -1,171 +1,154 @@
-import type { AppLanguage } from "@/lib/i18n/config";
-import { resolveRequestLanguage } from "@/lib/i18n/request-language";
 import { NextRequest, NextResponse } from "next/server";
 
-import { GET as getLegacyInsights } from "../route";
+import {
+  BASE_CURRENCY,
+  formatMoney,
+  isSupportedCurrency,
+  normalizeUsdToPkrRate,
+} from "@/lib/currency";
+import {
+  buildDeterministicActions,
+  buildDeterministicInsights,
+  buildDeterministicSummaryCards,
+  calculateFinanceHealthScore,
+} from "@/lib/ai-insights/deterministic-briefing";
+import { getAIInsightsCopy } from "@/lib/ai-insights/copy";
+import {
+  AIInsightsSourceError,
+  loadAIInsightsServerData,
+} from "@/lib/ai-insights/server-summary";
+import { resolveRequestLanguage } from "@/lib/i18n/request-language";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-type UnknownRecord = Record<string, unknown>;
-
-const COPY: Record<
-  AppLanguage,
-  { authRequired: string; emptyMessage: string }
-> = {
-  en: {
-    authRequired: "Please log in before using AI insights.",
-    emptyMessage:
-      "Add or refresh finance records to build your personalized briefing.",
-  },
-  ur: {
-    authRequired: "AI Insights استعمال کرنے سے پہلے لاگ اِن کریں۔",
-    emptyMessage:
-      "اپنی ذاتی مالی بریفنگ بنانے کے لیے مالی ریکارڈ شامل یا تازہ کریں۔",
-  },
-  ar: {
-    authRequired: "يرجى تسجيل الدخول قبل استخدام AI Insights.",
-    emptyMessage:
-      "أضف السجلات المالية أو حدّثها لإنشاء موجزك المالي المخصص.",
-  },
-  hi: {
-    authRequired: "AI Insights उपयोग करने से पहले लॉग इन करें।",
-    emptyMessage:
-      "अपनी व्यक्तिगत वित्तीय ब्रीफिंग बनाने के लिए वित्त रिकॉर्ड जोड़ें या रीफ्रेश करें।",
-  },
-  es: {
-    authRequired: "Inicia sesión antes de usar AI Insights.",
-    emptyMessage:
-      "Añade o actualiza registros financieros para crear tu informe personalizado.",
-  },
-};
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === "object" && value !== null;
-}
-
-function safeJson(payload: UnknownRecord, status = 200) {
+function json(payload: Record<string, unknown>, status = 200) {
   return NextResponse.json(payload, {
     status,
     headers: {
-      "Cache-Control": "private, no-store",
+      "Cache-Control": "private, no-store, max-age=0",
       "X-Content-Type-Options": "nosniff",
     },
   });
 }
 
-function emptyFinanceSummary() {
-  return {
-    currency: "PKR",
-    baseCurrency: "PKR",
-    displayCurrency: "PKR",
-    exchangeRate: {
-      usdToPkr: 1,
-      live: false,
-    },
-    period: {
-      currentMonth: "",
-      currentMonthStart: "",
-      currentMonthEnd: "",
-    },
-    currentMonth: {
-      income: 0,
-      expenses: 0,
-      net: 0,
-      savingsRate: 0,
-    },
-    netBalance: {
-      cashBalance: 0,
-      investmentValue: 0,
-      payableRemaining: 0,
-      estimatedNetWorth: 0,
-    },
-    categorySpendingTotals: [],
-    goalsSummary: {
-      count: 0,
-      completedCount: 0,
-      totalTarget: 0,
-      totalSaved: 0,
-      completionPct: 0,
-    },
-    investmentSummary: {
-      count: 0,
-      totalInvested: 0,
-      currentValue: 0,
-      totalPnL: 0,
-      totalPnLPct: 0,
-      byType: [],
-    },
-    payablesSummary: {
-      count: 0,
-      totalOriginal: 0,
-      paid: 0,
-      remaining: 0,
-      overdueCount: 0,
-    },
-    recentTrendTotals: [],
-  };
-}
-
-function gracefulBriefingFallback(language: AppLanguage) {
-  return safeJson({
-    empty: true,
-    message: COPY[language].emptyMessage,
-    provider: "local-calculator",
-    model: "finance-briefing-fallback-v1",
-    aiAvailable: true,
-    intelligenceMode: "local-calculation",
-    generatedAt: new Date().toISOString(),
-    summaryCards: [],
-    financeSummary: emptyFinanceSummary(),
-    insights: [],
-    suggestedActions: [],
-  });
+function healthLabel(score: number, copy: ReturnType<typeof getAIInsightsCopy>) {
+  if (score >= 80) return copy.health.excellent;
+  if (score >= 65) return copy.health.good;
+  if (score >= 45) return copy.health.fair;
+  return copy.health.attention;
 }
 
 export async function GET(request: NextRequest) {
   const language = resolveRequestLanguage(request);
-  const copy = COPY[language.code];
+  const copy = getAIInsightsCopy(language.code);
+  const currencyValue = request.nextUrl.searchParams.get("currency");
+  const currency = isSupportedCurrency(currencyValue)
+    ? currencyValue
+    : BASE_CURRENCY;
+  const rate = normalizeUsdToPkrRate(
+    Number(request.nextUrl.searchParams.get("rate")),
+  );
+  const rateLive = request.nextUrl.searchParams.get("rateLive") === "true";
+  const money = (value: number) =>
+    formatMoney(value, { currency, usdToPkrRate: rate });
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return json(
+      {
+        error: "authentication_required",
+        message: copy.server.authRequired,
+      },
+      401,
+    );
+  }
 
   try {
-    const legacyResponse = await getLegacyInsights(request);
-    const payload = (await legacyResponse.json().catch(() => null)) as unknown;
-
-    if (!legacyResponse.ok || !isRecord(payload)) {
-      if (legacyResponse.status === 401) {
-        return safeJson(
-          {
-            error: "authentication_required",
-            message: copy.authRequired,
-          },
-          401,
-        );
-      }
-
-      return gracefulBriefingFallback(language.code);
-    }
-
-    const providerAvailable = payload.aiAvailable === true;
-    const sanitized: UnknownRecord = {
-      ...payload,
-      aiAvailable: true,
-      intelligenceMode: providerAvailable
-        ? "ai-assisted"
-        : "local-calculation",
+    const data = await loadAIInsightsServerData(supabase);
+    const generatedAt = new Date().toISOString();
+    const score = calculateFinanceHealthScore(data.summary);
+    const providerAvailable = Boolean(process.env.GEMINI_API_KEY?.trim());
+    const displaySummary = {
+      ...data.summary,
+      displayCurrency: currency,
+      exchangeRate: {
+        usdToPkr: rate,
+        live: rateLive,
+      },
     };
 
-    if (payload.empty === true) {
-      sanitized.message = copy.emptyMessage;
-    } else {
-      delete sanitized.message;
+    if (!data.hasFinanceData) {
+      return json({
+        empty: true,
+        message: copy.server.emptyMessage,
+        provider: "local-calculator",
+        model: "deterministic-finance-briefing-v2",
+        providerAvailable,
+        aiAvailable: providerAvailable,
+        responseAvailable: true,
+        intelligenceMode: "local-calculation",
+        generatedAt,
+        dataThrough: data.dataThrough,
+        language: language.code,
+        locale: language.locale,
+        healthScore: score,
+        healthLabel: healthLabel(score, copy),
+        summaryCards: buildDeterministicSummaryCards(
+          data.summary,
+          copy,
+          money,
+        ),
+        financeSummary: displaySummary,
+        coverage: data.coverage,
+        insights: [],
+        suggestedActions: [],
+      });
     }
 
-    return safeJson(sanitized);
-  } catch (error) {
-    console.error("AI briefing wrapper failed", {
-      name: error instanceof Error ? error.name : "UnknownError",
-      message: error instanceof Error ? error.message : undefined,
+    return json({
+      provider: "local-calculator",
+      model: "deterministic-finance-briefing-v2",
+      providerAvailable,
+      aiAvailable: providerAvailable,
+      responseAvailable: true,
+      intelligenceMode: "local-calculation",
+      generatedAt,
+      dataThrough: data.dataThrough,
+      language: language.code,
+      locale: language.locale,
+      healthScore: score,
+      healthLabel: healthLabel(score, copy),
+      summaryCards: buildDeterministicSummaryCards(data.summary, copy, money),
+      financeSummary: displaySummary,
+      coverage: data.coverage,
+      insights: buildDeterministicInsights(data.summary, copy, money),
+      suggestedActions: buildDeterministicActions(data.summary, copy),
+      analysis: {
+        deterministic: true,
+        readOnly: true,
+        providerRequestAdded: false,
+        rawRowsSharedWithProvider: false,
+        sourceFailuresBecomeZero: false,
+      },
     });
-
-    return gracefulBriefingFallback(language.code);
+  } catch (error) {
+    console.error("AI Insights overview unavailable", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      source: error instanceof AIInsightsSourceError ? error.source : undefined,
+      code: error instanceof AIInsightsSourceError ? error.code : undefined,
+    });
+    return json(
+      {
+        error: "finance_sources_unavailable",
+        message: copy.server.unavailable,
+      },
+      503,
+    );
   }
 }

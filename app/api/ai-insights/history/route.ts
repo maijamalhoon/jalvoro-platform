@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import type {
+  InsightAttention,
+  InsightTopic,
+} from "@/lib/ai-insights/actionable";
 import {
   buildInsightKey,
   buildSnapshotKey,
@@ -8,11 +12,10 @@ import {
   type WorkspaceSnapshot,
   type WorkspaceSnapshotInsight,
 } from "@/lib/ai-insights/workspace";
-import type {
-  InsightAttention,
-  InsightTopic,
-} from "@/lib/ai-insights/actionable";
 import { createClient } from "@/lib/supabase/server";
+
+import { GET as getQuality } from "../quality/route";
+import { GET as getWorkspace } from "../workspace/route";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +78,7 @@ function cleanScore(value: unknown) {
   const score = typeof value === "number" ? value : Number(value);
   return Number.isFinite(score)
     ? Math.max(0, Math.min(100, Math.round(score)))
-    : 0;
+    : null;
 }
 
 function parseInsight(value: unknown): WorkspaceSnapshotInsight | null {
@@ -120,57 +123,53 @@ function parseInsight(value: unknown): WorkspaceSnapshotInsight | null {
   };
 }
 
-function parseSnapshot(value: SnapshotRow | null): WorkspaceSnapshot | null {
+function parseStoredSnapshot(value: SnapshotRow | null): WorkspaceSnapshot | null {
   if (!value || !Array.isArray(value.insights)) return null;
   const insights = value.insights
     .map(parseInsight)
     .filter((insight): insight is WorkspaceSnapshotInsight => Boolean(insight));
-
-  if (!insights.length) return null;
+  const qualityScore = cleanScore(value.quality_score);
+  if (!insights.length || qualityScore === null) return null;
 
   return {
     generatedAt: cleanDateTime(value.generated_at),
     dataThrough: cleanDate(value.data_through),
-    qualityScore: cleanScore(value.quality_score),
+    qualityScore,
+    insights,
+  };
+}
+
+function parseCurrentSnapshot(
+  workspacePayload: unknown,
+  qualityPayload: unknown,
+): WorkspaceSnapshot | null {
+  if (!isRecord(workspacePayload) || !isRecord(qualityPayload)) return null;
+  const quality = isRecord(qualityPayload.quality)
+    ? qualityPayload.quality
+    : null;
+  const qualityScore = cleanScore(quality?.score);
+  const insights = Array.isArray(workspacePayload.insights)
+    ? workspacePayload.insights
+        .slice(0, 8)
+        .map(parseInsight)
+        .filter(
+          (insight): insight is WorkspaceSnapshotInsight => Boolean(insight),
+        )
+    : [];
+
+  if (qualityPayload.available === false || qualityScore === null || !insights.length) {
+    return null;
+  }
+
+  return {
+    generatedAt: cleanDateTime(workspacePayload.generatedAt),
+    dataThrough: cleanDate(workspacePayload.dataThrough),
+    qualityScore,
     insights,
   };
 }
 
 export async function POST(request: NextRequest) {
-  const body = (await request.json().catch(() => null)) as unknown;
-  if (!isRecord(body) || !Array.isArray(body.insights)) {
-    return json(
-      {
-        error: "invalid_workspace_snapshot",
-        message: "The AI Insights workspace snapshot is invalid.",
-      },
-      400,
-    );
-  }
-
-  const insights = body.insights
-    .slice(0, 8)
-    .map(parseInsight)
-    .filter((insight): insight is WorkspaceSnapshotInsight => Boolean(insight));
-
-  if (!insights.length) {
-    return json(
-      {
-        error: "invalid_workspace_snapshot",
-        message: "No valid insight signals were provided.",
-      },
-      400,
-    );
-  }
-
-  const current: WorkspaceSnapshot = {
-    generatedAt: cleanDateTime(body.generatedAt),
-    dataThrough: cleanDate(body.dataThrough),
-    qualityScore: cleanScore(body.qualityScore),
-    insights,
-  };
-  const snapshotKey = buildSnapshotKey(current);
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -187,6 +186,39 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const [workspaceResponse, qualityResponse] = await Promise.all([
+    getWorkspace(request),
+    getQuality(),
+  ]);
+  const [workspacePayload, qualityPayload] = await Promise.all([
+    workspaceResponse.json().catch(() => null),
+    qualityResponse.json().catch(() => null),
+  ]);
+
+  if (!workspaceResponse.ok || !qualityResponse.ok) {
+    return json(
+      {
+        available: false,
+        error: "history_sources_unavailable",
+        message: "AI Insights history could not verify the current snapshot.",
+      },
+      503,
+    );
+  }
+
+  const current = parseCurrentSnapshot(workspacePayload, qualityPayload);
+  if (!current) {
+    return json(
+      {
+        available: false,
+        error: "invalid_server_snapshot",
+        message: "AI Insights could not create a verified history snapshot.",
+      },
+      503,
+    );
+  }
+  const snapshotKey = buildSnapshotKey(current);
+
   const { data: latestRow, error: latestError } = await supabase
     .from("ai_insight_snapshots")
     .select("snapshot_key, generated_at, data_through, quality_score, insights")
@@ -199,10 +231,17 @@ export async function POST(request: NextRequest) {
       code: latestError.code,
       message: latestError.message,
     });
-    return json({ available: false, events: [], previousGeneratedAt: null });
+    return json(
+      {
+        available: false,
+        error: "history_read_unavailable",
+        message: "AI Insights history is temporarily unavailable.",
+      },
+      503,
+    );
   }
 
-  const previous = parseSnapshot(latestRow as SnapshotRow | null);
+  const previous = parseStoredSnapshot(latestRow as SnapshotRow | null);
   const events = compareWorkspaceSnapshots(previous, current);
   const latestKey =
     latestRow && typeof latestRow.snapshot_key === "string"
@@ -226,31 +265,40 @@ export async function POST(request: NextRequest) {
         code: insertError.code,
         message: insertError.message,
       });
-      return json({
-        available: false,
-        events,
-        previousGeneratedAt: previous?.generatedAt ?? null,
-      });
+      return json(
+        {
+          available: false,
+          error: "history_save_unavailable",
+          message: "AI Insights history could not save the verified snapshot.",
+        },
+        503,
+      );
     }
 
-    const { data: oldRows } = await supabase
+    const { data: oldRows, error: oldRowsError } = await supabase
       .from("ai_insight_snapshots")
       .select("id")
       .order("created_at", { ascending: false })
-      .range(20, 99);
-    const oldIds = (oldRows ?? [])
-      .map((row) => (typeof row.id === "string" ? row.id : null))
-      .filter((id): id is string => Boolean(id));
+      .range(20, 1019);
 
-    if (oldIds.length) {
-      const { error: pruneError } = await supabase
-        .from("ai_insight_snapshots")
-        .delete()
-        .in("id", oldIds);
-      if (pruneError) {
-        console.error("AI Insights history retention cleanup failed", {
-          code: pruneError.code,
-        });
+    if (oldRowsError) {
+      console.error("AI Insights history retention read failed", {
+        code: oldRowsError.code,
+      });
+    } else {
+      const oldIds = (oldRows ?? [])
+        .map((row) => (typeof row.id === "string" ? row.id : null))
+        .filter((id): id is string => Boolean(id));
+      if (oldIds.length) {
+        const { error: pruneError } = await supabase
+          .from("ai_insight_snapshots")
+          .delete()
+          .in("id", oldIds);
+        if (pruneError) {
+          console.error("AI Insights history retention cleanup failed", {
+            code: pruneError.code,
+          });
+        }
       }
     }
   }
@@ -261,5 +309,6 @@ export async function POST(request: NextRequest) {
     events,
     previousGeneratedAt: previous?.generatedAt ?? null,
     generatedAt: current.generatedAt,
+    source: "server-recomputed",
   });
 }

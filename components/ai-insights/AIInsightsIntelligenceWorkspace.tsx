@@ -23,6 +23,7 @@ import {
 } from "@/components/ai-insights/AIInsightsSavedProvider";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { BASE_CURRENCY } from "@/lib/currency";
 import { getAIInsightsCopy } from "@/lib/ai-insights/copy";
 import { getAIInsightsWorkspaceCopy } from "@/lib/ai-insights/workspace-copy";
 import {
@@ -49,6 +50,7 @@ type WorkspaceResponse = {
 };
 
 type QualityResponse = {
+  available?: boolean;
   quality?: DataQualityResult;
   message?: string;
 };
@@ -87,17 +89,17 @@ function TimelineIcon({ type }: { type: TimelineEvent["type"] }) {
   if (type === "resolved") {
     return <CheckCircle2 size={14} aria-hidden="true" />;
   }
-  if (type === "stable") {
-    return <Minus size={14} aria-hidden="true" />;
-  }
-  if (type === "baseline") {
-    return <History size={14} aria-hidden="true" />;
-  }
+  if (type === "stable") return <Minus size={14} aria-hidden="true" />;
+  if (type === "baseline") return <History size={14} aria-hidden="true" />;
   return <Sparkles size={14} aria-hidden="true" />;
 }
 
 function timelineTone(type: TimelineEvent["type"]) {
-  if (type === "improved" || type === "quality-improved" || type === "resolved") {
+  if (
+    type === "improved" ||
+    type === "quality-improved" ||
+    type === "resolved"
+  ) {
     return "bg-success/10 text-success";
   }
   if (type === "worsened" || type === "quality-declined") {
@@ -111,7 +113,15 @@ export default function AIInsightsIntelligenceWorkspace() {
   const { language, option } = useLanguage();
   const globalCopy = getAIInsightsCopy(language);
   const copy = getAIInsightsWorkspaceCopy(language);
-  const { currency, rate, live, formatCurrency } = useCurrency();
+  const {
+    currency,
+    rate,
+    live,
+    ratesReady,
+    formatCurrency,
+    toBaseCurrency,
+    fromBaseCurrency,
+  } = useCurrency();
   const { records, loading: savedLoading, error: savedError } =
     useSavedAIInsights();
   const [workspace, setWorkspace] = useState<LoadedWorkspace | null>(null);
@@ -130,6 +140,7 @@ export default function AIInsightsIntelligenceWorkspace() {
 
   useEffect(() => {
     const controller = new AbortController();
+
     async function loadWorkspace() {
       setWorkspaceLoading(true);
       setWorkspaceError("");
@@ -144,14 +155,16 @@ export default function AIInsightsIntelligenceWorkspace() {
           `/api/ai-insights/workspace?${params.toString()}`,
           { cache: "no-store", signal: controller.signal },
         );
-        const body = (await response.json()) as WorkspaceResponse;
+        const body = (await response.json().catch(() => null)) as
+          | WorkspaceResponse
+          | null;
         if (
           !response.ok ||
-          !body.generatedAt ||
+          !body?.generatedAt ||
           !Array.isArray(body.insights) ||
           !body.summary
         ) {
-          throw new Error(body.message ?? copy.saved.unavailable);
+          throw new Error(body?.message ?? copy.saved.unavailable);
         }
         setWorkspace({
           generatedAt: body.generatedAt,
@@ -169,12 +182,14 @@ export default function AIInsightsIntelligenceWorkspace() {
         if (!controller.signal.aborted) setWorkspaceLoading(false);
       }
     }
+
     loadWorkspace();
     return () => controller.abort();
   }, [copy.saved.unavailable, currency, language, live, rate]);
 
   useEffect(() => {
     const controller = new AbortController();
+
     async function loadQuality() {
       setQualityError("");
       try {
@@ -182,9 +197,11 @@ export default function AIInsightsIntelligenceWorkspace() {
           cache: "no-store",
           signal: controller.signal,
         });
-        const body = (await response.json()) as QualityResponse;
-        if (!response.ok || !body.quality) {
-          throw new Error(body.message ?? copy.saved.unavailable);
+        const body = (await response.json().catch(() => null)) as
+          | QualityResponse
+          | null;
+        if (!response.ok || body?.available === false || !body?.quality) {
+          throw new Error(body?.message ?? copy.saved.unavailable);
         }
         setQuality(body.quality);
       } catch (error) {
@@ -195,6 +212,7 @@ export default function AIInsightsIntelligenceWorkspace() {
         );
       }
     }
+
     loadQuality();
     return () => controller.abort();
   }, [copy.saved.unavailable]);
@@ -203,27 +221,28 @@ export default function AIInsightsIntelligenceWorkspace() {
     if (!quality || !workspace || workspace.insights.length === 0) return;
     const controller = new AbortController();
 
-    async function syncHistory(
-      currentWorkspace: LoadedWorkspace,
-      currentQuality: DataQualityResult,
-    ) {
+    async function syncHistory() {
       try {
         const response = await fetch("/api/ai-insights/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            insights: currentWorkspace.insights,
-            generatedAt: currentWorkspace.generatedAt,
-            dataThrough: currentWorkspace.dataThrough,
-            qualityScore: currentQuality.score,
+            insights: workspace?.insights,
+            generatedAt: workspace?.generatedAt,
+            dataThrough: workspace?.dataThrough,
+            qualityScore: quality?.score,
           }),
         });
-        const body = (await response.json()) as HistoryResponse;
-        if (!response.ok) throw new Error(body.message ?? "History unavailable");
-        setHistoryAvailable(body.available !== false);
-        setEvents(Array.isArray(body.events) ? body.events : []);
-        setPreviousGeneratedAt(body.previousGeneratedAt ?? null);
+        const body = (await response.json().catch(() => null)) as
+          | HistoryResponse
+          | null;
+        if (!response.ok) {
+          throw new Error(body?.message ?? copy.saved.unavailable);
+        }
+        setHistoryAvailable(body?.available !== false);
+        setEvents(Array.isArray(body?.events) ? body.events : []);
+        setPreviousGeneratedAt(body?.previousGeneratedAt ?? null);
       } catch {
         if (controller.signal.aborted) return;
         setHistoryAvailable(false);
@@ -232,20 +251,24 @@ export default function AIInsightsIntelligenceWorkspace() {
       }
     }
 
-    syncHistory(workspace, quality);
+    syncHistory();
     return () => controller.abort();
-  }, [quality, workspace]);
+  }, [copy.saved.unavailable, quality, workspace]);
 
   useEffect(() => {
-    const remaining = workspace?.summary.payablesSummary.remaining ?? 0;
-    if (remaining <= 0) {
+    const remainingBase = workspace?.summary.payablesSummary.remaining ?? 0;
+    if (remainingBase <= 0) {
       setMonthlyPayment(0);
       return;
     }
-    setMonthlyPayment((current) =>
-      current > 0 ? current : Math.ceil(remaining / 12),
+    const suggestedBase = Math.ceil(remainingBase / 12);
+    const suggestedDisplay = fromBaseCurrency(suggestedBase, currency);
+    setMonthlyPayment(
+      typeof suggestedDisplay === "number" && Number.isFinite(suggestedDisplay)
+        ? Number(suggestedDisplay.toFixed(2))
+        : 0,
     );
-  }, [workspace?.summary.payablesSummary.remaining]);
+  }, [currency, fromBaseCurrency, workspace?.summary.payablesSummary.remaining]);
 
   const spendingScenario = useMemo(
     () =>
@@ -264,12 +287,19 @@ export default function AIInsightsIntelligenceWorkspace() {
         : null,
     [incomeReduction, workspace],
   );
+  const monthlyPaymentBase = useMemo(() => {
+    if (monthlyPayment <= 0) return 0;
+    const converted = toBaseCurrency(monthlyPayment, currency);
+    return typeof converted === "number" && Number.isFinite(converted)
+      ? converted
+      : 0;
+  }, [currency, monthlyPayment, toBaseCurrency]);
   const payableScenario = useMemo(
     () =>
       workspace
-        ? calculatePayablePlanScenario(workspace.summary, monthlyPayment)
+        ? calculatePayablePlanScenario(workspace.summary, monthlyPaymentBase)
         : null,
-    [monthlyPayment, workspace],
+    [monthlyPaymentBase, workspace],
   );
 
   const saved = records.filter((record) => record.status === "saved");
@@ -278,6 +308,8 @@ export default function AIInsightsIntelligenceWorkspace() {
     previousGeneratedAt,
     option.locale,
   );
+  const conversionUnavailable =
+    currency !== BASE_CURRENCY && ratesReady !== true;
 
   return (
     <section
@@ -308,7 +340,7 @@ export default function AIInsightsIntelligenceWorkspace() {
       </header>
 
       {workspaceLoading ? (
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="mt-5 grid gap-3 md:grid-cols-3" aria-busy="true">
           {[1, 2, 3].map((item) => (
             <div
               key={item}
@@ -317,7 +349,7 @@ export default function AIInsightsIntelligenceWorkspace() {
           ))}
         </div>
       ) : workspaceError || !workspace ? (
-        <div className="mt-5 flex min-h-44 items-center justify-center rounded-[20px] border border-dashed border-border/70 bg-background/35 px-4 text-center text-xs text-warning">
+        <div className="mt-5 flex min-h-44 items-center justify-center rounded-[20px] border border-dashed border-border/70 bg-background/35 px-4 text-center text-xs text-warning" role="status">
           {workspaceError || copy.saved.unavailable}
         </div>
       ) : (
@@ -341,15 +373,14 @@ export default function AIInsightsIntelligenceWorkspace() {
                       background: `conic-gradient(var(--active) ${quality.score * 3.6}deg, color-mix(in srgb, var(--border) 65%, transparent) 0deg)`,
                     }}
                     role="meter"
+                    aria-label={copy.quality.score}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={quality.score}
                   >
                     <span>{quality.score}</span>
                   </div>
-                ) : (
-                  <div className="size-16 animate-pulse rounded-full bg-skeleton" />
-                )}
+                ) : null}
               </div>
 
               {quality ? (
@@ -392,8 +423,8 @@ export default function AIInsightsIntelligenceWorkspace() {
                   </div>
                 </>
               ) : (
-                <p className="mt-4 text-[11px] text-warning">
-                  {qualityError}
+                <p className="mt-4 text-[11px] text-warning" role="status">
+                  {qualityError || copy.saved.unavailable}
                 </p>
               )}
             </article>
@@ -409,19 +440,13 @@ export default function AIInsightsIntelligenceWorkspace() {
                     {copy.timeline.description}
                   </p>
                 </div>
-                <Clock3
-                  size={17}
-                  className="shrink-0 text-text-muted"
-                  aria-hidden="true"
-                />
+                <Clock3 size={17} className="shrink-0 text-text-muted" aria-hidden="true" />
               </div>
-
               {previousLabel ? (
                 <p className="mt-3 text-[10px] font-medium text-text-muted">
                   {copy.timeline.previous(previousLabel)}
                 </p>
               ) : null}
-
               <div className="mt-4 space-y-2.5">
                 {events.length ? (
                   events.slice(0, 5).map((event, index) => (
@@ -429,9 +454,7 @@ export default function AIInsightsIntelligenceWorkspace() {
                       key={`${event.type}-${event.topic}-${index}`}
                       className="flex min-w-0 items-center gap-3 rounded-[14px] border border-border/55 bg-background/45 px-3 py-2.5"
                     >
-                      <span
-                        className={`grid size-7 shrink-0 place-items-center rounded-[10px] ${timelineTone(event.type)}`}
-                      >
+                      <span className={`grid size-7 shrink-0 place-items-center rounded-[10px] ${timelineTone(event.type)}`}>
                         <TimelineIcon type={event.type} />
                       </span>
                       <div className="min-w-0">
@@ -474,7 +497,6 @@ export default function AIInsightsIntelligenceWorkspace() {
                   </span>
                 </div>
               </div>
-
               <div className="mt-4 space-y-2.5">
                 {workspace.insights.map((insight) => (
                   <div
@@ -491,7 +513,6 @@ export default function AIInsightsIntelligenceWorkspace() {
                   </div>
                 ))}
               </div>
-
               {!savedLoading && records.length ? (
                 <div className="mt-4 border-t border-border/55 pt-3">
                   {records.slice(0, 3).map((record) => (
@@ -520,9 +541,10 @@ export default function AIInsightsIntelligenceWorkspace() {
                   ))}
                 </div>
               ) : null}
-
               {savedError ? (
-                <p className="mt-3 text-[10px] text-warning">{savedError}</p>
+                <p className="mt-3 text-[10px] text-warning" role="status">
+                  {savedError}
+                </p>
               ) : null}
             </article>
           </div>
@@ -549,9 +571,7 @@ export default function AIInsightsIntelligenceWorkspace() {
                 <h3>{copy.scenarios.spendingTitle}</h3>
                 <p>{copy.scenarios.spendingDescription}</p>
                 <label>
-                  <span>
-                    {copy.scenarios.spendingReduction(spendingReduction)}
-                  </span>
+                  <span>{copy.scenarios.spendingReduction(spendingReduction)}</span>
                   <input
                     type="range"
                     min={0}
@@ -566,23 +586,15 @@ export default function AIInsightsIntelligenceWorkspace() {
                 <dl>
                   <div>
                     <dt>{copy.scenarios.monthlyImprovement}</dt>
-                    <dd>
-                      {formatCurrency(
-                        spendingScenario?.monthlyImprovement ?? 0,
-                      )}
-                    </dd>
+                    <dd>{formatCurrency(spendingScenario?.monthlyImprovement ?? 0)}</dd>
                   </div>
                   <div>
                     <dt>{copy.scenarios.projectedNet}</dt>
-                    <dd>
-                      {formatCurrency(spendingScenario?.projectedNet ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(spendingScenario?.projectedNet ?? 0)}</dd>
                   </div>
                   <div>
                     <dt>{copy.scenarios.annualImpact}</dt>
-                    <dd>
-                      {formatCurrency(spendingScenario?.annualImpact ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(spendingScenario?.annualImpact ?? 0)}</dd>
                   </div>
                 </dl>
               </article>
@@ -591,9 +603,7 @@ export default function AIInsightsIntelligenceWorkspace() {
                 <h3>{copy.scenarios.incomeTitle}</h3>
                 <p>{copy.scenarios.incomeDescription}</p>
                 <label>
-                  <span>
-                    {copy.scenarios.incomeReduction(incomeReduction)}
-                  </span>
+                  <span>{copy.scenarios.incomeReduction(incomeReduction)}</span>
                   <input
                     type="range"
                     min={0}
@@ -608,21 +618,15 @@ export default function AIInsightsIntelligenceWorkspace() {
                 <dl>
                   <div>
                     <dt>{copy.scenarios.projectedIncome}</dt>
-                    <dd>
-                      {formatCurrency(incomeScenario?.projectedIncome ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(incomeScenario?.projectedIncome ?? 0)}</dd>
                   </div>
                   <div>
                     <dt>{copy.scenarios.projectedNet}</dt>
-                    <dd>
-                      {formatCurrency(incomeScenario?.projectedNet ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(incomeScenario?.projectedNet ?? 0)}</dd>
                   </div>
                   <div>
                     <dt>{copy.scenarios.monthlyImpact}</dt>
-                    <dd>
-                      {formatCurrency(incomeScenario?.monthlyImpact ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(incomeScenario?.monthlyImpact ?? 0)}</dd>
                   </div>
                 </dl>
               </article>
@@ -631,24 +635,35 @@ export default function AIInsightsIntelligenceWorkspace() {
                 <h3>{copy.scenarios.payablesTitle}</h3>
                 <p>{copy.scenarios.payablesDescription}</p>
                 <label>
-                  <span>{copy.scenarios.monthlyPayment}</span>
+                  <span>
+                    {copy.scenarios.monthlyPayment} ({currency})
+                  </span>
                   <input
                     type="number"
                     min={0}
                     step="0.01"
                     inputMode="decimal"
                     value={monthlyPayment || ""}
+                    disabled={conversionUnavailable}
+                    aria-describedby="ai-payable-scenario-currency-note"
                     onChange={(event) =>
-                      setMonthlyPayment(Number(event.target.value))
+                      setMonthlyPayment(Math.max(0, Number(event.target.value)))
                     }
                   />
                 </label>
+                {conversionUnavailable ? (
+                  <p
+                    id="ai-payable-scenario-currency-note"
+                    className="mt-2 text-[10px] leading-4 text-warning"
+                    role="status"
+                  >
+                    {globalCopy.trust.unavailableRate}
+                  </p>
+                ) : null}
                 <dl>
                   <div>
                     <dt>{copy.scenarios.monthlyPayment}</dt>
-                    <dd>
-                      {formatCurrency(payableScenario?.monthlyPayment ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(payableScenario?.monthlyPayment ?? 0)}</dd>
                   </div>
                   <div>
                     <dt>{copy.scenarios.monthsToClear}</dt>
@@ -660,9 +675,7 @@ export default function AIInsightsIntelligenceWorkspace() {
                   </div>
                   <div>
                     <dt>{copy.timeline.topics.payables}</dt>
-                    <dd>
-                      {formatCurrency(payableScenario?.remaining ?? 0)}
-                    </dd>
+                    <dd>{formatCurrency(payableScenario?.remaining ?? 0)}</dd>
                   </div>
                 </dl>
               </article>
