@@ -1,5 +1,8 @@
 export const FINANCE_BACKUP_FORMAT = "jalvoro-finance-backup";
 export const FINANCE_BACKUP_VERSION = 2;
+export const LEGACY_FINANCE_BACKUP_FORMAT = "jamals-finance-backup";
+export const LEGACY_FINANCE_BACKUP_VERSION = 1;
+export const LEGACY_FINANCE_BACKUP_SEAL_SCOPE = "legacy-client-bridge-v1";
 export const MAX_FINANCE_BACKUP_BYTES = 25 * 1024 * 1024;
 export const OPEN_FINANCE_DATA_IMPORT_EVENT = "jamal-open-data-import";
 export const FINANCE_DATA_IMPORTED_EVENT = "jamal-finance-data-imported";
@@ -33,6 +36,10 @@ export type FinanceBackupSeal = {
   signature: string;
 };
 
+export type LegacyFinanceBackupSeal = FinanceBackupSeal & {
+  scope: typeof LEGACY_FINANCE_BACKUP_SEAL_SCOPE;
+};
+
 export type FinanceBackupClientPreferences = {
   currency?: string;
   dateFormat?: string;
@@ -53,6 +60,21 @@ export type FinanceBackup = JsonRecord & {
   seal: FinanceBackupSeal;
 };
 
+export type LegacyFinanceBackup = JsonRecord & {
+  format: typeof LEGACY_FINANCE_BACKUP_FORMAT;
+  version: typeof LEGACY_FINANCE_BACKUP_VERSION;
+  backupId: string;
+  exportedAt: string;
+  source: JsonRecord & {
+    ownerId: string;
+  };
+  data: Record<BackupDataKey, unknown[]>;
+  manifest: FinanceBackupManifest;
+  seal: LegacyFinanceBackupSeal;
+};
+
+export type ImportableFinanceBackup = FinanceBackup | LegacyFinanceBackup;
+
 export type FinanceImportResult = {
   ok: boolean;
   alreadyImported: boolean;
@@ -66,7 +88,7 @@ export type FinanceImportResult = {
 };
 
 export type BackupValidationResult =
-  | { ok: true; value: FinanceBackup }
+  | { ok: true; value: ImportableFinanceBackup }
   | { ok: false; error: string };
 
 const UUID_PATTERN =
@@ -82,7 +104,7 @@ function normalizeNonNegativeInteger(value: unknown) {
   return Number.isInteger(count) && count >= 0 ? count : null;
 }
 
-export function getBackupRecordCount(backup: FinanceBackup) {
+export function getBackupRecordCount(backup: ImportableFinanceBackup) {
   return FINANCE_BACKUP_DATA_KEYS.reduce(
     (total, key) => total + backup.data[key].length,
     0,
@@ -121,7 +143,7 @@ function validateManifest(
   return null;
 }
 
-function validateSeal(value: JsonRecord): string | null {
+function validateSeal(value: JsonRecord, legacy: boolean): string | null {
   if (!isRecord(value.seal)) {
     return "This backup file is not sealed by JALVORO.";
   }
@@ -131,6 +153,13 @@ function validateSeal(value: JsonRecord): string | null {
     value.seal.algorithm !== "HMAC-SHA256"
   ) {
     return "This backup file has an unsupported security seal.";
+  }
+
+  if (
+    legacy &&
+    value.seal.scope !== LEGACY_FINANCE_BACKUP_SEAL_SCOPE
+  ) {
+    return "This legacy backup file has an unsupported security seal.";
   }
 
   const keyVersion = normalizeNonNegativeInteger(value.seal.keyVersion);
@@ -153,11 +182,15 @@ export function validateFinanceBackup(value: unknown): BackupValidationResult {
     return { ok: false, error: "This backup file is invalid or damaged." };
   }
 
-  if (value.format !== FINANCE_BACKUP_FORMAT) {
+  const legacy = value.format === LEGACY_FINANCE_BACKUP_FORMAT;
+  if (!legacy && value.format !== FINANCE_BACKUP_FORMAT) {
     return { ok: false, error: "This is not a sealed JALVORO backup file." };
   }
 
-  if (value.version !== FINANCE_BACKUP_VERSION) {
+  const supportedVersion = legacy
+    ? value.version === LEGACY_FINANCE_BACKUP_VERSION
+    : value.version === FINANCE_BACKUP_VERSION;
+  if (!supportedVersion) {
     return {
       ok: false,
       error: "This backup version is not supported. Export a new JALVORO backup.",
@@ -203,10 +236,13 @@ export function validateFinanceBackup(value: unknown): BackupValidationResult {
   const manifestError = validateManifest(value, data);
   if (manifestError) return { ok: false, error: manifestError };
 
-  const sealError = validateSeal(value);
+  const sealError = validateSeal(value, legacy);
   if (sealError) return { ok: false, error: sealError };
 
-  return { ok: true, value: value as FinanceBackup };
+  return {
+    ok: true,
+    value: value as ImportableFinanceBackup,
+  };
 }
 
 export function parseFinanceImportResult(value: unknown): FinanceImportResult | null {
