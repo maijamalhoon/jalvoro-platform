@@ -1,34 +1,52 @@
 import type { JalvoroIconDefinition } from "../types";
 
 export const userIconDefinition = {
-  name: "user", label: "User", category: "identity", keywords: ["person", "profile"], objects: 1,
+  name: "user",
+  label: "User",
+  category: "identity",
+  keywords: ["person", "profile", "account", "individual"],
+  aliases: ["person", "profile"],
+  objects: 1,
   body: [
-    { kind: "circle", cx: 12, cy: 8, r: 3.3 },
-    { kind: "path", d: "M5.5 20c.3-4 2.8-6.5 6.5-6.5s6.2 2.5 6.5 6.5" },
+    { kind: "circle", cx: 12, cy: 8, r: 3.1 },
+    { kind: "path", d: "M5 20c.4-4.1 3-6.5 7-6.5s6.6 2.4 7 6.5" },
   ],
-  accent: { x: 10.3, y: 16.7, width: 3.4, height: 0.45, rotation: 0 }, defaultAccent: "none",
+  defaultAccent: "none",
 } as const satisfies JalvoroIconDefinition;
 
 export const usersIconDefinition = {
-  name: "users", label: "Users", category: "identity", keywords: ["people", "team"], objects: 2,
+  name: "users",
+  label: "Users",
+  category: "identity",
+  keywords: ["people", "team", "group", "members"],
+  aliases: ["people", "team-members"],
+  objects: 2,
   body: [
-    { kind: "circle", cx: 9, cy: 8.5, r: 3 },
-    { kind: "path", d: "M3.8 19c.3-3.6 2.3-5.8 5.2-5.8s4.9 2.2 5.2 5.8" },
-    { kind: "circle", cx: 16.2, cy: 9.2, r: 2.4, strokeScale: 0.9 },
-    { kind: "path", d: "M14.2 14.2c2.9-.3 5.2 1.5 5.8 4.8", strokeScale: 0.9 },
+    { kind: "circle", cx: 9, cy: 8.2, r: 2.9 },
+    { kind: "path", d: "M3.8 19.2c.4-3.8 2.4-6 5.2-6s4.8 2.2 5.2 6" },
+    { kind: "circle", cx: 16.3, cy: 9, r: 2.4 },
+    { kind: "path", d: "M14.4 14.1c3.1-.4 5.4 1.6 5.8 5.1" },
   ],
-  accent: { x: 6.8, y: 16.7, width: 2.8, height: 0.42, rotation: 0 }, defaultAccent: "none",
+  defaultAccent: "none",
 } as const satisfies JalvoroIconDefinition;
 
 export const userPlusIconDefinition = {
-  name: "user-plus", label: "User Plus", category: "identity", keywords: ["invite", "add-person"], objects: 2,
+  name: "user-plus",
+  label: "User Plus",
+  category: "identity",
+  keywords: ["invite", "add-person", "member", "onboard"],
+  aliases: ["invite-user", "add-member"],
+  objects: 2,
   body: [
-    { kind: "circle", cx: 9, cy: 8.5, r: 3 },
-    { kind: "path", d: "M3.8 19c.3-3.6 2.3-5.8 5.2-5.8s4.9 2.2 5.2 5.8" },
-    { kind: "line", x1: 17, y1: 9, x2: 17, y2: 15 },
-    { kind: "line", x1: 14, y1: 12, x2: 20, y2: 12 },
+    { kind: "circle", cx: 8.5, cy: 8.2, r: 2.9 },
+    { kind: "path", d: "M3.3 19.2c.4-3.8 2.4-6 5.2-6s4.8 2.2 5.2 6" },
+    { kind: "path", d: "M17 8v6M14 11h6" },
   ],
-  accent: { x: 6.9, y: 16.7, width: 2.6, height: 0.42, rotation: 0 }, defaultAccent: "none",
+  defaultAccent: "none",
 } as const satisfies JalvoroIconDefinition;
 
-export const IDENTITY_ICON_DEFINITIONS = [userIconDefinition, usersIconDefinition, userPlusIconDefinition] as const;
+export const IDENTITY_ICON_DEFINITIONS = [
+  userIconDefinition,
+  usersIconDefinition,
+  userPlusIconDefinition,
+] as const;

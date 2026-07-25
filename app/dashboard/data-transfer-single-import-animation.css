@@ -1,0 +1,205 @@
+/*
+ * Final import interaction contract:
+ * - selecting or dropping one valid backup starts one full-screen effect
+ * - validation/import work happens behind that same effect
+ * - no drag card, loader, progress state, file-name card or success card appears
+ */
+
+.finance-transfer-overlay:not(.is-visible),
+.finance-transfer-overlay[data-phase="dragging"],
+.finance-transfer-overlay[data-phase="error"],
+.finance-transfer-overlay[data-phase="success"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: none !important;
+}
+
+.finance-transfer-overlay .finance-transfer-panel {
+  display: none !important;
+}
+
+.finance-transfer-overlay:is(
+    [data-phase="validating"],
+    [data-phase="importing"],
+    [data-phase="revealing"]
+  ) {
+  visibility: visible !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: jf-import-one-shot-overlay 4000ms cubic-bezier(0.12, 0.72, 0.18, 1)
+    both !important;
+}
+
+.finance-transfer-overlay:is(
+    [data-phase="validating"],
+    [data-phase="importing"],
+    [data-phase="revealing"]
+  )::before,
+.finance-transfer-overlay:is(
+    [data-phase="validating"],
+    [data-phase="importing"],
+    [data-phase="revealing"]
+  )::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 150vmax;
+  height: 150vmax;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  transform: translate3d(-50%, -50%, 0) scale(0.02);
+  will-change: transform, opacity, filter;
+}
+
+.finance-transfer-overlay:is(
+    [data-phase="validating"],
+    [data-phase="importing"],
+    [data-phase="revealing"]
+  )::before {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, white 96%, var(--primary)) 0 1.5%,
+    color-mix(in srgb, white 72%, var(--primary)) 4%,
+    color-mix(in srgb, var(--primary) 58%, transparent) 12%,
+    color-mix(in srgb, var(--primary) 16%, transparent) 28%,
+    transparent 58%
+  );
+  filter: blur(1px) saturate(155%);
+  mix-blend-mode: screen;
+  animation: jf-import-one-shot-impact 4000ms cubic-bezier(0.12, 0.72, 0.18, 1)
+    both !important;
+}
+
+.finance-transfer-overlay:is(
+    [data-phase="validating"],
+    [data-phase="importing"],
+    [data-phase="revealing"]
+  )::after {
+  border: clamp(2px, 0.32vmin, 5px) solid
+    color-mix(in srgb, white 72%, var(--primary));
+  box-shadow:
+    0 0 0 0.8vmax color-mix(in srgb, var(--primary) 18%, transparent),
+    0 0 7vmax color-mix(in srgb, var(--primary) 44%, transparent),
+    inset 0 0 5vmax color-mix(in srgb, white 28%, transparent);
+  animation: jf-import-one-shot-ring 4000ms cubic-bezier(0.1, 0.76, 0.16, 1)
+    both !important;
+}
+
+.finance-transfer-overlay:is(
+    [data-phase="validating"],
+    [data-phase="importing"],
+    [data-phase="revealing"]
+  )
+  .finance-transfer-water {
+  width: 118vmin;
+  height: 118vmin;
+  filter: saturate(145%) contrast(108%);
+  animation: jf-import-one-shot-field 4000ms cubic-bezier(0.12, 0.72, 0.18, 1)
+    both !important;
+}
+
+@keyframes jf-import-one-shot-overlay {
+  0% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes jf-import-one-shot-impact {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.015);
+  }
+  5% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.98;
+    transform: translate3d(-50%, -50%, 0) scale(0.11);
+  }
+  18% {
+    opacity: 0.52;
+    transform: translate3d(-50%, -50%, 0) scale(0.28);
+  }
+  52% {
+    opacity: 0.22;
+    transform: translate3d(-50%, -50%, 0) scale(0.82);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(1.35);
+  }
+}
+
+@keyframes jf-import-one-shot-ring {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.015);
+  }
+  7% {
+    opacity: 0.9;
+  }
+  34% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(1.08);
+  }
+}
+
+@keyframes jf-import-one-shot-field {
+  0% {
+    opacity: 0.3;
+    transform: translate3d(-50%, -50%, 0) scale(0.58);
+  }
+  9% {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1.08);
+  }
+  42% {
+    opacity: 0.76;
+    transform: translate3d(-50%, -50%, 0) scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(1.24);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finance-transfer-overlay:is(
+      [data-phase="validating"],
+      [data-phase="importing"],
+      [data-phase="revealing"]
+    ),
+  .finance-transfer-overlay:is(
+      [data-phase="validating"],
+      [data-phase="importing"],
+      [data-phase="revealing"]
+    )::before,
+  .finance-transfer-overlay:is(
+      [data-phase="validating"],
+      [data-phase="importing"],
+      [data-phase="revealing"]
+    )::after,
+  .finance-transfer-overlay:is(
+      [data-phase="validating"],
+      [data-phase="importing"],
+      [data-phase="revealing"]
+    )
+    .finance-transfer-water {
+    animation-duration: 450ms !important;
+  }
+}

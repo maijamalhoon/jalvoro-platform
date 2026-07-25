@@ -2,44 +2,49 @@
 
 /*
  * Final mobile/tablet navigation drawer position authority.
- * Keep this file last in the dashboard CSS import order so generic dialog/sheet
- * rules cannot pull the drawer away from the left viewport edge.
- *
- * Base UI portals do not guarantee a rendered portal wrapper element, so these
- * selectors intentionally target the drawer popup itself.
+ * The Base UI dialog viewport owns the full screen; the drawer is a normal
+ * flex child anchored to its left edge. This avoids trying to counter a
+ * centered popup with repeated left/inset overrides.
  */
 @media (max-width: 1023px) {
   html body
-    [data-mobile-navigation-drawer][data-slot="sheet-content"][data-side="left"] {
+    .mobile-navigation-viewport[data-slot="sheet-viewport"][data-side="left"] {
     position: fixed !important;
-    inset: 0 auto 0 0 !important;
-    inset-block: 0 !important;
-    inset-inline: 0 auto !important;
-    inset-inline-start: 0 !important;
-    inset-inline-end: auto !important;
-    top: 0 !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+  }
+
+  html body
+    [data-mobile-navigation-drawer][data-slot="sheet-content"][data-side="left"] {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
     right: auto !important;
-    bottom: 0 !important;
-    left: 0 !important;
+    bottom: auto !important;
+    left: auto !important;
+    flex: 0 0 auto !important;
     width: min(88vw, 23rem) !important;
     max-width: calc(100vw - 1rem) !important;
     height: 100dvh !important;
     min-height: 100dvh !important;
     max-height: 100dvh !important;
     margin: 0 !important;
-    margin-block: 0 !important;
-    margin-inline: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
     overflow: hidden !important;
     border: 0 !important;
     border-radius: 0 2rem 2rem 0 !important;
     box-shadow: 20px 0 56px rgb(15 23 42 / 0.24) !important;
+    pointer-events: auto !important;
     translate: none !important;
     transform: translate3d(0, 0, 0) !important;
     transform-origin: left center !important;
-    align-self: stretch !important;
-    justify-self: start !important;
   }
 
   .dark
@@ -52,7 +57,7 @@
   html body
       [data-mobile-navigation-drawer][data-slot="sheet-content"][data-side="left"][data-ending-style] {
     translate: none !important;
-    transform: translate3d(-2.5rem, 0, 0) !important;
+    transform: translate3d(-100%, 0, 0) !important;
   }
 }
 

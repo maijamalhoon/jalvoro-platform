@@ -131,6 +131,7 @@ export default function MobileNav({ notificationSlot }: MobileNavProps) {
         <SheetContent
           data-mobile-navigation-drawer
           side="left"
+          viewportClassName="mobile-navigation-viewport"
           showCloseButton={false}
           className="h-dvh max-h-dvh !w-[min(86vw,20rem)] max-w-[20rem] gap-0 overflow-hidden rounded-r-[26px] border-border/80 bg-surface-elevated/98 p-0 shadow-[24px_0_70px_rgb(15_23_42_/_0.2)] backdrop-blur-xl sm:!w-[22rem] sm:max-w-[22rem] dark:shadow-[24px_0_70px_rgb(0_0_0_/_0.48)]"
         >
