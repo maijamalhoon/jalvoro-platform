@@ -124,24 +124,64 @@ Deno.serve(async (request: Request) => {
 
   const invitationToken = randomToken(32);
   const tokenSha256 = await sha256Hex(invitationToken);
-  const temporaryPassword = `Jv1!${randomToken(24)}`;
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const createResult = await adminClient.auth.admin.createUser({
-    email,
-    password: temporaryPassword,
-    email_confirm: true,
-    app_metadata: { control_plane_invited: true },
-    user_metadata: { control_plane_password_change_required: true },
-  });
-
-  let accountCreated = Boolean(createResult.data.user);
-  if (createResult.error && !isExistingUserError(createResult.error.message)) {
-    return json({ error: "operator_account_creation_failed" }, 400);
+  let existingUserId = "";
+  const perPage = 100;
+  for (let page = 1; page <= 10; page += 1) {
+    const usersResult = await adminClient.auth.admin.listUsers({ page, perPage });
+    if (usersResult.error) {
+      return json({ error: "operator_directory_unavailable" }, 503);
+    }
+    const existingUser = usersResult.data.users.find(
+      (candidate) => candidate.email?.trim().toLowerCase() === email,
+    );
+    if (existingUser) {
+      existingUserId = existingUser.id;
+      break;
+    }
+    if (usersResult.data.users.length < perPage) break;
+    if (page === 10) {
+      return json({ error: "operator_directory_limit_reached" }, 503);
+    }
   }
-  if (createResult.error) accountCreated = false;
+
+  let accountCreated = false;
+  let createdUserId = "";
+  let authTokenHash = "";
+  if (!existingUserId) {
+    const authLinkResult = await adminClient.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { data: { control_plane_invited: true } },
+    });
+
+    if (authLinkResult.error) {
+      if (!isExistingUserError(authLinkResult.error.message)) {
+        return json({ error: "operator_account_creation_failed" }, 400);
+      }
+    } else {
+      createdUserId = authLinkResult.data.user?.id ?? "";
+      const properties = authLinkResult.data.properties as
+        | { hashed_token?: unknown }
+        | null;
+      authTokenHash =
+        typeof properties?.hashed_token === "string"
+          ? properties.hashed_token
+          : "";
+      accountCreated = Boolean(createdUserId && authTokenHash);
+      if (!accountCreated) {
+        if (createdUserId) {
+          await adminClient.auth.admin.deleteUser(createdUserId).catch(
+            () => undefined,
+          );
+        }
+        return json({ error: "operator_account_creation_failed" }, 500);
+      }
+    }
+  }
 
   const invitationResult = await userClient.rpc(
     "create_control_plane_invitation",
@@ -154,8 +194,8 @@ Deno.serve(async (request: Request) => {
   );
 
   if (invitationResult.error || !invitationResult.data) {
-    if (accountCreated && createResult.data.user?.id) {
-      await adminClient.auth.admin.deleteUser(createResult.data.user.id).catch(
+    if (accountCreated && createdUserId) {
+      await adminClient.auth.admin.deleteUser(createdUserId).catch(
         () => undefined,
       );
     }
@@ -166,6 +206,6 @@ Deno.serve(async (request: Request) => {
     invitation: invitationResult.data,
     invitationToken,
     accountCreated,
-    temporaryPassword: accountCreated ? temporaryPassword : null,
+    authTokenHash: accountCreated ? authTokenHash : null,
   });
 });
