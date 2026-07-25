@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Globe2, Layers3, ShieldCheck, Store } from "lucide-react";
+import { Building2, Globe2, ShieldCheck, Store } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -77,26 +77,6 @@ export default function CreateBusinessWorkspaceForm({
     setWorkspaceMode(setupDefaults.workspaceMode);
   }, [businessExperience, setupDefaults.businessType, setupDefaults.workspaceMode]);
 
-  async function applyExperienceContext(businessId: string) {
-    const firstAttempt = await supabase.rpc("apply_business_entry_experience", {
-      p_business_id: businessId,
-      p_experience: businessExperience,
-      p_session_id: validSessionId,
-    });
-
-    if (!firstAttempt.error) return firstAttempt;
-
-    console.error("Business experience context first attempt failed", {
-      code: firstAttempt.error.code,
-    });
-
-    return supabase.rpc("apply_business_entry_experience", {
-      p_business_id: businessId,
-      p_experience: businessExperience,
-      p_session_id: validSessionId,
-    });
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
@@ -139,12 +119,29 @@ export default function CreateBusinessWorkspaceForm({
         return;
       }
 
-      const contextResult = await applyExperienceContext(businessId);
+      const contextResult = await supabase.rpc("apply_business_entry_experience", {
+        p_business_id: businessId,
+        p_experience: businessExperience,
+        p_session_id: validSessionId,
+      });
 
       if (contextResult.error) {
         console.error("Business experience context could not be finalized", {
           code: contextResult.error.code,
         });
+        const recoveryParams = new URLSearchParams({
+          setup_error: "context",
+          business_id: businessId,
+          experience: businessExperience,
+        });
+        if (validSessionId) recoveryParams.set("session", validSessionId);
+
+        toast.warning(
+          "Core workspace created. Tailored modules still need confirmation before the workspace is ready.",
+        );
+        router.replace(`/business?${recoveryParams.toString()}`);
+        router.refresh();
+        return;
       }
 
       const { data: business, error: businessError } = await supabase
@@ -164,15 +161,9 @@ export default function CreateBusinessWorkspaceForm({
       }
 
       setName("");
-      if (contextResult.error) {
-        toast.warning(
-          "Core workspace created, but tailored modules could not be confirmed. Do not rely on module availability until setup is retried by an administrator.",
-        );
-      } else {
-        toast.success(
-          `${experience?.productName ?? "Business workspace"} created with isolated data and modules ready.`,
-        );
-      }
+      toast.success(
+        `${experience?.productName ?? "Business workspace"} created with isolated data and modules ready.`,
+      );
       router.replace(
         business.workspace_mode === "simple_shop"
           ? `/business/${business.slug}/shop`
