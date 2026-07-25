@@ -56,10 +56,11 @@ The Command Center branch now contains the hardened launch baseline from `main` 
 
 The exact post-synchronization head must independently pass automated and authenticated preview acceptance before merge.
 
-## Post-freeze verification checkpoint
+## Final candidate freeze
 
 - synchronized Command Center merge commit: `ebace858ecc08dde1eef77309c6c97f33b0fc285`
+- one-shot source-export cleanup commit: `2d445126b6fd8fe64ad746bb3fa1d9695cb24495`
 - hardened main baseline: `009b1917d0411fe0f509cdf3db0c5490e7511013`
 - remaining pull-request scope: exactly five Command Center presentation and acceptance files
 
-This checkpoint exists only to trigger exact-head CI, private security validation, dependency review, and the allowlisted Vercel preview after synchronization. It introduces no runtime behavior, permission, route, database, or production-data change.
+The temporary source-export workflow has removed itself and is not part of the pull-request diff. This human-authored checkpoint freezes the final candidate and triggers exact-head CI, private security validation, dependency review, and the allowlisted Vercel preview. It introduces no runtime behavior, permission, route, database, or production-data change.
