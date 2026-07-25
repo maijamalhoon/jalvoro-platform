@@ -4,7 +4,11 @@ import {
   FINANCE_BACKUP_DATA_KEYS,
   FINANCE_BACKUP_FORMAT,
   FINANCE_BACKUP_VERSION,
+  LEGACY_FINANCE_BACKUP_FORMAT,
+  LEGACY_FINANCE_BACKUP_SEAL_SCOPE,
+  LEGACY_FINANCE_BACKUP_VERSION,
   type FinanceBackup,
+  type LegacyFinanceBackup,
   getBackupRecordCount,
   parseFinanceImportResult,
   validateFinanceBackup,
@@ -56,9 +60,51 @@ function makeBackup(): FinanceBackup {
   };
 }
 
+function makeLegacyBackup(): LegacyFinanceBackup {
+  const current = makeBackup();
+
+  return {
+    ...current,
+    format: LEGACY_FINANCE_BACKUP_FORMAT,
+    version: LEGACY_FINANCE_BACKUP_VERSION,
+    seal: {
+      ...current.seal,
+      scope: LEGACY_FINANCE_BACKUP_SEAL_SCOPE,
+    },
+  };
+}
+
 describe("finance backup validation", () => {
   it("accepts a complete versioned backup", () => {
     expect(validateFinanceBackup(makeBackup()).ok).toBe(true);
+  });
+
+  it("accepts a server-sealed version 1 bridge backup", () => {
+    const backup = makeLegacyBackup();
+    const validation = validateFinanceBackup(backup);
+
+    expect(validation.ok).toBe(true);
+    if (validation.ok) expect(getBackupRecordCount(validation.value)).toBe(0);
+  });
+
+  it("rejects unsigned historical version 1 files", () => {
+    const backup = makeLegacyBackup();
+    delete (backup as Partial<LegacyFinanceBackup>).seal;
+
+    expect(validateFinanceBackup(backup)).toEqual({
+      ok: false,
+      error: "This backup file is not sealed by JALVORO.",
+    });
+  });
+
+  it("rejects legacy files without the exact compatibility scope", () => {
+    const backup = makeLegacyBackup();
+    (backup.seal as Record<string, unknown>).scope = "wrong-scope";
+
+    expect(validateFinanceBackup(backup)).toEqual({
+      ok: false,
+      error: "This legacy backup file has an unsupported security seal.",
+    });
   });
 
   it("rejects a backup with a missing data section", () => {
