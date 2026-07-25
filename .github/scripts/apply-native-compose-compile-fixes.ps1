@@ -2,98 +2,78 @@ $ErrorActionPreference = "Stop"
 
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
-function Read-Lines {
-    param([string]$Path)
-    $lines = New-Object 'System.Collections.Generic.List[string]'
-    $lines.AddRange([System.IO.File]::ReadAllLines($Path))
-    return ,$lines
+function Update-TextFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][scriptblock]$Transform
+    )
+
+    $before = [System.IO.File]::ReadAllText($Path)
+    $after = & $Transform $before
+    if ($null -eq $after) {
+        throw "Transform returned no content for $Path."
+    }
+    if ($after -ne $before) {
+        [System.IO.File]::WriteAllText($Path, $after, $utf8NoBom)
+    }
 }
 
-function Find-LineIndex {
+function Move-CanvasThemeColorOutsideDrawScope {
     param(
-        [System.Collections.Generic.List[string]]$Lines,
-        [string]$Text,
-        [int]$StartIndex = 0
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$FunctionMarker
     )
-    for ($index = $StartIndex; $index -lt $Lines.Count; $index++) {
-        if ($Lines[$index].Contains($Text)) {
-            return $index
+
+    Update-TextFile -Path $Path -Transform {
+        param($source)
+
+        $functionIndex = $source.IndexOf($FunctionMarker, [System.StringComparison]::Ordinal)
+        if ($functionIndex -lt 0) {
+            throw "Could not find function marker '$FunctionMarker' in $Path."
         }
-    }
-    return -1
-}
 
-function Fix-CanvasThemeColor {
-    param(
-        [string]$Path,
-        [string]$FunctionMarker
-    )
-
-    $lines = Read-Lines $Path
-    $functionIndex = Find-LineIndex -Lines $lines -Text $FunctionMarker
-    if ($functionIndex -lt 0) {
-        throw "Could not find function marker '$FunctionMarker' in $Path."
-    }
-
-    $canvasIndex = Find-LineIndex -Lines $lines -Text "Canvas(modifier = Modifier.fillMaxSize().padding(12.dp))" -StartIndex $functionIndex
-    if ($canvasIndex -lt 0 -or $canvasIndex -gt ($functionIndex + 80)) {
-        throw "Could not find the expected navigation Canvas near '$FunctionMarker' in $Path."
-    }
-
-    if ($canvasIndex -gt 0 -and $lines[$canvasIndex - 1].Contains("val lineColor = MaterialTheme.colorScheme.onSurface")) {
-        return
-    }
-
-    $canvasIndent = [regex]::Match($lines[$canvasIndex], '^\s*').Value
-    $lines.Insert($canvasIndex, "${canvasIndent}val lineColor = MaterialTheme.colorScheme.onSurface")
-    $canvasIndex++
-
-    $replaced = 0
-    $limit = [Math]::Min($lines.Count, $canvasIndex + 40)
-    for ($index = $canvasIndex + 1; $index -lt $limit; $index++) {
-        if ($lines[$index].Trim() -eq "color = MaterialTheme.colorScheme.onSurface,") {
-            $indent = [regex]::Match($lines[$index], '^\s*').Value
-            $lines[$index] = "${indent}color = lineColor,"
-            $replaced++
-            if ($replaced -eq 2) {
-                break
-            }
+        $canvas = "Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {"
+        $canvasIndex = $source.IndexOf($canvas, $functionIndex, [System.StringComparison]::Ordinal)
+        if ($canvasIndex -lt 0 -or $canvasIndex -gt ($functionIndex + 5000)) {
+            throw "Could not find expected navigation Canvas near '$FunctionMarker' in $Path."
         }
+
+        $prefix = $source.Substring(0, $canvasIndex)
+        $suffix = $source.Substring($canvasIndex)
+        if (-not $prefix.EndsWith("val lineColor = MaterialTheme.colorScheme.onSurface`r`n        ") -and
+            -not $prefix.EndsWith("val lineColor = MaterialTheme.colorScheme.onSurface`n        ")) {
+            $suffix = "val lineColor = MaterialTheme.colorScheme.onSurface`r`n        " + $suffix
+        }
+
+        $first = $suffix.IndexOf("color = MaterialTheme.colorScheme.onSurface,", [System.StringComparison]::Ordinal)
+        if ($first -lt 0) {
+            return $prefix + $suffix
+        }
+        $suffix = $suffix.Remove($first, "color = MaterialTheme.colorScheme.onSurface,".Length).Insert($first, "color = lineColor,")
+
+        $second = $suffix.IndexOf("color = MaterialTheme.colorScheme.onSurface,", $first + "color = lineColor,".Length, [System.StringComparison]::Ordinal)
+        if ($second -lt 0) {
+            throw "Expected a second Canvas theme-color read near '$FunctionMarker' in $Path."
+        }
+        $suffix = $suffix.Remove($second, "color = MaterialTheme.colorScheme.onSurface,".Length).Insert($second, "color = lineColor,")
+
+        return $prefix + $suffix
     }
-
-    if ($replaced -ne 2) {
-        throw "Expected to replace two Canvas theme-color reads near '$FunctionMarker' in $Path; replaced $replaced."
-    }
-
-    [System.IO.File]::WriteAllLines($Path, $lines, $utf8NoBom)
-}
-
-function Remove-ExactLine {
-    param(
-        [string]$Path,
-        [string]$LineToRemove
-    )
-
-    $source = [System.IO.File]::ReadAllLines($Path)
-    $filtered = @($source | Where-Object { $_ -ne $LineToRemove })
-    if ($filtered.Count -eq $source.Count) {
-        return
-    }
-    [System.IO.File]::WriteAllLines($Path, $filtered, $utf8NoBom)
 }
 
 $uiRoot = Join-Path $env:GITHUB_WORKSPACE "native\androidApp\src\main\kotlin\com\jamalsfinance\nativeapp\ui"
 
-Fix-CanvasThemeColor `
+Move-CanvasThemeColorOutsideDrawScope `
     -Path (Join-Path $uiRoot "JalvoroOverviewDashboard.kt") `
     -FunctionMarker "private fun OverviewFloatingMenuButton"
 
-Fix-CanvasThemeColor `
+Move-CanvasThemeColorOutsideDrawScope `
     -Path (Join-Path $uiRoot "JalvoroWebsiteWorkspaceShell.kt") `
     -FunctionMarker "private fun JalvoroWebsiteFloatingHeader"
 
-Remove-ExactLine `
-    -Path (Join-Path $uiRoot "JalvoroWebsiteUtilityShell.kt") `
-    -LineToRemove "import androidx.compose.foundation.layout.weight"
+Update-TextFile -Path (Join-Path $uiRoot "JalvoroWebsiteUtilityShell.kt") -Transform {
+    param($source)
+    return $source.Replace("import androidx.compose.foundation.layout.weight`r`n", "").Replace("import androidx.compose.foundation.layout.weight`n", "")
+}
 
 Write-Host "Targeted native Compose compile fixes are applied."
