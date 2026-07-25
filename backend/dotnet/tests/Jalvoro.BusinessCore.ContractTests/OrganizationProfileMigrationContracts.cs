@@ -25,6 +25,13 @@ internal static class OrganizationProfileMigrationContracts
       migration.Contains("idempotency_conflict", StringComparison.Ordinal),
       "Duplicate organization profile commands must serialize and reject key reuse with another payload.");
     check(
+      migration.Contains(
+        "command_operation_name constant text := 'organization.profile.update.v1'",
+        StringComparison.Ordinal) &&
+      migration.Contains("stored.operation_name = command_operation_name", StringComparison.Ordinal) &&
+      !migration.Contains("operation_name = operation_name", StringComparison.Ordinal),
+      "Idempotency queries must use an unambiguous scoped operation name and qualified table aliases.");
+    check(
       migration.Contains("profile_version <> p_expected_version", StringComparison.Ordinal) &&
       migration.Contains("version_conflict", StringComparison.Ordinal),
       "The database command must enforce optimistic concurrency before mutation.");
