@@ -16,6 +16,7 @@ on:
       - ".github/workflows/finance-parity-pr-ci.yml"
       - ".github/scripts/setup-android-sdk.ps1"
       - ".github/scripts/setup-android-sdk.cmd"
+      - ".github/scripts/setup-gradle.cmd"
 
 permissions:
   contents: read
@@ -64,10 +65,9 @@ jobs:
         shell: cmd
         run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-android-sdk.cmd"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.3.1"
+      - name: Set up Gradle 9.3.1
+        shell: cmd
+        run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-gradle.cmd"
 
       - name: Run native finance parity contract
         shell: cmd
