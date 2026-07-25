@@ -4,13 +4,27 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$workspace = if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+if ($env:GITHUB_WORKSPACE) {
+    $workspace = $env:GITHUB_WORKSPACE
+} else {
+    $workspace = (Get-Location).Path
+}
+
 $logPath = Join-Path $workspace "native\android-sdk-setup.log"
 New-Item -ItemType Directory -Force -Path (Split-Path $logPath -Parent) | Out-Null
-Start-Transcript -Path $logPath -Force | Out-Null
+Set-Content -Path $logPath -Value "Android SDK setup started" -Encoding UTF8
+
+function Write-SetupLog {
+    param([string]$Message)
+    $line = "$(Get-Date -Format o) $Message"
+    Write-Host $line
+    Add-Content -Path $logPath -Value $line -Encoding UTF8
+}
 
 try {
-    Write-Host "Stage: prepare Android SDK directories"
+    Write-SetupLog "Stage: prepare Android SDK directories"
     $cmdlineToolsRoot = Join-Path $SdkRoot "cmdline-tools\latest"
     $sdkManager = Join-Path $cmdlineToolsRoot "bin\sdkmanager.bat"
 
@@ -27,10 +41,10 @@ try {
         New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
         New-Item -ItemType Directory -Force -Path $cmdlineToolsRoot | Out-Null
 
-        Write-Host "Stage: download Android command-line tools revision $CommandLineToolsRevision"
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $archive
+        Write-SetupLog "Stage: download Android command-line tools revision $CommandLineToolsRevision"
+        Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $archive
 
-        Write-Host "Stage: extract Android command-line tools"
+        Write-SetupLog "Stage: extract Android command-line tools"
         Expand-Archive -Path $archive -DestinationPath $extractRoot -Force
 
         $extractedTools = Join-Path $extractRoot "cmdline-tools"
@@ -45,7 +59,7 @@ try {
         throw "sdkmanager was not installed at $sdkManager."
     }
 
-    Write-Host "Stage: export Android SDK environment"
+    Write-SetupLog "Stage: export Android SDK environment"
     $env:ANDROID_HOME = $SdkRoot
     $env:ANDROID_SDK_ROOT = $SdkRoot
 
@@ -58,20 +72,20 @@ try {
         (Join-Path $SdkRoot "platform-tools") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
     }
 
-    Write-Host "Stage: accept Android SDK licenses"
+    Write-SetupLog "Stage: accept Android SDK licenses"
     $licenseCommand = "(for /L %i in (1,1,100) do @echo y) | `"$sdkManager`" --sdk_root=`"$SdkRoot`" --licenses"
     & cmd.exe /d /s /c $licenseCommand
     if ($LASTEXITCODE -ne 0) {
         throw "Android SDK license acceptance failed with exit code $LASTEXITCODE."
     }
 
-    Write-Host "Stage: install Android SDK packages"
+    Write-SetupLog "Stage: install Android SDK packages"
     & $sdkManager "--sdk_root=$SdkRoot" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
     if ($LASTEXITCODE -ne 0) {
         throw "Android SDK package installation failed with exit code $LASTEXITCODE."
     }
 
-    Write-Host "Stage: verify Android SDK packages"
+    Write-SetupLog "Stage: verify Android SDK packages"
     $requiredPaths = @(
         (Join-Path $SdkRoot "platform-tools\adb.exe"),
         (Join-Path $SdkRoot "platforms\android-36\android.jar"),
@@ -84,13 +98,11 @@ try {
         }
     }
 
-    Write-Host "Android SDK ready at $SdkRoot"
+    Write-SetupLog "Android SDK ready at $SdkRoot"
     & $sdkManager "--sdk_root=$SdkRoot" --version
 }
 catch {
+    Write-SetupLog "ERROR: $($_.Exception.Message)"
     Write-Error ($_ | Out-String)
     throw
-}
-finally {
-    Stop-Transcript | Out-Null
 }
