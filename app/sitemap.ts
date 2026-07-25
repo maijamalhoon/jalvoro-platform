@@ -1,35 +1,34 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = "https://jamals-finance-sable.vercel.app";
+import { APP_URL } from "@/lib/brand";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: siteUrl,
+      url: APP_URL,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${siteUrl}/privacy`,
+      url: `${APP_URL}/privacy`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
-      url: `${siteUrl}/terms`,
+      url: `${APP_URL}/terms`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
-      url: `${siteUrl}/disclosures`,
+      url: `${APP_URL}/disclosures`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
-      url: `${siteUrl}/support`,
+      url: `${APP_URL}/support`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
