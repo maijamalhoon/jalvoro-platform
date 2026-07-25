@@ -1,6 +1,12 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Globe2, ShieldCheck, Store } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +38,7 @@ const BUSINESS_TYPES = [
 const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as const;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CREATION_REQUEST_STORAGE_PREFIX = "jalvoro-workspace-creation-request";
 
 type BusinessExperience = Exclude<ProductExperienceSlug, "personal">;
 
@@ -40,12 +47,30 @@ type CreateBusinessWorkspaceFormProps = {
   onboardingSessionId?: string | null;
 };
 
+function createRequestId() {
+  if (typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function creationRequestStorageKey(experience: BusinessExperience) {
+  return `${CREATION_REQUEST_STORAGE_PREFIX}:${experience}`;
+}
+
 export default function CreateBusinessWorkspaceForm({
   initialExperience,
   onboardingSessionId,
 }: CreateBusinessWorkspaceFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const submissionLockRef = useRef(false);
   const businessExperience: BusinessExperience = isBusinessExperience(initialExperience)
     ? initialExperience
     : "small-business";
@@ -57,6 +82,7 @@ export default function CreateBusinessWorkspaceForm({
       ? onboardingSessionId
       : null;
 
+  const [creationRequestId, setCreationRequestId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState(setupDefaults.businessType);
   const [countryCode, setCountryCode] = useState("");
@@ -73,9 +99,27 @@ export default function CreateBusinessWorkspaceForm({
     setBusinessType(setupDefaults.businessType);
   }, [businessExperience, setupDefaults.businessType]);
 
+  useEffect(() => {
+    const storageKey = creationRequestStorageKey(businessExperience);
+    const stored = window.sessionStorage.getItem(storageKey);
+    const requestId = stored && UUID_PATTERN.test(stored) ? stored : createRequestId();
+
+    window.sessionStorage.setItem(storageKey, requestId);
+    setCreationRequestId(requestId);
+  }, [businessExperience]);
+
+  function clearCreationRequest() {
+    window.sessionStorage.removeItem(creationRequestStorageKey(businessExperience));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (submissionLockRef.current || saving) return;
+
+    if (!creationRequestId) {
+      toast.error("Secure creation request is still preparing. Please try again.");
+      return;
+    }
 
     const cleanName = name.trim();
     const cleanCountry = countryCode.trim().toUpperCase();
@@ -94,6 +138,7 @@ export default function CreateBusinessWorkspaceForm({
       return;
     }
 
+    submissionLockRef.current = true;
     setSaving(true);
 
     try {
@@ -103,6 +148,7 @@ export default function CreateBusinessWorkspaceForm({
           p_name: cleanName,
           p_business_type: businessType,
           p_experience: businessExperience,
+          p_creation_request_id: creationRequestId,
           p_country_code: cleanCountry || null,
           p_base_currency: baseCurrency,
           p_timezone: timezone,
@@ -113,10 +159,12 @@ export default function CreateBusinessWorkspaceForm({
       if (error || typeof businessId !== "string") {
         console.error("Atomic business workspace creation failed", { code: error?.code });
         toast.error(
-          "Workspace setup could not be completed. Nothing was partially created; check your details or connection and try again.",
+          "Workspace result could not be confirmed. The atomic operation does not retain partial setup; refresh the workspace list before retrying.",
         );
         return;
       }
+
+      clearCreationRequest();
 
       const { data: business, error: businessError } = await supabase
         .from("businesses")
@@ -146,9 +194,10 @@ export default function CreateBusinessWorkspaceForm({
       router.refresh();
     } catch {
       toast.error(
-        "Workspace setup could not be completed. Nothing was partially created; check your connection and try again.",
+        "Workspace result could not be confirmed. Refresh the workspace list before retrying; the same secure request cannot create a duplicate.",
       );
     } finally {
+      submissionLockRef.current = false;
       setSaving(false);
     }
   }
@@ -178,7 +227,8 @@ export default function CreateBusinessWorkspaceForm({
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
             Your selected experience sets a compatible starting workflow and module foundation.
-            Creation is atomic: tailored setup must succeed before any workspace is kept.
+            Creation is atomic and retry-safe: tailored setup must succeed before a workspace is
+            kept, and the same request cannot create a duplicate.
           </p>
         </div>
       </div>
@@ -293,7 +343,7 @@ export default function CreateBusinessWorkspaceForm({
           </span>
           <span className="flex items-center gap-2">
             <Globe2 aria-hidden="true" className="size-4 text-primary" />
-            Atomic workspace and module setup
+            Atomic, idempotent workspace setup
           </span>
         </div>
 
@@ -302,10 +352,13 @@ export default function CreateBusinessWorkspaceForm({
           size="lg"
           loading={saving}
           loadingLabel="Creating workspace..."
+          disabled={!creationRequestId}
           className="w-full sm:w-auto"
         >
           <WorkspaceIcon aria-hidden="true" />
-          Create {experience?.productName ?? "Business workspace"}
+          {creationRequestId
+            ? `Create ${experience?.productName ?? "Business workspace"}`
+            : "Preparing secure request..."}
         </Button>
       </form>
     </section>
