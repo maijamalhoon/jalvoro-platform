@@ -16,60 +16,94 @@ concurrency:
 
 jobs:
   android-and-shared:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 60
     defaults:
       run:
+        shell: pwsh
         working-directory: native
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install Android SDK 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+        run: sdkmanager.bat "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.3.1"
 
       - name: Test, lint and compile native application
         run: |
-          set -o pipefail
-          gradle \
-            :shared:testAndroidHostTest \
-            :androidApp:lintDebug \
-            :androidApp:lintRelease \
-            :androidApp:assembleDebug \
-            :androidApp:bundleRelease \
-            --stacktrace 2>&1 | tee native-ci.log
+          $ErrorActionPreference = "Continue"
+          & gradle `
+            :shared:testAndroidHostTest `
+            :androidApp:lintDebug `
+            :androidApp:lintRelease `
+            :androidApp:assembleDebug `
+            :androidApp:bundleRelease `
+            --stacktrace 2>&1 | Tee-Object -FilePath native-ci.log
+          $gradleExitCode = $LASTEXITCODE
+          if ($gradleExitCode -ne 0) {
+            exit $gradleExitCode
+          }
 
-      - name: Prepare physical-device test package
+      - name: Prepare physical-device test APK
         env:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail
-          mkdir -p device-build
-          cp \
-            androidApp/build/outputs/apk/debug/androidApp-debug.apk \
-            "device-build/jalvoro-personal-device-test-${PR_HEAD_SHA:0:12}.apk"
-          (
-            cd device-build
-            sha256sum *.apk > SHA256SUMS.txt
-            sha256sum --check SHA256SUMS.txt
-          )
+          $ErrorActionPreference = "Stop"
+          $source = "androidApp\build\outputs\apk\debug\androidApp-debug.apk"
+          if (-not (Test-Path $source)) { throw "Debug APK was not produced: $source" }
+          New-Item -ItemType Directory -Force -Path device-build | Out-Null
+          $shortSha = $env:PR_HEAD_SHA.Substring(0, [Math]::Min(12, $env:PR_HEAD_SHA.Length))
+          $target = "device-build\jalvoro-personal-device-test-$shortSha.apk"
+          Copy-Item $source $target -Force
+          $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -Path device-build\SHA256SUMS.txt -Encoding ascii
+          if ((Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
+            throw "APK checksum verification failed."
+          }
+
+      - name: Prepare release bundle
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $source = "androidApp\build\outputs\bundle\release\androidApp-release.aab"
+          if (-not (Test-Path $source)) { throw "Release AAB was not produced: $source" }
+          New-Item -ItemType Directory -Force -Path release-build | Out-Null
+          $shortSha = $env:PR_HEAD_SHA.Substring(0, [Math]::Min(12, $env:PR_HEAD_SHA.Length))
+          $target = "release-build\jalvoro-personal-release-$shortSha.aab"
+          Copy-Item $source $target -Force
+          $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -Path release-build\SHA256SUMS.txt -Encoding ascii
 
       - name: Upload physical-device test APK
         uses: actions/upload-artifact@v4
         with:
           name: jalvoro-personal-device-test-${{ github.event.pull_request.head.sha }}
           path: native/device-build/
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: jalvoro-personal-release-bundle-${{ github.event.pull_request.head.sha }}
+          path: native/release-build/
           if-no-files-found: error
           retention-days: 3
 
