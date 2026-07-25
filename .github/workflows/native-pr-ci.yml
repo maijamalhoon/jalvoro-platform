@@ -6,13 +6,12 @@ on:
     paths:
       - "native/**"
       - ".github/workflows/native-pr-ci.yml"
-      - ".github/scripts/setup-android-sdk.ps1"
       - ".github/scripts/setup-android-sdk.cmd"
       - ".github/scripts/setup-gradle.cmd"
-      - ".github/scripts/apply-native-compose-compile-fixes.ps1"
+      - ".github/scripts/apply-native-parity-fixes.mjs"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: native-pr-${{ github.event.pull_request.number }}
@@ -33,39 +32,43 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 1
+          fetch-depth: 0
           clean: false
 
-      - name: Apply targeted Compose and website parity fixes
+      - name: Apply and commit native website parity source
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         working-directory: .
         run: |
           $ErrorActionPreference = "Stop"
           $fixerLog = "$env:GITHUB_WORKSPACE\native\native-fixer.log"
-          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-compose-compile-fixes.ps1" *> $fixerLog
-          $fixerExit = $LASTEXITCODE
-          Get-Content $fixerLog
-          if ($fixerExit -ne 0) { exit $fixerExit }
-          git diff --check 2>&1 | Tee-Object -FilePath $fixerLog -Append
-          $diffExit = $LASTEXITCODE
-          git diff -- `
-            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
-            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
-            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt `
-            2>&1 | Tee-Object -FilePath $fixerLog -Append
-          if ($diffExit -ne 0) { exit $diffExit }
+          $node = "C:\Program Files\nodejs\node.exe"
+          if (-not (Test-Path $node)) { throw "Node.js was not found at $node" }
 
-      - name: Upload transformed native source
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-parity-source-${{ github.run_id }}
-          path: |
-            native/native-fixer.log
-            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt
-            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt
-            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
-          if-no-files-found: error
-          retention-days: 3
+          & $node "$env:GITHUB_WORKSPACE\.github\scripts\apply-native-parity-fixes.mjs" 2>&1 |
+            Tee-Object -FilePath $fixerLog
+          $fixerExit = $LASTEXITCODE
+          if ($fixerExit -ne 0) { exit $fixerExit }
+
+          git diff --check 2>&1 | Tee-Object -FilePath $fixerLog -Append
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $sourcePaths = @(
+            "native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt",
+            "native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt",
+            "native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt"
+          )
+          $changes = git status --porcelain -- $sourcePaths
+          if ($changes) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- $sourcePaths
+            git commit -m "Polish native website parity shell"
+            git push origin "HEAD:$env:PR_HEAD_REF"
+          } else {
+            "Native website parity source is already committed." |
+              Tee-Object -FilePath $fixerLog -Append
+          }
 
       - name: Set up Java
         uses: actions/setup-java@v4
