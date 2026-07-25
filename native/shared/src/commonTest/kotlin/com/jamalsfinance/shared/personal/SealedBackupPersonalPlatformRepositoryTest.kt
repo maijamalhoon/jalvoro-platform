@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 class SealedBackupPersonalPlatformRepositoryTest {
     private val validBackup = """
@@ -79,9 +81,11 @@ class SealedBackupPersonalPlatformRepositoryTest {
         )
         assertTrue(legacy.message.contains("sealed JALVORO"))
 
+        val payload = defaultPersonalJson().parseToJsonElement(validBackup).jsonObject
+        val unsealedRaw = JsonObject(payload - "seal").toString()
         val unsealed = assertIs<BackupValidationResult.Invalid>(
-            validateSealedBackupPayload(validBackup.replace(Regex(",\n  \"seal\": \\{[\\s\\S]*?\\n  \\}"), "")),
+            validateSealedBackupPayload(unsealedRaw),
         )
-        assertTrue(unsealed.message.contains("sealed by JALVORO") || unsealed.message.contains("invalid"))
+        assertTrue(unsealed.message.contains("sealed by JALVORO"))
     }
 }
