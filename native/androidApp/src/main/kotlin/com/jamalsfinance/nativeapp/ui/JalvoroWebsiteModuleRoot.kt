@@ -130,12 +130,24 @@ fun JalvoroWebsiteModuleRootShell(
                 onMore = { workspace = JalvoroWebsiteWorkspace.More },
             )
             JalvoroWebsiteWorkspace.Investments -> JalvoroWebsiteInvestmentsRoute(
+                email = email,
                 repository = investmentsAnalyticsRepository,
-                onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onOverview = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onMoney = { workspace = JalvoroWebsiteWorkspace.Money },
+                onPlanning = { workspace = JalvoroWebsiteWorkspace.Planning },
+                onReports = { workspace = JalvoroWebsiteWorkspace.Reports },
+                onSettings = { workspace = JalvoroWebsiteWorkspace.Settings },
+                onMore = { workspace = JalvoroWebsiteWorkspace.More },
             )
             JalvoroWebsiteWorkspace.Reports -> JalvoroWebsiteReportsRoute(
+                email = email,
                 repository = reportsInsightsRepository,
-                onBack = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onOverview = { workspace = JalvoroWebsiteWorkspace.Overview },
+                onMoney = { workspace = JalvoroWebsiteWorkspace.Money },
+                onPlanning = { workspace = JalvoroWebsiteWorkspace.Planning },
+                onInvestments = { workspace = JalvoroWebsiteWorkspace.Investments },
+                onSettings = { workspace = JalvoroWebsiteWorkspace.Settings },
+                onMore = { workspace = JalvoroWebsiteWorkspace.More },
             )
             JalvoroWebsiteWorkspace.Settings -> JalvoroWebsiteSettingsRoute(
                 repository = personalPlatformRepository,
