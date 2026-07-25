@@ -7,6 +7,7 @@ import {
   getMembershipRoleLabel,
   isBusinessExperience,
   isInternalWorkspacePath,
+  isPathWithinRoute,
   isWorkspaceModuleKey,
   WORKSPACE_MODULE_KEYS,
 } from "./domain";
@@ -47,9 +48,21 @@ describe("workspace domain model", () => {
     );
   });
 
-  it("preserves safe internal destinations while attaching resumable sessions", () => {
+  it("accepts only safe internal paths and exact route boundaries", () => {
     expect(isInternalWorkspacePath("/business?setup=1")).toBe(true);
     expect(isInternalWorkspacePath("//evil.example")).toBe(false);
+    expect(isInternalWorkspacePath("https://evil.example/business")).toBe(false);
+    expect(isInternalWorkspacePath("/business\\evil")).toBe(false);
+
+    expect(isPathWithinRoute("/dashboard", "/dashboard")).toBe(true);
+    expect(isPathWithinRoute("/dashboard/accounts?tab=active", "/dashboard")).toBe(true);
+    expect(isPathWithinRoute("/dashboard-admin", "/dashboard")).toBe(false);
+    expect(isPathWithinRoute("/business/ali", "/business/ali")).toBe(true);
+    expect(isPathWithinRoute("/business/ali/team", "/business/ali")).toBe(true);
+    expect(isPathWithinRoute("/business/ali-traders", "/business/ali")).toBe(false);
+  });
+
+  it("preserves safe internal destinations while attaching resumable sessions", () => {
     expect(
       appendOnboardingSession(
         "/business?setup=1&experience=retail-pos",
@@ -58,5 +71,11 @@ describe("workspace domain model", () => {
     ).toBe(
       "/business?setup=1&experience=retail-pos&session=3aeb8a4f-f701-44eb-a470-f5c02f7b0374",
     );
+    expect(
+      appendOnboardingSession(
+        "https://evil.example/business",
+        "3aeb8a4f-f701-44eb-a470-f5c02f7b0374",
+      ),
+    ).toBe("https://evil.example/business");
   });
 });
