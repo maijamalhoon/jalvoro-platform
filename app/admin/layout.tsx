@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 
+import AdminCommandCenterGlobalOperatorLayer from "@/components/admin/AdminCommandCenterGlobalOperatorLayer";
 import AdminCommandCenterShell from "@/components/admin/AdminCommandCenterShell";
 
 import "./command-center-world.css";
 import "./command-center-launch.css";
 import "./command-center-launch-mobile.css";
+import "./command-center-global-operator.css";
 import "./organization-operations.css";
 import "./organization-operations-detail.css";
 
@@ -34,5 +36,10 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AdminCommandCenterShell>{children}</AdminCommandCenterShell>;
+  return (
+    <>
+      <AdminCommandCenterGlobalOperatorLayer />
+      <AdminCommandCenterShell>{children}</AdminCommandCenterShell>
+    </>
+  );
 }
