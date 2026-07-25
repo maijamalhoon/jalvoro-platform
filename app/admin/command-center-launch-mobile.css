@@ -1,0 +1,40 @@
+/* Desktop navigation density must never remove mobile module labels. */
+
+@media (max-width: 960px) {
+  .cc-world[data-sidebar-density="compact"] .cc-mobile-dock .cc-nav-link {
+    display: flex;
+    min-height: 3.65rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.28rem;
+    padding: 0.3rem 0.16rem;
+    border-radius: 0.85rem;
+    box-shadow: none;
+  }
+
+  .cc-world[data-sidebar-density="compact"] .cc-mobile-dock .cc-nav-copy {
+    display: block;
+    max-width: 100%;
+  }
+
+  .cc-world[data-sidebar-density="compact"] .cc-mobile-dock .cc-nav-link-active {
+    box-shadow: none;
+  }
+
+  .cc-world[data-sidebar-density="compact"] .cc-mobile-sheet .cc-nav-link {
+    display: grid;
+    grid-template-columns: 2.45rem minmax(0, 1fr);
+    min-height: 3.65rem;
+    justify-content: initial;
+    gap: 0.7rem;
+    padding: 0.52rem 0.62rem;
+  }
+
+  .cc-world[data-sidebar-density="compact"] .cc-mobile-sheet .cc-nav-copy {
+    display: grid;
+  }
+
+  .cc-world[data-sidebar-density="compact"] .cc-mobile-sheet .cc-nav-link-active {
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--info) 78%, transparent);
+  }
+}
