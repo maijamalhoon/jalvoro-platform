@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
-import AdminGlobalOperationsPanel from "@/components/admin/AdminGlobalOperationsPanel";
-import { parseAdminGlobalOperationsSnapshot } from "@/lib/admin/global-operations";
+import AdminGlobalOperationsDecisionPanel from "@/components/admin/AdminGlobalOperationsDecisionPanel";
+import { parseAuditedAdminGlobalOperationsSnapshot } from "@/lib/admin/global-operations-audit";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -37,12 +37,12 @@ export default async function AdminGlobalOperationsPage() {
     );
   }
 
-  const operations = parseAdminGlobalOperationsSnapshot(
+  const operations = parseAuditedAdminGlobalOperationsSnapshot(
     readGlobalOperationsPayload(data),
   );
   if (!operations) {
     throw new Error("Global operations snapshot returned an invalid contract.");
   }
 
-  return <AdminGlobalOperationsPanel operations={operations} />;
+  return <AdminGlobalOperationsDecisionPanel operations={operations} />;
 }
