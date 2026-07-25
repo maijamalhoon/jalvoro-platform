@@ -40,6 +40,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          clean: false
 
       - name: Verify installed Node.js
         shell: cmd
