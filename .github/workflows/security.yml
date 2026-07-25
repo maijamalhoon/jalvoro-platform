@@ -49,6 +49,9 @@ jobs:
       github.event.repository.private == true
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 35
+    defaults:
+      run:
+        shell: cmd
     permissions:
       contents: read
     env:
@@ -59,7 +62,6 @@ jobs:
       NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
     steps:
       - name: Enable Windows long paths
-        shell: powershell
         run: git config --global core.longpaths true
 
       - name: Check out repository
@@ -69,15 +71,10 @@ jobs:
           show-progress: false
 
       - name: Verify installed Node.js
-        shell: powershell
         run: |
-          $ErrorActionPreference = "Stop"
           node --version
           npm --version
-          $major = node -p "Number(process.versions.node.split('.')[0])"
-          if ([int]$major -ne 24) {
-            throw "Node.js 24 is required; found major version $major."
-          }
+          node -e "const major=Number(process.versions.node.split('.')[0]); if(major!==24){console.error('Node.js 24 is required; found '+process.versions.node); process.exit(1)}"
 
       - name: Install dependencies
         run: npm ci --silent
