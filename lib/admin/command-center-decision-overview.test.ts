@@ -256,6 +256,51 @@ describe("Command Center decision overview", () => {
     expect(result.countries[0]).toEqual({ label: "C12", users: 12 });
   });
 
+  it("keeps system severity aligned with a connected past-due recovery queue", () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.billing.pastDueUsers = 2;
+    currentSnapshot.billing.providerConnected = true;
+    const currentBilling = billing();
+    currentBilling.providerConnected = true;
+
+    const result = deriveCommandCenterDecisionOverview({
+      snapshot: currentSnapshot,
+      posture: posture(),
+      incidents: incidents(),
+      access: access(),
+      billing: currentBilling,
+      nowMs: NOW,
+    });
+
+    expect(result.systemValue).toBe("Critical");
+    expect(result.actions[0]).toMatchObject({
+      key: "past-due",
+      tone: "critical",
+      value: 2,
+    });
+  });
+
+  it("keeps dormant retained past-due state at attention rather than critical", () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.billing.pastDueUsers = 2;
+
+    const result = deriveCommandCenterDecisionOverview({
+      snapshot: currentSnapshot,
+      posture: posture(),
+      incidents: incidents(),
+      access: access(),
+      billing: billing(),
+      nowMs: NOW,
+    });
+
+    expect(result.systemValue).toBe("Attention");
+    expect(result.actions[0]).toMatchObject({
+      key: "past-due",
+      tone: "attention",
+      value: 2,
+    });
+  });
+
   it("keeps a clean system healthy with an empty action queue", () => {
     const result = deriveCommandCenterDecisionOverview({
       snapshot: snapshot(),
