@@ -6,6 +6,7 @@ on:
     paths:
       - "native/**"
       - ".github/workflows/native-pr-ci.yml"
+      - ".github/scripts/setup-android-sdk.ps1"
 
 permissions:
   contents: read
@@ -18,7 +19,7 @@ jobs:
   android-and-shared:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 60
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -35,9 +36,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Android SDK 36
-        uses: android-actions/setup-android@v4
-        with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+        run: '& "$env:GITHUB_WORKSPACE\.github\scripts\setup-android-sdk.ps1"'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
