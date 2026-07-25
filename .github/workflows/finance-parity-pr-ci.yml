@@ -38,31 +38,24 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Prepare Node.js 24
+      - name: Verify installed Node.js
         run: |
           $ErrorActionPreference = "Stop"
-          $node = Get-Command node.exe -ErrorAction SilentlyContinue
-          $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
-          if (-not $node -or -not $npm) {
-            $release = Invoke-RestMethod "https://nodejs.org/dist/index.json" |
-              Where-Object { $_.version -like "v24.*" -and $_.files -contains "win-x64-msi" } |
-              Select-Object -First 1
-            if (-not $release) { throw "No official Node.js 24 Windows x64 MSI release was found." }
-            $msi = Join-Path $env:RUNNER_TEMP "node-$($release.version)-x64.msi"
-            Invoke-WebRequest "https://nodejs.org/dist/$($release.version)/node-$($release.version)-x64.msi" -OutFile $msi
-            $process = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart" -Wait -PassThru
-            if ($process.ExitCode -ne 0) { throw "Node.js installer failed with exit code $($process.ExitCode)." }
-            "C:\Program Files\nodejs" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            $env:Path = "C:\Program Files\nodejs;$env:Path"
+          $nodeDir = Join-Path $env:ProgramFiles "nodejs"
+          $nodeExe = Join-Path $nodeDir "node.exe"
+          $npmCmd = Join-Path $nodeDir "npm.cmd"
+          if (-not (Test-Path $nodeExe) -or -not (Test-Path $npmCmd)) {
+            throw "Node.js is not installed at $nodeDir. Install the current Node.js LTS package on the self-hosted runner."
           }
-          node.exe --version
-          npm.cmd --version
+          $nodeDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & $nodeExe --version
+          & $npmCmd --version
 
       - name: Install website dependencies
-        run: npm.cmd ci --silent
+        run: '& "$env:ProgramFiles\nodejs\npm.cmd" ci --silent'
 
       - name: Run website finance parity contract
-        run: npm.cmd run test:parity
+        run: '& "$env:ProgramFiles\nodejs\npm.cmd" run test:parity'
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -70,11 +63,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 36
-        run: sdkmanager.bat "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      - name: Set up Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
