@@ -26,6 +26,7 @@ interface DialogBaseline {
 }
 
 const dialogBaselines = new Map<HTMLElement, DialogBaseline>();
+let stableViewportMetrics: ViewportMetrics | null = null;
 
 const GLOBAL_DIALOG_STYLE = `
 :root {
@@ -81,11 +82,36 @@ html body .finance-modal-content .finance-modal-body > button[data-jf-form-actio
   margin-bottom: var(--jf-global-form-button-bottom-space) !important;
 }
 
-/* While a mobile keyboard is open, the card keeps its screen-top position.
-   Only its available height changes, so the body scrolls instead of the whole
-   form jumping toward the top of the screen. */
+/* Keep the whole form inside the visual viewport while the software keyboard is
+   open. Header/footer remain visible and only the form body becomes scrollable. */
 html body [${KEYBOARD_ATTRIBUTE}="true"] {
+  overflow: hidden !important;
   overscroll-behavior: contain !important;
+}
+
+html body [${KEYBOARD_ATTRIBUTE}="true"] > form {
+  display: flex !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+html body [${KEYBOARD_ATTRIBUTE}="true"]
+  :is(.finance-modal-header, .finance-modal-footer) {
+  flex: 0 0 auto !important;
+}
+
+html body [${KEYBOARD_ATTRIBUTE}="true"] .finance-modal-body {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scroll-padding-block: 0.75rem !important;
+  -webkit-overflow-scrolling: touch;
 }
 `;
 
@@ -135,9 +161,10 @@ function isKeyboardOpen(
   if (!isTouchViewport(metrics) || !getActiveTextEntry(dialog)) return false;
 
   const lostHeight = baseline.viewportHeight - metrics.height;
-  const threshold = Math.max(120, baseline.viewportHeight * 0.16);
+  const threshold = Math.max(96, baseline.viewportHeight * 0.12);
   const sameOrientation =
-    Math.abs(baseline.viewportWidth - metrics.width) < Math.max(48, baseline.viewportWidth * 0.12);
+    Math.abs(baseline.viewportWidth - metrics.width) <
+    Math.max(48, baseline.viewportWidth * 0.12);
 
   return sameOrientation && lostHeight >= threshold;
 }
@@ -175,30 +202,50 @@ function revealFocusedField(dialog: HTMLElement) {
     ) ?? active;
 
   window.requestAnimationFrame(() => {
-    if (!body.isConnected || !target.isConnected) return;
+    window.requestAnimationFrame(() => {
+      if (!body.isConnected || !target.isConnected) return;
 
-    const bodyRect = body.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const edgeGap = 12;
+      const bodyRect = body.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const edgeGap = 12;
 
-    if (targetRect.bottom > bodyRect.bottom - edgeGap) {
-      body.scrollTop += targetRect.bottom - bodyRect.bottom + edgeGap;
-    } else if (targetRect.top < bodyRect.top + edgeGap) {
-      body.scrollTop -= bodyRect.top + edgeGap - targetRect.top;
-    }
+      if (targetRect.bottom > bodyRect.bottom - edgeGap) {
+        body.scrollTop += targetRect.bottom - bodyRect.bottom + edgeGap;
+      } else if (targetRect.top < bodyRect.top + edgeGap) {
+        body.scrollTop -= bodyRect.top + edgeGap - targetRect.top;
+      }
+    });
   });
+}
+
+function createFallbackBaseline(): DialogBaseline | null {
+  if (!stableViewportMetrics) return null;
+
+  return {
+    viewportWidth: stableViewportMetrics.width,
+    viewportHeight: stableViewportMetrics.height,
+    screenTop: 8,
+    screenCenterX: stableViewportMetrics.width / 2,
+  };
 }
 
 function centerDialog(dialog: HTMLElement) {
   const metrics = getViewportMetrics();
-  const baseline = dialogBaselines.get(dialog);
+  const activeEntry = getActiveTextEntry(dialog);
+  const storedBaseline = dialogBaselines.get(dialog);
+  const baseline = storedBaseline ?? createFallbackBaseline();
 
-  if (baseline && isKeyboardOpen(dialog, metrics, baseline)) {
-    const stableTop = metrics.top + Math.max(8, baseline.screenTop);
-    const stableLeft = metrics.left + baseline.screenCenterX;
+  if (activeEntry && baseline && isKeyboardOpen(dialog, metrics, baseline)) {
+    const topGap = Math.max(
+      8,
+      Math.min(baseline.screenTop, metrics.height * 0.08),
+    );
+    const stableTop = metrics.top + topGap;
+    const stableLeft = metrics.left + metrics.width / 2;
     const visibleBottom = metrics.top + metrics.height;
     const availableHeight = Math.max(160, visibleBottom - stableTop - 8);
 
+    if (!storedBaseline) dialogBaselines.set(dialog, baseline);
     dialog.setAttribute(KEYBOARD_ATTRIBUTE, "true");
     setDialogFrame(
       dialog,
@@ -223,6 +270,12 @@ function centerDialog(dialog: HTMLElement) {
     metrics.height - 16,
   );
 
+  /* A focused input can trigger several small VisualViewport resize steps while
+     the keyboard animates. Lock the pre-keyboard baseline until focus leaves so
+     those intermediate frames cannot teach the dialog that the shrunken viewport
+     is the new normal. */
+  if (activeEntry) return;
+
   const rect = dialog.getBoundingClientRect();
   dialogBaselines.set(dialog, {
     viewportWidth: metrics.width,
@@ -233,10 +286,16 @@ function centerDialog(dialog: HTMLElement) {
 }
 
 function syncDialogCenters() {
+  const dialogs = getDialogs();
+  const hasFocusedEntry = dialogs.some((dialog) => Boolean(getActiveTextEntry(dialog)));
+
+  if (!hasFocusedEntry) stableViewportMetrics = getViewportMetrics();
+
   for (const dialog of dialogBaselines.keys()) {
     if (!dialog.isConnected) dialogBaselines.delete(dialog);
   }
-  getDialogs().forEach(centerDialog);
+
+  dialogs.forEach(centerDialog);
 }
 
 function containsDialog(node: Node) {
@@ -282,14 +341,16 @@ export default function GlobalFormDialogAuthority() {
     };
 
     const resetForOrientation = () => {
+      stableViewportMetrics = null;
       dialogBaselines.clear();
       scheduleViewportSync();
     };
 
     const handleFocusOut = () => {
-      window.setTimeout(scheduleViewportSync, 80);
+      window.setTimeout(scheduleViewportSync, 160);
     };
 
+    stableViewportMetrics = getViewportMetrics();
     syncDialogCenters();
 
     const observer = new MutationObserver((mutations) => {
@@ -326,6 +387,7 @@ export default function GlobalFormDialogAuthority() {
       document
         .querySelectorAll<HTMLElement>(`[${CENTERED_ATTRIBUTE}="true"]`)
         .forEach(clearDialogCenter);
+      stableViewportMetrics = null;
       dialogBaselines.clear();
     };
   }, []);
