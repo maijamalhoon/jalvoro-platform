@@ -1,5 +1,6 @@
 package com.jamalsfinance.nativeapp.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,9 +27,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,19 +44,22 @@ import com.jamalsfinance.shared.finance.AccountDraft
 import com.jamalsfinance.shared.finance.EditableTransaction
 import com.jamalsfinance.shared.finance.FinanceAccount
 import com.jamalsfinance.shared.finance.FinanceCategory
+import com.jamalsfinance.shared.finance.FinanceResult
 import com.jamalsfinance.shared.finance.SupportedFinanceCurrencies
 import com.jamalsfinance.shared.finance.TransactionDraft
 import com.jamalsfinance.shared.finance.TransferDraft
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun JalvoroWebsiteAccountDialog(
     account: FinanceAccount?,
     onDismiss: () -> Unit,
-    onSubmit: suspend (AccountDraft) -> Unit,
+    onSubmit: suspend (AccountDraft) -> FinanceResult,
 ) {
+    val scope = rememberCoroutineScope()
     var name by remember(account?.id) { mutableStateOf(account?.name.orEmpty()) }
     var accountNumber by remember(account?.id) { mutableStateOf(account?.accountNumber.orEmpty()) }
     var accountKind by remember(account?.id) { mutableStateOf(account?.accountKind ?: "savings") }
@@ -89,9 +95,9 @@ internal fun JalvoroWebsiteAccountDialog(
                 else -> null
             }
             if (error == null) {
-                busy = true
-                try {
-                    onSubmit(
+                scope.launch {
+                    busy = true
+                    val result = onSubmit(
                         AccountDraft(
                             name = cleanName,
                             accountNumber = accountNumber.trim().ifBlank { null },
@@ -105,24 +111,17 @@ internal fun JalvoroWebsiteAccountDialog(
                             },
                         ),
                     )
-                } finally {
                     busy = false
+                    when (result) {
+                        FinanceResult.Success -> onDismiss()
+                        is FinanceResult.Failure -> error = result.message
+                    }
                 }
             }
         },
     ) {
-        JalvoroWebsiteTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = "Account name",
-            enabled = !busy,
-        )
-        JalvoroWebsiteTextField(
-            value = accountNumber,
-            onValueChange = { accountNumber = it },
-            label = "Account number (optional)",
-            enabled = !busy,
-        )
+        JalvoroWebsiteTextField(name, { name = it }, "Account name", !busy)
+        JalvoroWebsiteTextField(accountNumber, { accountNumber = it }, "Account number (optional)", !busy)
         Text("Account type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("savings" to "Savings", "current" to "Current").forEach { option ->
@@ -136,11 +135,11 @@ internal fun JalvoroWebsiteAccountDialog(
         }
         if (account == null) {
             JalvoroWebsiteTextField(
-                value = openingAmount,
-                onValueChange = { openingAmount = it },
-                label = "Opening amount",
-                enabled = !busy,
-                keyboardType = KeyboardType.Decimal,
+                openingAmount,
+                { openingAmount = it },
+                "Opening amount",
+                !busy,
+                KeyboardType.Decimal,
             )
             JalvoroWebsiteChoiceField(
                 label = "Currency",
@@ -151,11 +150,11 @@ internal fun JalvoroWebsiteAccountDialog(
             )
             if (currency != "PKR") {
                 JalvoroWebsiteTextField(
-                    value = exchangeRate,
-                    onValueChange = { exchangeRate = it },
-                    label = "Exchange rate to PKR",
-                    enabled = !busy,
-                    keyboardType = KeyboardType.Decimal,
+                    exchangeRate,
+                    { exchangeRate = it },
+                    "Exchange rate to PKR",
+                    !busy,
+                    KeyboardType.Decimal,
                 )
             }
         }
@@ -166,8 +165,9 @@ internal fun JalvoroWebsiteAccountDialog(
 internal fun JalvoroWebsiteTransferDialog(
     accounts: List<FinanceAccount>,
     onDismiss: () -> Unit,
-    onSubmit: suspend (TransferDraft) -> Unit,
+    onSubmit: suspend (TransferDraft) -> FinanceResult,
 ) {
+    val scope = rememberCoroutineScope()
     var fromId by remember(accounts) { mutableStateOf(accounts.firstOrNull()?.id.orEmpty()) }
     var toId by remember(accounts) { mutableStateOf(accounts.drop(1).firstOrNull()?.id.orEmpty()) }
     var amount by remember { mutableStateOf("") }
@@ -198,9 +198,9 @@ internal fun JalvoroWebsiteTransferDialog(
                 else -> null
             }
             if (error == null) {
-                busy = true
-                try {
-                    onSubmit(
+                scope.launch {
+                    busy = true
+                    val result = onSubmit(
                         TransferDraft(
                             fromAccountId = fromId,
                             toAccountId = toId,
@@ -212,35 +212,25 @@ internal fun JalvoroWebsiteTransferDialog(
                             reference = reference.trim().ifBlank { null },
                         ),
                     )
-                } finally {
                     busy = false
+                    when (result) {
+                        FinanceResult.Success -> onDismiss()
+                        is FinanceResult.Failure -> error = result.message
+                    }
                 }
             }
         },
     ) {
         val accountOptions = accounts.map { it.id to "${it.name} • ${formatPkrCompact(it.balance)}" }
-        JalvoroWebsiteChoiceField(
-            label = "From account",
-            selectedKey = fromId,
-            options = accountOptions,
-            enabled = !busy,
-            onSelected = { fromId = it },
-        )
-        JalvoroWebsiteChoiceField(
-            label = "To account",
-            selectedKey = toId,
-            options = accountOptions,
-            enabled = !busy,
-            onSelected = { toId = it },
-        )
+        JalvoroWebsiteChoiceField("From account", fromId, accountOptions, !busy) { fromId = it }
+        JalvoroWebsiteChoiceField("To account", toId, accountOptions, !busy) { toId = it }
         JalvoroWebsiteTextField(amount, { amount = it }, "Amount", !busy, KeyboardType.Decimal)
         JalvoroWebsiteChoiceField(
-            label = "Currency",
-            selectedKey = currency,
-            options = SupportedFinanceCurrencies.map { it to it },
-            enabled = !busy,
-            onSelected = { currency = it },
-        )
+            "Currency",
+            currency,
+            SupportedFinanceCurrencies.map { it to it },
+            !busy,
+        ) { currency = it }
         if (currency != "PKR") {
             JalvoroWebsiteTextField(
                 exchangeRate,
@@ -262,8 +252,9 @@ internal fun JalvoroWebsiteTransactionDialog(
     accounts: List<FinanceAccount>,
     categories: List<FinanceCategory>,
     onDismiss: () -> Unit,
-    onSubmit: suspend (TransactionDraft) -> Unit,
+    onSubmit: suspend (TransactionDraft) -> FinanceResult,
 ) {
+    val scope = rememberCoroutineScope()
     var type by remember(editable?.id) { mutableStateOf(editable?.type ?: "income") }
     var amount by remember(editable?.id) { mutableStateOf(editable?.amountOriginal?.moneyInput().orEmpty()) }
     var currency by remember(editable?.id) { mutableStateOf(editable?.currency ?: "PKR") }
@@ -284,8 +275,10 @@ internal fun JalvoroWebsiteTransactionDialog(
     var busy by remember { mutableStateOf(false) }
 
     val matchingCategories = categories.filter { it.type == type }
-    if (categoryId.isBlank() || matchingCategories.none { it.id == categoryId }) {
-        categoryId = matchingCategories.firstOrNull()?.id.orEmpty()
+    LaunchedEffect(type, editable?.id, categories) {
+        if (categoryId.isBlank() || matchingCategories.none { it.id == categoryId }) {
+            categoryId = matchingCategories.firstOrNull()?.id.orEmpty()
+        }
     }
 
     JalvoroWebsiteFormDialog(
@@ -308,9 +301,9 @@ internal fun JalvoroWebsiteTransactionDialog(
                 else -> null
             }
             if (error == null) {
-                busy = true
-                try {
-                    onSubmit(
+                scope.launch {
+                    busy = true
+                    val result = onSubmit(
                         TransactionDraft(
                             type = type,
                             amountOriginal = parsedAmount ?: 0.0,
@@ -326,8 +319,11 @@ internal fun JalvoroWebsiteTransactionDialog(
                             reference = reference.trim().ifBlank { null },
                         ),
                     )
-                } finally {
                     busy = false
+                    when (result) {
+                        FinanceResult.Success -> onDismiss()
+                        is FinanceResult.Failure -> error = result.message
+                    }
                 }
             }
         },
@@ -348,12 +344,11 @@ internal fun JalvoroWebsiteTransactionDialog(
         }
         JalvoroWebsiteTextField(amount, { amount = it }, "Amount", !busy, KeyboardType.Decimal)
         JalvoroWebsiteChoiceField(
-            label = "Currency",
-            selectedKey = currency,
-            options = SupportedFinanceCurrencies.map { it to it },
-            enabled = !busy,
-            onSelected = { currency = it },
-        )
+            "Currency",
+            currency,
+            SupportedFinanceCurrencies.map { it to it },
+            !busy,
+        ) { currency = it }
         if (currency != "PKR") {
             JalvoroWebsiteTextField(
                 exchangeRate,
@@ -364,19 +359,17 @@ internal fun JalvoroWebsiteTransactionDialog(
             )
         }
         JalvoroWebsiteChoiceField(
-            label = "Account",
-            selectedKey = accountId,
-            options = accounts.map { it.id to it.name },
-            enabled = !busy,
-            onSelected = { accountId = it },
-        )
+            "Account",
+            accountId,
+            accounts.map { it.id to it.name },
+            !busy,
+        ) { accountId = it }
         JalvoroWebsiteChoiceField(
-            label = "Category",
-            selectedKey = categoryId,
-            options = matchingCategories.map { it.id to it.name },
-            enabled = !busy,
-            onSelected = { categoryId = it },
-        )
+            "Category",
+            categoryId,
+            matchingCategories.map { it.id to it.name },
+            !busy,
+        ) { categoryId = it }
         JalvoroWebsiteTextField(date, { date = it }, "Date (YYYY-MM-DD)", !busy)
         if (type == "income") {
             JalvoroWebsiteTextField(sourceName, { sourceName = it }, "Income source (optional)", !busy)
@@ -418,9 +411,7 @@ private fun JalvoroWebsiteFormDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (error != null) {
-                    JalvoroFeedbackCard(error, JalvoroFeedbackTone.Danger)
-                }
+                if (error != null) JalvoroFeedbackCard(error, JalvoroFeedbackTone.Danger)
                 content()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -479,10 +470,7 @@ private fun JalvoroWebsiteChoiceField(
                 modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { expanded = true },
                 shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
@@ -522,7 +510,8 @@ private fun todayKey(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).forma
 
 private fun isDateKey(value: String): Boolean = runCatching {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
-    formatter.parse(value)
-}.getOrNull() != null
+    val parsed = formatter.parse(value) ?: return@runCatching false
+    formatter.format(parsed) == value
+}.getOrDefault(false)
 
 private fun formatPkrCompact(value: Double): String = "PKR ${"%,.2f".format(Locale.US, value)}"
