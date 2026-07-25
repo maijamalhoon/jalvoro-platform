@@ -17,7 +17,9 @@ export default function ControlPlaneError({
       scope.setTag("jalvoro.surface", "control-plane");
       scope.setTag("jalvoro.boundary", "control-error");
       scope.setLevel("error");
-      if (error.digest) scope.setExtra("next_error_digest", error.digest);
+      if (error.digest) {
+        scope.setTag("next.error_digest", error.digest.slice(0, 160));
+      }
       Sentry.captureException(error);
     });
   }, [error]);
