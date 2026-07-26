@@ -2,14 +2,11 @@ name: Agent apply verified repairs
 
 on:
   push:
-    branches:
-      - agent/final-production-audit-20260726
-    paths:
-      - ".github/workflows/agent-apply-repairs.yml"
+    branches: [agent/final-production-audit-20260726]
+    paths: [".github/workflows/agent-apply-repairs.yml"]
   pull_request:
     types: [synchronize]
-    paths:
-      - ".github/workflows/agent-apply-repairs.yml"
+    paths: [".github/workflows/agent-apply-repairs.yml"]
 
 permissions:
   contents: write
@@ -31,62 +28,48 @@ jobs:
         run: |
           from pathlib import Path
 
-          def replace_once(path: str, old: str, new: str) -> None:
+          def replace(path: str, old: str, new: str) -> None:
               file = Path(path)
               source = file.read_text()
               if new in source:
                   return
               if old not in source:
-                  raise SystemExit(f"Expected source was not found in {path}")
+                  raise SystemExit(f"Missing repair target: {path}")
               file.write_text(source.replace(old, new, 1))
 
-          replace_once(
-              "README.md",
-              "- Node.js 20 or newer",
-              "- Node.js 24.x (matching `package.json` and CI)",
-          )
+          replace("README.md", "- Node.js 20 or newer", "- Node.js 24.x (matching `package.json` and CI)")
 
-          replace_once(
+          replace(
               "app/dashboard/layout.tsx",
               "export const metadata: Metadata = {\n  alternates:",
               "export const metadata: Metadata = {\n  robots: { index: false, follow: false, nocache: true },\n  alternates:",
           )
 
-          replace_once(
-              "app/onboarding/layout.tsx",
-              'import type { ReactNode } from "react";\n',
-              'import type { Metadata } from "next";\nimport type { ReactNode } from "react";\n',
-          )
-          replace_once(
-              "app/onboarding/layout.tsx",
-              "\nexport default function OnboardingLayout",
-              "\nexport const metadata: Metadata = {\n  title: \"Account setup\",\n  robots: { index: false, follow: false, nocache: true },\n};\n\nexport default function OnboardingLayout",
-          )
+          for path, title in (
+              ("app/onboarding/layout.tsx", "Account setup"),
+              ("app/reset-password/layout.tsx", "Reset password"),
+          ):
+              replace(
+                  path,
+                  'import type { ReactNode } from "react";\n',
+                  'import type { Metadata } from "next";\nimport type { ReactNode } from "react";\n',
+              )
+              replace(
+                  path,
+                  "\nexport default function",
+                  f'\nexport const metadata: Metadata = {{\n  title: "{title}",\n  robots: {{ index: false, follow: false, nocache: true }},\n}};\n\nexport default function',
+              )
 
-          replace_once(
-              "app/reset-password/layout.tsx",
-              'import type { ReactNode } from "react";\n',
-              'import type { Metadata } from "next";\nimport type { ReactNode } from "react";\n',
-          )
-          replace_once(
-              "app/reset-password/layout.tsx",
-              "\nexport default function ResetPasswordLayout",
-              "\nexport const metadata: Metadata = {\n  title: \"Reset password\",\n  robots: { index: false, follow: false, nocache: true },\n};\n\nexport default function ResetPasswordLayout",
-          )
+          Path("app/robots.ts").write_text('''import type { MetadataRoute } from "next";
 
-          replace_once(
-              "app/robots.ts",
-              '''      disallow: [
-                  "/api/",
-                  "/dashboard/",
-                  "/accounts/",
-                  "/transactions/",
-                  "/goals/",
-                  "/investments/",
-                  "/liabilities/",
-                  "/settings/",
-                ],''',
-              '''      disallow: [
+          import { APP_URL } from "@/lib/brand";
+
+          export default function robots(): MetadataRoute.Robots {
+            return {
+              rules: {
+                userAgent: "*",
+                allow: "/",
+                disallow: [
                   "/api",
                   "/admin",
                   "/business",
@@ -95,108 +78,62 @@ jobs:
                   "/login",
                   "/onboarding",
                   "/reset-password",
-                ],''',
-          )
+                ],
+              },
+              sitemap: `${APP_URL}/sitemap.xml`,
+              host: APP_URL,
+            };
+          }
+          ''')
 
-          replace_once(
+          replace(
               "components/ai-insights/AIInsightsExplainablePanel.tsx",
-              '''  const actionableCopy = getAIInsightsActionableCopy(language);
-            const { currency, formatCurrency, live, rate } = useCurrency();''',
-              '''  const actionableCopy = getAIInsightsActionableCopy(language);
-            const unavailableMessage = copy.panel.unavailable;
-            const emptyServerMessage = copy.server.emptyMessage;
-            const { currency, formatCurrency, live, rate } = useCurrency();''',
+              "  const actionableCopy = getAIInsightsActionableCopy(language);\n  const { currency, formatCurrency, live, rate } = useCurrency();",
+              "  const actionableCopy = getAIInsightsActionableCopy(language);\n  const unavailableMessage = copy.panel.unavailable;\n  const emptyServerMessage = copy.server.emptyMessage;\n  const { currency, formatCurrency, live, rate } = useCurrency();",
           )
-          replace_once(
-              "components/ai-insights/AIInsightsExplainablePanel.tsx",
-              "throw new Error(body.message ?? copy.panel.unavailable);",
-              "throw new Error(body.message ?? unavailableMessage);",
-          )
-          replace_once(
-              "components/ai-insights/AIInsightsExplainablePanel.tsx",
-              "setEmptyMessage(body.message ?? copy.server.emptyMessage);",
-              "setEmptyMessage(body.message ?? emptyServerMessage);",
-          )
-          replace_once(
-              "components/ai-insights/AIInsightsExplainablePanel.tsx",
-              ": copy.panel.unavailable,",
-              ": unavailableMessage,",
-          )
-          replace_once(
-              "components/ai-insights/AIInsightsExplainablePanel.tsx",
-              "[copy.panel.unavailable, copy.server.emptyMessage, currency, language, live, rate],",
-              "[currency, emptyServerMessage, language, live, rate, unavailableMessage],",
-          )
+          replace("components/ai-insights/AIInsightsExplainablePanel.tsx", "throw new Error(body.message ?? copy.panel.unavailable);", "throw new Error(body.message ?? unavailableMessage);")
+          replace("components/ai-insights/AIInsightsExplainablePanel.tsx", "setEmptyMessage(body.message ?? copy.server.emptyMessage);", "setEmptyMessage(body.message ?? emptyServerMessage);")
+          replace("components/ai-insights/AIInsightsExplainablePanel.tsx", ": copy.panel.unavailable,", ": unavailableMessage,")
+          replace("components/ai-insights/AIInsightsExplainablePanel.tsx", "[copy.panel.unavailable, copy.server.emptyMessage, currency, language, live, rate],", "[currency, emptyServerMessage, language, live, rate, unavailableMessage],")
 
-          for css_path in (
+          for path in (
               "components/control-plane/control-plane-invitation.module.css",
               "components/control-plane/control-plane-owner-management.module.css",
           ):
-              file = Path(css_path)
-              source = file.read_text()
-              source = source.replace(
-                  "* { scroll-behavior: auto !important; }",
-                  ".root * { scroll-behavior: auto !important; }",
-              )
-              file.write_text(source)
+              file = Path(path)
+              file.write_text(file.read_text().replace("* { scroll-behavior: auto !important; }", ".root * { scroll-behavior: auto !important; }"))
 
-          replace_once(
+          replace(
               "lib/security-hardening.test.ts",
-              '''    return /\\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path) ? [path] : [];''',
-              '''    return /\\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path) &&
-                !/\\.(?:test|spec)\\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path)
-                ? [path]
-                : [];''',
+              "    return /\\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path) ? [path] : [];",
+              "    return /\\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path) &&\n      !/\\.(?:test|spec)\\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path)\n      ? [path]\n      : [];",
           )
 
-          replace_once(
+          replace(
               "tsconfig.json",
               '    "components/settings/SettingsExperience.tsx"\n',
               '    "components/settings/SettingsExperience.tsx",\n    "supabase/**/functions/**"\n',
           )
-
-          Path("supabase/control-plane/functions/deno.json").write_text(
-              '''{
+          Path("supabase/control-plane/functions/deno.json").write_text('''{
             "compilerOptions": {
               "strict": true,
               "noImplicitAny": true
             }
           }
-          '''
-          )
+          ''')
 
-          replace_once(
+          replace(
               ".github/workflows/ci.yml",
-              '''      - name: Install dependencies
-                run: npm ci --silent''',
-              '''      - name: Set up Deno
-                uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
-                with:
-                  deno-version: 2.8.1
-                  cache: true
-                  cache-hash: ${{ hashFiles('supabase/**/deno.json', 'supabase/**/deno.lock') }}
-
-              - name: Install dependencies
-                run: npm ci --silent''',
+              "      - name: Install dependencies\n        run: npm ci --silent",
+              "      - name: Set up Deno\n        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4\n        with:\n          deno-version: 2.8.1\n          cache: true\n          cache-hash: ${{ hashFiles('supabase/**/deno.json', 'supabase/**/deno.lock') }}\n\n      - name: Install dependencies\n        run: npm ci --silent",
           )
-          replace_once(
+          replace(
               ".github/workflows/ci.yml",
-              '''      - name: Run security contract tests
-                run: npx vitest run lib/security-hardening.test.ts''',
-              '''      - name: Typecheck Supabase Edge Functions
-                run: deno check --config supabase/control-plane/functions/deno.json supabase/control-plane/functions/control-plane-create-operator/index.ts
-
-              - name: Run security contract tests
-                run: npx vitest run lib/security-hardening.test.ts''',
+              "      - name: Run security contract tests\n        run: npx vitest run lib/security-hardening.test.ts",
+              "      - name: Typecheck Supabase Edge Functions\n        run: deno check --config supabase/control-plane/functions/deno.json supabase/control-plane/functions/control-plane-create-operator/index.ts\n\n      - name: Run security contract tests\n        run: npx vitest run lib/security-hardening.test.ts",
           )
 
           Path(".github/workflows/agent-apply-repairs.yml").unlink()
-
-          for file in Path(".").rglob("*"):
-              if file.is_file() and file.suffix in {".ts", ".tsx", ".json", ".css", ".md", ".yml"}:
-                  text = file.read_text()
-                  if text and not text.endswith("\n"):
-                      file.write_text(text + "\n")
 
       - name: Commit repairs to audit branch
         shell: bash
