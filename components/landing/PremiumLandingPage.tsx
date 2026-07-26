@@ -303,8 +303,8 @@ export default function PremiumLandingPage() {
           </nav>
 
           <div className="jf-header-actions">
-            <Link href="/login" className="finance-focus jf-header-login">Sign in</Link>
-            <Link href="/login?mode=signup" className="finance-focus jf-header-cta">
+            <Link href="/start?mode=login" className="finance-focus jf-header-login">Sign in</Link>
+            <Link href="/start" className="finance-focus jf-header-cta">
               <span className="hidden sm:inline">Get started</span>
               <span className="sm:hidden">Start</span>
               <ArrowRight aria-hidden="true" />
@@ -320,8 +320,8 @@ export default function PremiumLandingPage() {
           <p className="jf-hero-description">{APP_DESCRIPTION}</p>
 
           <div className="jf-hero-actions">
-            <PrimaryButton href="/login?mode=signup">Create your workspace</PrimaryButton>
-            <SecondaryButton href="/login">Sign in</SecondaryButton>
+            <PrimaryButton href="/start">Choose your product</PrimaryButton>
+            <SecondaryButton href="/start?mode=login">Sign in</SecondaryButton>
           </div>
 
           <div className="jf-hero-proof" aria-label="Product highlights">
@@ -462,7 +462,7 @@ export default function PremiumLandingPage() {
             <h2>{APP_TAGLINE}</h2>
             <p>Begin personally or create a business workspace, then grow into the connected tools your work requires.</p>
           </div>
-          <PrimaryButton href="/login?mode=signup">Get started</PrimaryButton>
+          <PrimaryButton href="/start">Get started</PrimaryButton>
         </div>
       </section>
 
@@ -482,8 +482,8 @@ export default function PremiumLandingPage() {
             </div>
             <div>
               <strong>Workspace</strong>
-              <Link href="/login">Sign in</Link>
-              <Link href="/login?mode=signup">Create account</Link>
+              <Link href="/start?mode=login">Sign in</Link>
+              <Link href="/start">Create account</Link>
               <Link href="/dashboard">Dashboard</Link>
             </div>
           </nav>
