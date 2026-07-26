@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const root = resolve(import.meta.dirname, "..");
+const root = resolve(import.meta.dirname, "../..");
 const helper = readFileSync(
   resolve(root, "lib/admin/server-action-security.ts"),
   "utf8",
