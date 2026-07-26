@@ -55,6 +55,28 @@ jobs:
           PY
           base64 --decode /tmp/audit-fixes.patch.gz.b64 | gzip --decompress > /tmp/audit-fixes.patch
           patch --batch --forward -p1 < /tmp/audit-fixes.patch
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('components/ui/date-picker.tsx')
+          source = path.read_text()
+          source = source.replace(
+              "  openCalendar,\n  calendarOpen,\n  calendarId,\n",
+              "  openCalendar,\n",
+              1,
+          )
+          source = source.replace(
+              "  openCalendar: () => void;\n  calendarOpen: boolean;\n  calendarId: string;\n",
+              "  openCalendar: () => void;\n",
+              1,
+          )
+          source = source.replace(
+              "            openCalendar={openCalendar}\n            calendarOpen={calendarOpen}\n            calendarId={calendarId}\n",
+              "            openCalendar={openCalendar}\n",
+              1,
+          )
+          path.write_text(source)
+          PY
           git diff --check
 
       - name: Install dependencies
