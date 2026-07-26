@@ -51,6 +51,17 @@ function isRetiredControlPlanePath(pathname: string) {
   );
 }
 
+function isLegacyCommandCenterLogin(request: NextRequest) {
+  if (request.nextUrl.pathname !== "/login") return false;
+  const next = request.nextUrl.searchParams.get("next") ?? "";
+  return (
+    next === "/admin" ||
+    next.startsWith("/admin/") ||
+    next === "/commandcenter" ||
+    next.startsWith("/commandcenter/")
+  );
+}
+
 function hardenCommandCenterResponse(response: NextResponse) {
   Object.entries(COMMAND_CENTER_RESPONSE_HEADERS).forEach(([name, value]) =>
     response.headers.set(name, value),
@@ -79,7 +90,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (isRetiredControlPlanePath(pathname)) {
+  if (isRetiredControlPlanePath(pathname) || isLegacyCommandCenterLogin(request)) {
     return hardenCommandCenterResponse(
       NextResponse.redirect(commandCenterDestination(request)),
     );
