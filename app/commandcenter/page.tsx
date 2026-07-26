@@ -4,6 +4,8 @@ import {
   parseResolvedCommandCenterNavigation,
   resolveCommandCenterEnvironment,
 } from "@/lib/admin/command-center-navigation";
+import { parseCommandCenterAccess } from "@/lib/command-center/config";
+import { createCommandCenterServerClient } from "@/lib/command-center/server";
 import { createClient } from "@/lib/supabase/server";
 
 type CommandCenterPageProps = {
@@ -13,29 +15,46 @@ type CommandCenterPageProps = {
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage(props: CommandCenterPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const commandCenter = await createCommandCenterServerClient();
+  const commandUserResult = await commandCenter.auth.getUser();
+  const commandUser = commandUserResult.data.user;
+  const commandEmail = commandUser?.email?.trim().toLowerCase() ?? "";
 
-  if (userError || !user) {
+  if (commandUserResult.error || !commandUser || !commandEmail) {
     return <CommandCenterLogin />;
   }
 
-  const navigationResult = await supabase.rpc("get_command_center_navigation", {
+  const accessResult = await commandCenter.rpc("get_my_command_center_access");
+  const access = parseCommandCenterAccess(accessResult.data);
+  if (accessResult.error?.code === "42501" || !access || !access.isOwner) {
+    return <CommandCenterLogin accessDenied signedInEmail={commandEmail} />;
+  }
+  if (accessResult.error) {
+    throw new Error(
+      `Command Center identity verification unavailable: ${accessResult.error.code ?? "unknown"}`,
+    );
+  }
+
+  const website = await createClient();
+  const websiteUserResult = await website.auth.getUser();
+  const websiteEmail =
+    websiteUserResult.data.user?.email?.trim().toLowerCase() ?? "";
+
+  if (
+    websiteUserResult.error ||
+    !websiteUserResult.data.user ||
+    websiteEmail !== commandEmail
+  ) {
+    return <CommandCenterLogin signedInEmail={commandEmail} syncRequired />;
+  }
+
+  const navigationResult = await website.rpc("get_command_center_navigation", {
     p_environment: resolveCommandCenterEnvironment(),
   });
 
   if (navigationResult.error?.code === "42501") {
-    return (
-      <CommandCenterLogin
-        accessDenied
-        signedInEmail={user.email ?? "Signed-in website account"}
-      />
-    );
+    return <CommandCenterLogin accessDenied signedInEmail={commandEmail} />;
   }
-
   if (navigationResult.error) {
     throw new Error(
       `Command Center authorization unavailable: ${navigationResult.error.code ?? "unknown"}`,
