@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
+import { verifyImageUploadMetadata } from "@/lib/security/file-verification";
 import { createClient } from "@/lib/supabase/server";
 
 const AVATAR_BUCKET = "avatars";
@@ -62,6 +64,123 @@ function contentTypeForPath(path: string, blobType: string) {
   if (/\.png$/i.test(path)) return "image/png";
   if (/\.webp$/i.test(path)) return "image/webp";
   return "image/jpeg";
+}
+
+function uploadError(
+  status: 400 | 401 | 413 | 415 | 422 | 500,
+  code: string,
+  message: string,
+) {
+  return NextResponse.json(
+    { error: code, message },
+    {
+      status,
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
+  );
+}
+
+export async function POST(request: NextRequest) {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_AVATAR_BYTES + 128 * 1024) {
+    return uploadError(413, "avatar_too_large", "The avatar exceeds the 3 MB limit.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return uploadError(401, "authentication_required", "Authentication required.");
+  }
+
+  const form = await request.formData().catch(() => null);
+  const upload = form?.get("file");
+  if (!(upload instanceof File)) {
+    return uploadError(400, "avatar_required", "Choose an avatar image.");
+  }
+  if (upload.size <= 0 || upload.size > MAX_AVATAR_BYTES) {
+    return uploadError(413, "avatar_too_large", "The avatar exceeds the 3 MB limit.");
+  }
+
+  const source = new Uint8Array(await upload.arrayBuffer());
+  const verified = verifyImageUploadMetadata({
+    bytes: source,
+    clientContentType: upload.type,
+    filename: upload.name,
+  });
+  if (!verified) {
+    return uploadError(
+      415,
+      "avatar_type_mismatch",
+      "Use a valid JPEG, PNG, or WebP image whose content matches its extension.",
+    );
+  }
+
+  let sanitized: Buffer;
+  try {
+    const decoder = sharp(source, {
+      failOn: "error",
+      limitInputPixels: 25_000_000,
+      sequentialRead: true,
+    }).rotate();
+    const metadata = await decoder.metadata();
+    if (
+      metadata.format !== verified.format ||
+      !metadata.width ||
+      !metadata.height ||
+      (metadata.pages ?? 1) !== 1
+    ) {
+      return uploadError(422, "avatar_decode_failed", "The avatar image is corrupt or unsupported.");
+    }
+    const normalized = decoder.resize({
+      width: 2048,
+      height: 2048,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+    sanitized =
+      verified.format === "jpeg"
+        ? await normalized.jpeg({ quality: 88, mozjpeg: true }).toBuffer()
+        : verified.format === "png"
+          ? await normalized.png({ compressionLevel: 9 }).toBuffer()
+          : await normalized.webp({ quality: 88 }).toBuffer();
+  } catch {
+    return uploadError(422, "avatar_decode_failed", "The avatar image is corrupt or unsupported.");
+  }
+
+  if (sanitized.length <= 0 || sanitized.length > MAX_AVATAR_BYTES) {
+    return uploadError(413, "avatar_too_large", "The processed avatar exceeds the 3 MB limit.");
+  }
+
+  const path = `${user.id}/profile.${verified.extension}`;
+  const { data, error } = await supabase.storage.from(AVATAR_BUCKET).upload(
+    path,
+    sanitized,
+    {
+      contentType: verified.contentType,
+      cacheControl: "0",
+      upsert: true,
+    },
+  );
+  if (error || !data) {
+    return uploadError(500, "avatar_store_failed", "The avatar could not be stored.");
+  }
+
+  return NextResponse.json(
+    { path: data.path, url: `/api/profile/avatar?path=${encodeURIComponent(data.path)}` },
+    {
+      status: 201,
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
+  );
 }
 
 function privateError(status: 401 | 404) {

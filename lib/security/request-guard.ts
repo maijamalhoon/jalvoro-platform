@@ -7,6 +7,7 @@ export const MUTATION_ROUTE_CONTRACTS = [
   { prefix: "/api/business/team/invite", format: "json", maxBytes: MAX_PROTECTED_JSON_BYTES },
   { prefix: "/api/categories", format: "json", maxBytes: MAX_PROTECTED_JSON_BYTES },
   { prefix: "/api/native/ai-insights", format: "json", maxBytes: MAX_PROTECTED_JSON_BYTES },
+  { prefix: "/api/profile/avatar", format: "multipart", maxBytes: 4 * 1024 * 1024 },
   { prefix: "/api/security/password-check", format: "json", maxBytes: 16 * 1024 },
   { prefix: "/api/telemetry", format: "json", maxBytes: 16 * 1024 },
 ] as const;
@@ -94,10 +95,16 @@ export function validateMutationRequest(
 
   const carriesBody =
     request.method !== "DELETE" || (contentLength !== null && contentLength > 0);
+  const requiredContentType =
+    contract?.format === "json"
+      ? "application/json"
+      : contract?.format === "multipart"
+        ? "multipart/form-data"
+        : null;
   if (
-    contract?.format === "json" &&
+    requiredContentType &&
     carriesBody &&
-    !request.contentType?.toLowerCase().startsWith("application/json")
+    !request.contentType?.toLowerCase().startsWith(requiredContentType)
   ) {
     return {
       status: 415,

@@ -579,6 +579,53 @@ function wrapStorageBucket<T extends object>(bucket: string, builder: T): T {
         });
       }
 
+      if (property === "upload") {
+        return async (path: string, body: unknown) => {
+          if (!(body instanceof Blob)) {
+            return {
+              data: null,
+              error: {
+                message: "Choose a valid avatar image.",
+                name: "StorageUnknownError",
+                statusCode: "400",
+              },
+            };
+          }
+          const form = new FormData();
+          const filename =
+            body instanceof File
+              ? body.name
+              : path.slice(path.lastIndexOf("/") + 1) || "avatar";
+          form.set("file", body, filename);
+          const response = await fetch("/api/profile/avatar", {
+            method: "POST",
+            body: form,
+            credentials: "same-origin",
+            cache: "no-store",
+          });
+          const result = (await response.json().catch(() => null)) as
+            | { path?: string; message?: string }
+            | null;
+          if (!response.ok || !result?.path) {
+            return {
+              data: null,
+              error: {
+                message: result?.message ?? "The avatar could not be uploaded.",
+                name: "StorageApiError",
+                statusCode: String(response.status),
+              },
+            };
+          }
+          return {
+            data: {
+              path: result.path,
+              fullPath: `${PRIVATE_AVATAR_BUCKET}/${result.path}`,
+            },
+            error: null,
+          };
+        };
+      }
+
       const value = Reflect.get(target, property, receiver);
       return typeof value === "function" ? value.bind(target) : value;
     },

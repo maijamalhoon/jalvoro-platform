@@ -43,7 +43,7 @@ describe("mutation request security contract", () => {
   );
 
   it.each(MUTATION_ROUTE_CONTRACTS)(
-    "requires JSON for $prefix",
+    "requires the declared content type for $prefix",
     ({ prefix }) => {
       expect(
         validateMutationRequest(request(prefix, { contentType: "text/plain" })),
