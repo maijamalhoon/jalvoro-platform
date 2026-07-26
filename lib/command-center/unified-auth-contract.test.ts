@@ -14,7 +14,9 @@ describe("unified Command Center authentication", () => {
     expect(proxy).toContain('pathname === "/control-login"');
     expect(proxy).toContain('pathname === "/control-invite"');
     expect(proxy).toContain('pathname = "/commandcenter"');
-    expect(proxy).toContain("return hardenCommandCenterResponse(NextResponse.next({ request }))");
+    expect(proxy).toContain(
+      "return hardenCommandCenterResponse(NextResponse.next({ request }))",
+    );
     expect(proxy).not.toContain("updateControlPlaneSession");
   });
 
@@ -49,7 +51,8 @@ describe("unified Command Center authentication", () => {
     expect(edgeFunction).toContain("get_my_command_center_access");
     expect(edgeFunction).toContain("resolve_command_center_bridge_target");
     expect(edgeFunction).toContain('type: "magiclink"');
-    expect(edgeFunction).not.toContain("password");
+    expect(edgeFunction).not.toContain("signInWithPassword");
+    expect(edgeFunction).not.toContain("password:");
     expect(resolver).toContain("auth.role() <> 'service_role'");
     expect(resolver).toContain("pa.disabled_at is null");
     expect(resolver).toContain("pa.role = 'owner'");

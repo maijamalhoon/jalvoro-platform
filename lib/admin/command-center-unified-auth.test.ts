@@ -13,23 +13,28 @@ describe("canonical Command Center authentication", () => {
     expect(proxy).toContain('pathname === "/control-login"');
     expect(proxy).toContain('pathname === "/control-invite"');
     expect(proxy).toContain("isRetiredControlPlanePath");
-    expect(proxy).toContain("NextResponse.redirect(commandCenterDestination(request))");
+    expect(proxy).toContain(
+      "NextResponse.redirect(commandCenterDestination(request))",
+    );
     expect(proxy).not.toContain("updateControlPlaneSession");
   });
 
-  it("authenticates on the dedicated screen with the authorized JALVORO Supabase user", () => {
+  it("uses the dedicated account once and silently establishes the matching website session", () => {
     const login = read("components/admin/CommandCenterLogin.tsx");
     const page = read("app/commandcenter/page.tsx");
 
-    expect(login).toContain('from "@/lib/supabase/client"');
+    expect(login).toContain("createCommandCenterBrowserClient");
     expect(login).toContain("auth.signInWithPassword");
-    expect(login).toContain('rpc("get_platform_admin_snapshot")');
+    expect(login).toContain('rpc("get_my_command_center_access")');
+    expect(login).toContain("command-center-session-bridge");
+    expect(login).toContain('type: "magiclink"');
     expect(login).toContain('router.replace("/commandcenter")');
     expect(login).not.toContain("createControlPlaneBrowserClient");
     expect(login).not.toContain("mfa.enroll");
     expect(login).not.toContain("mfa.verify");
 
-    expect(page).toContain("<CommandCenterLogin />");
+    expect(page).toContain("createCommandCenterServerClient");
+    expect(page).toContain("syncRequired");
     expect(page).toContain("get_command_center_navigation");
     expect(page).toContain("return AdminPage(props)");
     expect(page).not.toContain("createControlPlaneServerClient");
@@ -48,6 +53,10 @@ describe("canonical Command Center authentication", () => {
     );
     expect(experience).toContain("canonicalCommandCenterHref");
     expect(workflow).toContain('"app/commandcenter/**"');
+    expect(workflow).toContain('"lib/command-center/**"');
+    expect(workflow).toContain(
+      '"supabase/functions/command-center-session-bridge/**"',
+    );
     expect(workflow).toContain('"proxy.ts"');
   });
 
