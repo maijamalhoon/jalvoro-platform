@@ -9,7 +9,6 @@ import AdminReleaseReadinessPanel, {
 import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePanel";
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
-import BillingPlanOperations from "@/components/admin/BillingPlanOperations";
 import PrivacyGovernancePanel from "@/components/admin/PrivacyGovernancePanel";
 import PrivacyRequestOperations from "@/components/admin/PrivacyRequestOperations";
 import { parseAdminAccessSnapshot } from "@/lib/admin/access-operations";
@@ -77,13 +76,6 @@ const RELEASE_ACTION_RESULTS = new Set<ReleaseActionResult>([
   "unavailable",
 ]);
 
-const BILLING_ACTION_RESULTS = new Set([
-  "saved",
-  "invalid",
-  "forbidden",
-  "unavailable",
-]);
-
 const AUDIT_DOMAINS = new Set<ComplianceAuditDomain>([
   "privacy",
   "billing",
@@ -109,7 +101,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login?next=%2Fcommandcenter");
+    redirect("/commandcenter");
   }
 
   const { data, error } = await supabase.rpc("get_platform_admin_snapshot");
@@ -217,20 +209,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       ? (rawReleaseActionResult as ReleaseActionResult)
       : null;
 
-  const rawBillingActionResult = resolvedSearchParams.billingAction;
-  const billingActionResult =
-    typeof rawBillingActionResult === "string" &&
-    BILLING_ACTION_RESULTS.has(rawBillingActionResult)
-      ? (rawBillingActionResult as
-          | "saved"
-          | "invalid"
-          | "forbidden"
-          | "unavailable")
-      : null;
-
   const rawAuditDomain = resolvedSearchParams.auditDomain;
   const auditDomain =
-    typeof rawAuditDomain === "string" && AUDIT_DOMAINS.has(rawAuditDomain as ComplianceAuditDomain)
+    typeof rawAuditDomain === "string" &&
+    AUDIT_DOMAINS.has(rawAuditDomain as ComplianceAuditDomain)
       ? (rawAuditDomain as ComplianceAuditDomain)
       : "all";
 
@@ -241,13 +223,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       ? (rawAuditStatus as ComplianceReviewStatus)
       : "all";
 
-  const auditSearch =
-    typeof resolvedSearchParams.auditSearch === "string"
-      ? resolvedSearchParams.auditSearch
-      : "";
-
   return (
-    <main className="mx-auto w-full max-w-[1720px] space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+    <>
       <AdminDecisionOverview
         snapshot={snapshot}
         posture={securityPosture}
@@ -255,60 +232,54 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         access={accessOperations}
         billing={billingOperations}
       />
-
       <section id="admin-security" className="scroll-mt-24">
         <AdminSecurityPosturePanel posture={securityPosture} />
       </section>
-
       <section id="admin-release" className="scroll-mt-24">
         <AdminReleaseReadinessPanel
           readiness={releaseReadiness}
+          release={releaseSnapshot}
           actionResult={releaseActionResult}
         />
       </section>
-
       <section id="admin-incidents" className="scroll-mt-24">
         <AdminIncidentOperationsPanel
-          operations={incidentOperations}
+          incidents={incidentOperations}
           actionResult={incidentActionResult}
         />
       </section>
-
       <section id="admin-compliance" className="scroll-mt-24">
         <AdminComplianceAuditPanel
-          snapshot={complianceAudit}
-          selectedDomain={auditDomain}
-          selectedStatus={auditStatus}
-          search={auditSearch}
+          audit={complianceAudit}
           actionResult={complianceActionResult}
+          domainFilter={auditDomain}
+          statusFilter={auditStatus}
         />
       </section>
-
-      <section id="admin-access" className="scroll-mt-24">
+      <section
+        id="admin-access"
+        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
+      >
         <AdminTeamAccessPanel
-          snapshot={accessOperations}
+          access={accessOperations}
           actionResult={accessActionResult}
         />
       </section>
-
-      <section id="admin-users" className="scroll-mt-24">
-        <AdminUserOperationsPanel snapshot={userOperations} />
+      <section
+        id="admin-users"
+        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
+      >
+        <AdminUserOperationsPanel operations={userOperations} />
       </section>
-
-      <section id="admin-billing" className="scroll-mt-24">
-        <BillingPlanOperations
-          snapshot={billingOperations}
-          actionResult={billingActionResult}
-        />
-      </section>
-
       <section id="admin-privacy" className="scroll-mt-24">
         <PrivacyGovernancePanel privacy={snapshot.privacy} />
-        <PrivacyRequestOperations
-          privacy={snapshot.privacy}
-          actionResult={privacyActionResult}
-        />
+        <div className="mx-auto w-full max-w-[1500px] pb-12">
+          <PrivacyRequestOperations
+            privacy={snapshot.privacy}
+            actionResult={privacyActionResult}
+          />
+        </div>
       </section>
-    </main>
+    </>
   );
 }
