@@ -335,16 +335,16 @@ export default function AdminCommandCenterOperatorAssist() {
         return;
       }
 
-      const module = modules[intent.index];
-      if (!module) {
+      const authorizedModule = modules[intent.index];
+      if (!authorizedModule) {
         announce(
           `No authorized module is assigned to shortcut ${intent.index + 1}.`,
         );
         return;
       }
 
-      announce(`Opening ${module.label}.`);
-      router.push(module.href);
+      announce(`Opening ${authorizedModule.label}.`);
+      router.push(authorizedModule.href);
     }
 
     window.addEventListener("keydown", handleKeyDown);

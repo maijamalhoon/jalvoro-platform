@@ -292,28 +292,32 @@ export function useInvestmentMarketPrices(
     .map((asset) => `${asset.id}:${asset.providerSymbol ?? ""}:${asset.binanceSymbol ?? ""}`)
     .join("|")}`;
 
+  const versionedAssets = useMemo(
+    () => ({ key: assetKey, values: assets }),
+    [assetKey, assets],
+  );
   const binanceCryptoAssets = useMemo(
     () =>
-      assets
+      versionedAssets.values
         .filter((asset) => asset.assetType === "crypto" && asset.binanceSymbol)
         .map(toCryptoAsset),
-    [assetKey, assets],
+    [versionedAssets],
   );
   const stockSymbols = useMemo(
     () =>
-      assets
+      versionedAssets.values
         .filter((asset) => asset.assetType === "stock")
         .map((asset) => normalizeProviderSymbol(asset.providerSymbol))
         .filter(Boolean),
-    [assetKey, assets],
+    [versionedAssets],
   );
   const forexSymbols = useMemo(
     () =>
-      assets
+      versionedAssets.values
         .filter((asset) => asset.assetType === "forex")
         .map((asset) => normalizeProviderSymbol(asset.providerSymbol))
         .filter(Boolean),
-    [assetKey, assets],
+    [versionedAssets],
   );
 
   const cryptoPrices = useBinanceSearchPrices(
@@ -340,7 +344,7 @@ export function useInvestmentMarketPrices(
   return useMemo(() => {
     const result: Record<string, MarketPriceSnapshot> = {};
 
-    for (const asset of assets) {
+    for (const asset of versionedAssets.values) {
       if (asset.assetType === "crypto") {
         const snapshot = cryptoPrices[asset.id];
         result[asset.id] = snapshot
@@ -377,7 +381,7 @@ export function useInvestmentMarketPrices(
     }
 
     return result;
-  }, [assetKey, assets, cryptoPrices, forexPrices, stockPrices]);
+  }, [cryptoPrices, forexPrices, stockPrices, versionedAssets]);
 }
 
 export function useSelectedInvestmentMarketPrice(

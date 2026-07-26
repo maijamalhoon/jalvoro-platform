@@ -143,7 +143,7 @@ export default function InventoryOperationsForms({
 }: InventoryOperationsFormsProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const today = useMemo(localDateString, []);
+  const today = useMemo(() => localDateString(), []);
   const availableModes = useMemo(
     () =>
       [
@@ -319,10 +319,6 @@ export default function InventoryOperationsForms({
     () => new Map(data.products.map((product) => [product.id, product])),
     [data.products],
   );
-  const warehouseMap = useMemo(
-    () => new Map(data.warehouses.map((warehouse) => [warehouse.id, warehouse])),
-    [data.warehouses],
-  );
   const balanceMap = useMemo(
     () =>
       new Map(
@@ -351,16 +347,24 @@ export default function InventoryOperationsForms({
   }, [data.purchaseReturnLines]);
 
   const selectedInvoice = data.invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? null;
-  const selectedInvoiceLines = data.invoiceLines.filter(
-    (line) =>
-      line.invoice_id === selectedInvoiceId &&
-      numeric(line.quantity) - (salesReturnedMap.get(line.id) ?? 0) > 0,
+  const selectedInvoiceLines = useMemo(
+    () =>
+      data.invoiceLines.filter(
+        (line) =>
+          line.invoice_id === selectedInvoiceId &&
+          numeric(line.quantity) - (salesReturnedMap.get(line.id) ?? 0) > 0,
+      ),
+    [data.invoiceLines, salesReturnedMap, selectedInvoiceId],
   );
   const selectedBill = data.bills.find((bill) => bill.id === selectedBillId) ?? null;
-  const selectedBillLines = data.billLines.filter(
-    (line) =>
-      line.bill_id === selectedBillId &&
-      numeric(line.quantity) - (purchaseReturnedMap.get(line.id) ?? 0) > 0,
+  const selectedBillLines = useMemo(
+    () =>
+      data.billLines.filter(
+        (line) =>
+          line.bill_id === selectedBillId &&
+          numeric(line.quantity) - (purchaseReturnedMap.get(line.id) ?? 0) > 0,
+      ),
+    [data.billLines, purchaseReturnedMap, selectedBillId],
   );
 
   useEffect(() => {
@@ -374,7 +378,7 @@ export default function InventoryOperationsForms({
       };
     }
     setSalesEntries(entries);
-  }, [data.warehouses, selectedInvoiceId, selectedInvoiceLines.length]);
+  }, [data.warehouses, selectedInvoiceLines]);
 
   useEffect(() => {
     const defaultWarehouse = data.warehouses.find((warehouse) => warehouse.is_default)?.id ?? "";
@@ -387,7 +391,7 @@ export default function InventoryOperationsForms({
       };
     }
     setPurchaseEntries(entries);
-  }, [data.warehouses, selectedBillId, selectedBillLines.length]);
+  }, [data.warehouses, selectedBillLines]);
 
   function updateTransferLine(key: string, changes: Partial<OperationLine>) {
     setTransferLines((current) =>

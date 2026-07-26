@@ -87,10 +87,10 @@ export function normalizeAuthorizedOperatorModules(
 
   if (safeLimit === 0) return [];
 
-  for (const module of modules) {
-    const href = module.href.trim();
-    const label = module.label.trim();
-    const description = module.description.trim();
+  for (const authorizedModule of modules) {
+    const href = authorizedModule.href.trim();
+    const label = authorizedModule.label.trim();
+    const description = authorizedModule.description.trim();
 
     if (!/^\/admin(?:[/?#]|$)/.test(href)) continue;
     if (!label || seen.has(href)) continue;

@@ -141,7 +141,7 @@ export function useLiveInvestmentRows<T extends InvestmentLike>(investments: T[]
       );
     }
 
-    return { byId, byTypeAndSymbol };
+    return { byId, byTypeAndSymbol, revision: catalogVersion };
   }, [catalogVersion]);
 
   const resolved = useMemo(() => {
@@ -214,9 +214,9 @@ export function useLiveInvestmentRows<T extends InvestmentLike>(investments: T[]
         current_price_currency: snapshot.currency,
         price_source: snapshot.source,
         price_currency: BASE_CURRENCY,
-        price_updated_at: new Date(
-          snapshot.updatedAt ?? Date.now(),
-        ).toISOString(),
+        price_updated_at: snapshot.updatedAt
+          ? new Date(snapshot.updatedAt).toISOString()
+          : null,
         price_change_24h: snapshot.change24h,
         is_live_priced: true,
       } as T;

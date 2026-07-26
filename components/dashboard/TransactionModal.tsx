@@ -407,7 +407,15 @@ export default function TransactionModal({
   const selectedCategoryOption = categoryOptions.find(
     (option) => option.category.id === categoryId,
   );
-  const categoryScrollBehavior = useScrollSelectBehavior({
+  const {
+    contentRef: categoryContentRef,
+    isTouchScrollOnly: categoryTouchScrollOnly,
+    onContentScroll: handleCategoryContentScroll,
+    onContentTouchMove: handleCategoryContentTouchMove,
+    onContentTouchStart: handleCategoryContentTouchStart,
+    onContentWheel: handleCategoryContentWheel,
+    onTriggerWheel: handleCategoryTriggerWheel,
+  } = useScrollSelectBehavior({
     open: categoryOpen,
     value: categoryId,
     values: categoryOptions.map((option) => option.category.id),
@@ -537,7 +545,7 @@ export default function TransactionModal({
                   id="transaction-category"
                   aria-label={`${isIncome ? "Income" : "Expense"} category`}
                   aria-describedby="transaction-category-help"
-                  onWheel={categoryScrollBehavior.onTriggerWheel}
+                  onWheel={handleCategoryTriggerWheel}
                   className={`field-input h-auto w-full gap-3 px-3 pr-3 text-left data-placeholder:text-text-secondary [&>svg]:ml-1 ${styles.categoryTrigger} ${scrollSelectStyles.trigger}`}
                 >
                   <CategorySummary
@@ -546,17 +554,17 @@ export default function TransactionModal({
                   />
                 </SelectTrigger>
                 <SelectContent
-                  ref={categoryScrollBehavior.contentRef}
+                  ref={categoryContentRef}
                   align="start"
                   sideOffset={8}
                   alignItemWithTrigger={false}
                   data-scroll-touch={
-                    categoryScrollBehavior.isTouchScrollOnly ? "true" : undefined
+                    categoryTouchScrollOnly ? "true" : undefined
                   }
-                  onScroll={categoryScrollBehavior.onContentScroll}
-                  onWheel={categoryScrollBehavior.onContentWheel}
-                  onTouchStart={categoryScrollBehavior.onContentTouchStart}
-                  onTouchMove={categoryScrollBehavior.onContentTouchMove}
+                  onScroll={handleCategoryContentScroll}
+                  onWheel={handleCategoryContentWheel}
+                  onTouchStart={handleCategoryContentTouchStart}
+                  onTouchMove={handleCategoryContentTouchMove}
                   className={`z-[90] max-h-[min(20rem,var(--available-height))] max-w-[calc(100vw-1.5rem)] rounded-[18px] p-1.5 ${scrollSelectStyles.content}`}
                 >
                   {categoryOptions.map((option) => {

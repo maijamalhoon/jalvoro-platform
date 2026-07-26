@@ -112,10 +112,12 @@ export default function TouchWheelPicker({
   const [transitionMs, setTransitionMs] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  optionsRef.current = options;
-  valueRef.current = value;
-  onValueChangeRef.current = onValueChange;
-  onTapRef.current = onTap;
+  useEffect(() => {
+    optionsRef.current = options;
+    valueRef.current = value;
+    onValueChangeRef.current = onValueChange;
+    onTapRef.current = onTap;
+  }, [onTap, onValueChange, options, value]);
 
   const selectedIndex = Math.max(
     0,

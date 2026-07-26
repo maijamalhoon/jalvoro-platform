@@ -476,8 +476,6 @@ function DateWheelField({
       aria-valuetext={isoToDisplay(currentValue)}
       aria-describedby={ariaDescribedBy}
       aria-disabled={disabled || undefined}
-      aria-haspopup="dialog"
-      aria-expanded={calendarOpen}
       aria-controls={calendarId}
       tabIndex={disabled ? -1 : 0}
       className="field-input relative w-full cursor-ns-resize overflow-hidden p-0 touch-none select-none"
@@ -501,7 +499,7 @@ function DateWheelField({
             key={offset}
             className="flex h-full w-full items-center px-3 pr-11 text-text-primary"
           >
-            {isoToDisplay(addIsoDays(baseValueRef.current, offset))}
+            {isoToDisplay(addIsoDays(currentValue, offset))}
           </div>
         ))}
       </div>
@@ -901,6 +899,7 @@ export default function DatePicker({
               ref={textInputRef}
               id={id}
               type="text"
+              role="combobox"
               inputMode="numeric"
               value={displayValue}
               disabled={disabled}

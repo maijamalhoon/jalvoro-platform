@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -226,6 +227,11 @@ function activityIcon(type: ActivityRow["activity_type"]) {
   return ContactRound;
 }
 
+async function getRequestTimestamp() {
+  await connection();
+  return Date.now();
+}
+
 export default async function BusinessCrmPage({
   params,
 }: {
@@ -399,7 +405,7 @@ export default async function BusinessCrmPage({
   const weightedForecast = openOpportunities
     .filter((opportunity) => opportunity.currency === business.base_currency)
     .reduce((sum, opportunity) => sum + numeric(opportunity.amount) * (numeric(opportunity.probability) / 100), 0);
-  const nowTime = Date.now();
+  const nowTime = await getRequestTimestamp();
   const dueFollowUps = activities.filter(
     (activity) => activity.status === "open" && activity.due_at && new Date(activity.due_at).getTime() <= nowTime,
   );
