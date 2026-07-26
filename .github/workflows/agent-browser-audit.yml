@@ -1,4 +1,4 @@
-# trigger: final browser verification
+# trigger: retain browser diagnostics
 name: Agent browser and Lighthouse audit
 
 on:
@@ -78,7 +78,7 @@ jobs:
       - name: Run responsive, functional, network, and accessibility audit
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           cat > /tmp/browser-audit.mjs <<'JS'
           import fs from 'node:fs/promises';
           import path from 'node:path';
@@ -237,7 +237,10 @@ jobs:
           console.log(JSON.stringify({ issueCount: results.issues.length, issues: results.issues }, null, 2));
           if (results.issues.length) process.exit(1);
           JS
-          node /tmp/browser-audit.mjs
+          node /tmp/browser-audit.mjs 2>&1 | tee .browser-audit/browser-command.log
+          browser_code=${PIPESTATUS[0]}
+          printf '%s\n' "$browser_code" > .browser-audit/browser-exit-code.txt
+          exit 0
 
       - name: Run Lighthouse on major public routes
         if: always()
@@ -258,8 +261,9 @@ jobs:
               --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
               --only-categories=performance,accessibility,best-practices,seo \
               --output=json \
-              --output-path=".browser-audit/lighthouse/${name}.json"
-            code=$?
+              --output-path=".browser-audit/lighthouse/${name}.json" \
+              2>&1 | tee ".browser-audit/lighthouse/${name}.log"
+            code=${PIPESTATUS[0]}
             if [ "$code" -ne 0 ]; then
               lighthouse_failed=1
               continue
@@ -283,7 +287,8 @@ jobs:
             score_code=${PIPESTATUS[0]}
             if [ "$score_code" -ne 0 ]; then lighthouse_failed=1; fi
           done
-          exit "$lighthouse_failed"
+          printf '%s\n' "$lighthouse_failed" > .browser-audit/lighthouse-exit-code.txt
+          exit 0
 
       - name: Stop production application
         if: always()
@@ -304,3 +309,13 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
+
+      - name: Enforce browser audit outcome
+        if: always()
+        shell: bash
+        run: |
+          browser_code="$(cat .browser-audit/browser-exit-code.txt 2>/dev/null || echo 1)"
+          lighthouse_code="$(cat .browser-audit/lighthouse-exit-code.txt 2>/dev/null || echo 1)"
+          echo "browser=${browser_code} lighthouse=${lighthouse_code}"
+          test "$browser_code" = "0"
+          test "$lighthouse_code" = "0"
