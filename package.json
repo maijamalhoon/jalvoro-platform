@@ -26,13 +26,14 @@
     "test": "vitest run",
     "audit:ci": "node scripts/dependency-audit-policy.ts",
     "brand:sync": "node scripts/sync-brand.mjs",
-    "check": "npm run check:brand && npm run format:check && npm run lint && npm run typecheck && npm test",
+    "check": "npm run check:brand && npm run check:release-env && npm run format:check && npm run lint && npm run typecheck && npm test",
     "check:brand": "node scripts/sync-brand.mjs --check && node scripts/check-brand.mjs",
     "test:ui": "vitest run lib/theme.test.ts",
     "test:analytics": "vitest run lib/analytics/calculations.test.ts",
     "test:settings": "vitest run lib/settings/security.test.ts",
     "test:session": "vitest run lib/supabase/session.test.ts",
-    "format:check": "node scripts/format-check.mjs"
+    "format:check": "node scripts/format-check.mjs",
+    "check:release-env": "node scripts/check-release-environment.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

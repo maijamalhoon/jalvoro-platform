@@ -186,9 +186,6 @@ export const metadata: Metadata = {
     default: defaultTitle,
     template: `%s — ${APP_NAME}`,
   },
-  verification: {
-    google: "W-UmHqy2sJyd2xbsdPdPeqJLOhLS2cf_aszWJf15aMk",
-  },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   keywords: [
