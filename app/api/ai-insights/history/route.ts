@@ -12,6 +12,7 @@ import type {
   InsightAttention,
   InsightTopic,
 } from "@/lib/ai-insights/actionable";
+import { aiServiceFailure } from "@/lib/ai-insights/failure";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
       code: latestError.code,
       message: latestError.message,
     });
-    return json({ available: false, events: [], previousGeneratedAt: null });
+    return json(aiServiceFailure("ai_history_unavailable"), 503);
   }
 
   const previous = parseSnapshot(latestRow as SnapshotRow | null);
@@ -226,11 +227,7 @@ export async function POST(request: NextRequest) {
         code: insertError.code,
         message: insertError.message,
       });
-      return json({
-        available: false,
-        events,
-        previousGeneratedAt: previous?.generatedAt ?? null,
-      });
+      return json(aiServiceFailure("ai_history_unavailable"), 503);
     }
 
     const { data: oldRows } = await supabase

@@ -23,6 +23,7 @@ import { getAppDateParts } from "@/lib/dates";
 import { getPayableStatus } from "@/lib/finance-options";
 import type { AppLanguage } from "@/lib/i18n/config";
 import { resolveRequestLanguage } from "@/lib/i18n/request-language";
+import { aiServiceFailure } from "@/lib/ai-insights/failure";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { POST as postFallbackChat } from "../chat/route";
@@ -591,15 +592,12 @@ export async function POST(request: NextRequest) {
       message: error instanceof Error ? error.message : undefined,
     });
 
-    return jsonResponse({
-      provider: "local-fallback",
-      model: "verified-finance-safety-v1",
-      aiAvailable: true,
-      fallback: true,
-      deterministic: true,
-      language: language.code,
-      answer: copy.dataUnavailable(displayName),
-      followUps: copy.greetingFollowUps,
-    });
+    return jsonResponse(
+      aiServiceFailure(
+        "exact_finance_unavailable",
+        copy.dataUnavailable(displayName),
+      ),
+      503,
+    );
   }
 }
