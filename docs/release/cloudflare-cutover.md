@@ -1,11 +1,12 @@
 # Cloudflare production cutover plan
 
-Status: prepared only. Do not proxy or connect the public domain until every mandatory release gate passes for one frozen Git SHA.
+Status: prepared template only. Replace every `<owned-apex-host>` placeholder after ownership proof. Do not proxy or connect a public domain until every mandatory release gate passes for one frozen Git SHA.
 
 ## Host and DNS policy
 
-- Canonical public host: `https://jalvoro.com`.
-- `www.jalvoro.com` permanently redirects to the apex host while preserving path and query.
+- Canonical public host: not selected. It must be an owned and verified domain before certification.
+- Set `NEXT_PUBLIC_APP_URL=https://<owned-apex-host>` in production and preview certification. `APP_URL` is the server-side equivalent.
+- Only after ownership proof, make `www.<owned-apex-host>` permanently redirect to the apex host while preserving path and query.
 - Preview and staging hosts remain separate Vercel hostnames and are never canonical.
 - Add the apex and `www` domains to the already certified Vercel project first. Use the exact DNS target Vercel displays at setup time; do not copy a historical target from this runbook.
 - Start DNS records at a 300-second TTL. After 24 hours of verified stable production traffic, raise to 3600 seconds. Lower back to 300 at least one existing TTL before planned DNS changes.
@@ -15,7 +16,7 @@ Status: prepared only. Do not proxy or connect the public domain until every man
 
 - Use Full (strict) SSL/TLS with a valid, hostname-matching origin certificate.
 - Enable Always Use HTTPS only after the strict origin handshake succeeds.
-- Enable HSTS only after HTTPS, apex, `www`, previews, callbacks, and recovery links have been verified. The application already emits a two-year HSTS header with subdomains and preload, so every covered subdomain must support HTTPS before cutover.
+- Enable HSTS includeSubDomains and preload only after HTTPS, apex, `www`, previews, callbacks, and recovery links have been verified. The application emits HSTS without includeSubDomains/preload during preparation.
 - Implement one `www` to apex redirect at Cloudflare. Do not create a reverse or duplicate origin redirect.
 
 ## Cache safety
@@ -25,7 +26,7 @@ Create the following Cache Rules in this order.
 1. **Bypass authenticated and dynamic traffic** — Cache eligibility: Bypass.
 
 ```text
-(http.host in {"jalvoro.com" "www.jalvoro.com"} and (
+(http.host in {"<owned-apex-host>" "www.<owned-apex-host>"} and (
   http.request.method ne "GET" or
   starts_with(http.request.uri.path, "/api/") or
   starts_with(http.request.uri.path, "/dashboard") or

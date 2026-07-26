@@ -1,15 +1,21 @@
 import { BRAND } from "@/brand/brand.config";
 
-const FALLBACK_SITE_URL = "https://jalvoro.com";
+const LOCAL_SITE_URL = "http://localhost:3000";
+const UNCONFIGURED_SUPPORT_EMAIL = "support@example.invalid";
+
+function productionProjectUrl() {
+  const hostname = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  return hostname ? `https://${hostname}` : undefined;
+}
 
 function normalizeOrigin(value: string | undefined) {
   const candidate = value?.trim();
-  if (!candidate) return FALLBACK_SITE_URL;
+  if (!candidate) return LOCAL_SITE_URL;
 
   try {
     return new URL(candidate).origin;
   } catch {
-    return FALLBACK_SITE_URL;
+    return LOCAL_SITE_URL;
   }
 }
 
@@ -19,9 +25,14 @@ export const APP_SHORT_NAME = BRAND.shortName;
 export const APP_TAGLINE = BRAND.tagline;
 export const APP_DESCRIPTION = BRAND.description;
 export const APP_AI_NAME = `${APP_NAME} AI`;
-export const APP_URL = normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL);
+export const APP_URL = normalizeOrigin(
+  process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_URL ??
+    productionProjectUrl(),
+);
 export const SUPPORT_EMAIL =
-  process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || "support@jalvoro.com";
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() ||
+  UNCONFIGURED_SUPPORT_EMAIL;
 
 export function pageTitle(title?: string) {
   return title ? `${title} — ${APP_NAME}` : `${APP_NAME} — ${APP_TAGLINE}`;
