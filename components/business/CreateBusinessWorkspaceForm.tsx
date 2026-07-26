@@ -254,7 +254,11 @@ export default function CreateBusinessWorkspaceForm({
             <span className="text-sm font-bold text-text-primary">Nature of business</span>
             <select
               value={businessType}
-              onChange={(event) => setBusinessType(event.target.value)}
+              onChange={(event) =>
+                setBusinessType(
+                  event.target.value as (typeof BUSINESS_TYPES)[number]["value"],
+                )
+              }
               className="field-input min-h-11 w-full"
               disabled={saving}
             >
