@@ -112,5 +112,6 @@ jobs:
         with:
           name: agent-production-audit-logs
           path: .audit-logs
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 2
