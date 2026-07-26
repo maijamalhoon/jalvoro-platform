@@ -21,7 +21,12 @@ export async function requireRateLimitedAdminClient({
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) redirect(loginPath);
+  if (error || !user) {
+    // Legacy action callers still provide their old Admin login destination.
+    // The only supported Command Center entry is now `/commandcenter`.
+    void loginPath;
+    redirect("/commandcenter");
+  }
 
   const { data: allowed, error: rateLimitError } = await supabase.rpc(
     "consume_api_rate_limit",

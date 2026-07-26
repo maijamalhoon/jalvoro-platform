@@ -14,12 +14,12 @@ const supabaseOrigin = safeOrigin(
   "https://tdagzmgcgjlyqzegmizg.supabase.co",
 );
 const supabaseWebSocketOrigin = supabaseOrigin.replace(/^http/, "ws");
-const controlPlaneSupabaseOrigin = safeOrigin(
-  process.env.NEXT_PUBLIC_CONTROL_PLANE_SUPABASE_URL,
+const commandCenterSupabaseOrigin = safeOrigin(
+  process.env.NEXT_PUBLIC_COMMAND_CENTER_SUPABASE_URL,
   "https://zzvpovvuybfihwgjrder.supabase.co",
 );
-const controlPlaneSupabaseWebSocketOrigin =
-  controlPlaneSupabaseOrigin.replace(/^http/, "ws");
+const commandCenterSupabaseWebSocketOrigin =
+  commandCenterSupabaseOrigin.replace(/^http/, "ws");
 const productionScriptSources = ["'self'", "'unsafe-inline'"];
 const scriptSources =
   process.env.NODE_ENV === "production"
@@ -52,8 +52,8 @@ const contentSecurityPolicy = [
     "connect-src 'self'",
     supabaseOrigin,
     supabaseWebSocketOrigin,
-    controlPlaneSupabaseOrigin,
-    controlPlaneSupabaseWebSocketOrigin,
+    commandCenterSupabaseOrigin,
+    commandCenterSupabaseWebSocketOrigin,
     "wss://stream.binance.com:9443",
     "wss://data-stream.binance.vision",
     "https://*.ingest.sentry.io",
@@ -159,6 +159,8 @@ const nextConfig: NextConfig = {
       },
       { source: "/dashboard/:path*", headers: privateNoStoreHeaders },
       { source: "/admin/:path*", headers: privateNoStoreHeaders },
+      { source: "/commandcenter", headers: privateNoStoreHeaders },
+      { source: "/commandcenter/:path*", headers: privateNoStoreHeaders },
       { source: "/control", headers: privateNoStoreHeaders },
       { source: "/control-login", headers: privateNoStoreHeaders },
       { source: "/control-invite", headers: privateNoStoreHeaders },

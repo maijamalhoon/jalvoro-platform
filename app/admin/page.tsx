@@ -101,7 +101,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login?next=%2Fadmin");
+    redirect("/commandcenter");
   }
 
   const { data, error } = await supabase.rpc("get_platform_admin_snapshot");

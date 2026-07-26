@@ -31,15 +31,22 @@ describe("zero-trust Control Plane source contracts", () => {
     );
   });
 
-  it("gates every admin route with Control Plane authority before app auth", () => {
+  it("retires old Admin and Control Plane routes behind the canonical Command Center", () => {
     const source = read("proxy.ts");
-    const controlGate = source.indexOf("updateControlPlaneSession(request)");
-    const applicationGate = source.indexOf("updateSession(request)", controlGate);
+    const canonicalRedirect = source.indexOf(
+      "NextResponse.redirect(commandCenterDestination(request, canonicalPath))",
+    );
+    const applicationGate = source.indexOf("updateSession(request)");
 
-    expect(source).toContain("isAdminControlPlanePath(pathname)");
-    expect(controlGate).toBeGreaterThan(-1);
-    expect(applicationGate).toBeGreaterThan(controlGate);
-    expect(source).toContain("mergeControlPlaneResponseState");
+    expect(source).toContain("canonicalCommandCenterPath(pathname)");
+    expect(source).toContain("isRetiredControlPlanePath(pathname)");
+    expect(source).toContain("isCommandCenterPath(pathname)");
+    expect(source).toContain(
+      "hardenCommandCenterResponse(NextResponse.next({ request }))",
+    );
+    expect(canonicalRedirect).toBeGreaterThan(-1);
+    expect(applicationGate).toBeGreaterThan(canonicalRedirect);
+    expect(source).not.toContain("updateControlPlaneSession");
   });
 
   it("requires AAL2 and the bounded access RPC in middleware and SSR", () => {
