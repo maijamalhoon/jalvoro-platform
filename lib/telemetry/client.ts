@@ -76,7 +76,30 @@ function privacySignalsAllowTelemetry() {
 }
 
 function isProtectedProductRoute(route: string) {
-  return route === "/onboarding" || route.startsWith("/dashboard");
+  return (
+    route === "/onboarding" ||
+    route.startsWith("/dashboard") ||
+    route.startsWith("/business") ||
+    route === "/admin" ||
+    route.startsWith("/admin/") ||
+    route === "/control" ||
+    route.startsWith("/control/")
+  );
+}
+
+function isEligibleTelemetryRoute(route: string) {
+  return isProtectedProductRoute(route) || route.startsWith("/api/");
+}
+
+function apiFeature(route: string): TelemetryFeature {
+  if (route.startsWith("/api/ai-insights")) return "ai_insights";
+  if (route.startsWith("/api/business")) return "business";
+  if (route.startsWith("/api/profile")) return "settings";
+  if (route.startsWith("/api/security")) return "authentication";
+  if (route.startsWith("/api/market") || route === "/api/exchange-rate") {
+    return "investments";
+  }
+  return "dashboard";
 }
 
 function currentRoute() {
@@ -111,7 +134,7 @@ function transmit(payload: TelemetryClientPayload) {
   if (
     !telemetryEnabled() ||
     !privacySignalsAllowTelemetry() ||
-    !isProtectedProductRoute(payload.route)
+    !isEligibleTelemetryRoute(payload.route)
   ) {
     return;
   }
@@ -136,6 +159,64 @@ function transmit(payload: TelemetryClientPayload) {
       }).catch(() => undefined);
     } catch {}
   });
+}
+
+function installApiFetchInstrumentation() {
+  const marker = "__jalvoroTelemetryFetchInstalled";
+  const instrumentedWindow = window as Window & Record<string, unknown>;
+  if (instrumentedWindow[marker] === true) return;
+  instrumentedWindow[marker] = true;
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    let route: string | null = null;
+    try {
+      const rawUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      const url = new URL(rawUrl, window.location.origin);
+      if (
+        url.origin === window.location.origin &&
+        url.pathname.startsWith("/api/") &&
+        url.pathname !== TELEMETRY_ENDPOINT
+      ) {
+        route = normalizeTelemetryRoute(url.pathname);
+      }
+    } catch {}
+
+    if (!route) return originalFetch(input, init);
+
+    const startedAt = performance.now();
+    try {
+      const response = await originalFetch(input, init);
+      const duration = Math.max(0, performance.now() - startedAt);
+      send({
+        eventName: response.ok ? "operation_completed" : "operation_failed",
+        route,
+        feature: apiFeature(route),
+        result: response.ok ? "success" : "failure",
+        metricName: "LOAD",
+        metricValue: roundMetric("LOAD", duration),
+        metricRating: "unrated",
+      });
+      return response;
+    } catch (error) {
+      const duration = Math.max(0, performance.now() - startedAt);
+      send({
+        eventName: "operation_failed",
+        route,
+        feature: apiFeature(route),
+        result: "failure",
+        metricName: "LOAD",
+        metricValue: roundMetric("LOAD", duration),
+        metricRating: "unrated",
+      });
+      throw error;
+    }
+  };
 }
 
 function send(
@@ -306,6 +387,7 @@ export function initializePrivacyTelemetry() {
     return;
   }
   initialized = true;
+  installApiFetchInstrumentation();
 
   queueMicrotask(() => {
     if (document.readyState === "complete") {
@@ -338,11 +420,22 @@ export function reportTelemetryRouterTransition(
 
   if (!route || !isProtectedProductRoute(route)) return;
 
-  send({
-    eventName: "page_navigation",
-    route,
-    navigationType,
-  });
+  const startedAt = performance.now();
+  const finish = () => {
+    send({
+      eventName: "page_navigation",
+      route,
+      navigationType,
+      metricName: "LOAD",
+      metricValue: roundMetric("LOAD", Math.max(0, performance.now() - startedAt)),
+      metricRating: "unrated",
+    });
+  };
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+  } else {
+    window.setTimeout(finish, 0);
+  }
 }
 
 export function trackTelemetryFeature(
