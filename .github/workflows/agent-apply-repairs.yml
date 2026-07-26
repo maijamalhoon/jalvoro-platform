@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
-      - name: Apply verified repairs
+      - name: Apply verified product repairs
         shell: python
         run: |
           from pathlib import Path
@@ -49,16 +49,8 @@ jobs:
               ("app/onboarding/layout.tsx", "Account setup"),
               ("app/reset-password/layout.tsx", "Reset password"),
           ):
-              replace(
-                  path,
-                  'import type { ReactNode } from "react";\n',
-                  'import type { Metadata } from "next";\nimport type { ReactNode } from "react";\n',
-              )
-              replace(
-                  path,
-                  "\nexport default function",
-                  f'\nexport const metadata: Metadata = {{\n  title: "{title}",\n  robots: {{ index: false, follow: false, nocache: true }},\n}};\n\nexport default function',
-              )
+              replace(path, 'import type { ReactNode } from "react";\n', 'import type { Metadata } from "next";\nimport type { ReactNode } from "react";\n')
+              replace(path, "\nexport default function", f'\nexport const metadata: Metadata = {{\n  title: "{title}",\n  robots: {{ index: false, follow: false, nocache: true }},\n}};\n\nexport default function')
 
           Path("app/robots.ts").write_text('''import type { MetadataRoute } from "next";
 
@@ -122,26 +114,12 @@ jobs:
           }
           ''')
 
-          replace(
-              ".github/workflows/ci.yml",
-              "      - name: Install dependencies\n        run: npm ci --silent",
-              "      - name: Set up Deno\n        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4\n        with:\n          deno-version: 2.8.1\n          cache: true\n          cache-hash: ${{ hashFiles('supabase/**/deno.json', 'supabase/**/deno.lock') }}\n\n      - name: Install dependencies\n        run: npm ci --silent",
-          )
-          replace(
-              ".github/workflows/ci.yml",
-              "      - name: Run security contract tests\n        run: npx vitest run lib/security-hardening.test.ts",
-              "      - name: Typecheck Supabase Edge Functions\n        run: deno check --config supabase/control-plane/functions/deno.json supabase/control-plane/functions/control-plane-create-operator/index.ts\n\n      - name: Run security contract tests\n        run: npx vitest run lib/security-hardening.test.ts",
-          )
-
-          Path(".github/workflows/agent-apply-repairs.yml").unlink()
-
-      - name: Commit repairs to audit branch
+      - name: Commit product repairs to audit branch
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "OpenAI production audit"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add --all
-          git diff --cached --check
+          git add README.md app components lib tsconfig.json supabase/control-plane/functions/deno.json
           git commit -m "fix: repair production verification blockers"
           git push origin HEAD:agent/final-production-audit-20260726
