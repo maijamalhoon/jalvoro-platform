@@ -11,7 +11,6 @@ import {
 } from "@/lib/ai/ai-preferences";
 import {
   BASE_CURRENCY,
-  formatMoney,
   isSupportedCurrency,
   normalizeUsdToPkrRate,
   type SupportedCurrency,
