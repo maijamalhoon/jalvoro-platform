@@ -86,6 +86,29 @@ describe("security hardening contracts", () => {
     expect(config).toContain('"Vercel-CDN-Cache-Control"');
   });
 
+  it("keeps Business MFA recovery owner-authorized, audited, and server-only", () => {
+    const edgeFunction = read(
+      "supabase/functions/business-identity-recovery/index.ts",
+    );
+    const migration = read(
+      "supabase/migrations/20260726223000_business_identity_recovery.sql",
+    );
+    const panel = read("components/business/BusinessIdentityRecoveryPanel.tsx");
+
+    expect(edgeFunction).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
+    expect(edgeFunction).toContain("auth.admin.mfa.listFactors");
+    expect(edgeFunction).toContain("auth.admin.mfa.deleteFactor");
+    expect(edgeFunction).not.toContain("auth.sessions");
+    expect(edgeFunction).not.toContain("mfa_factors");
+    expect(migration).toContain("Primary owner access required.");
+    expect(migration).toContain("Owner MFA verification is required.");
+    expect(migration).toContain("auth.jwt()->>'aal'");
+    expect(migration).toContain("mfa_recovery_completed");
+    expect(panel).toContain("supabase.functions.invoke(");
+    expect(panel).toContain('"business-identity-recovery"');
+    expect(panel).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+  });
+
   it("does not place administrative Supabase secrets in application source", () => {
     const source = applicationSourceDirectories
       .flatMap(collectSourceFiles)

@@ -62,7 +62,11 @@ jobs:
         run: npm run typecheck
 
       - name: Typecheck Supabase Edge Functions
-        run: deno check --config supabase/control-plane/functions/deno.json supabase/control-plane/functions/control-plane-create-operator/index.ts
+        run: |
+          deno check --config supabase/control-plane/functions/deno.json \
+            supabase/control-plane/functions/control-plane-create-operator/index.ts
+          deno check --config supabase/functions/deno.json \
+            supabase/functions/business-identity-recovery/index.ts
 
       - name: Run security contract tests
         run: npx vitest run lib/security-hardening.test.ts

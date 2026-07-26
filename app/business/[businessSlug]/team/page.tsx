@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Crown, MailCheck, ShieldCheck, UserRoundCheck, UsersRound } from "lucide-react";
 
 import BusinessFinancialPermissionPanel from "@/components/business/BusinessFinancialPermissionPanel";
+import BusinessIdentityRecoveryPanel from "@/components/business/BusinessIdentityRecoveryPanel";
 import BusinessTeamManager from "@/components/business/BusinessTeamManager";
 import { isPrivilegedBusinessRole } from "@/lib/business/team-access";
 import { createClient } from "@/lib/supabase/server";
@@ -210,6 +211,14 @@ export default async function BusinessTeamPage({
             />
           </div>
         ) : null}
+
+        <div className="mt-8">
+          <BusinessIdentityRecoveryPanel
+            businessId={business.id}
+            isPrimaryOwner={business.owner_user_id === user.id}
+            members={snapshot.members}
+          />
+        </div>
 
         <div className="mt-8">
           <BusinessTeamManager
