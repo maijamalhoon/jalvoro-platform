@@ -17,15 +17,12 @@ describe("payment launch scope", () => {
     expect(packageJson).not.toContain('"@stripe/');
   });
 
-  it("renders provider-neutral plan metadata administration", () => {
-    expect(adminPage).toContain("BillingPlanOperations");
-    expect(adminPage).toContain("parseBillingOperationsSnapshot");
+  it("does not render paid-plan administration", () => {
+    expect(adminPage).not.toContain("BillingPlanOperations");
   });
 
-  it("keeps plan mutations owner-gated and checkout-free", () => {
-    expect(billingAction).toContain("requireRateLimitedAdminClient");
-    expect(billingAction).toContain('"apply_billing_plan_operation"');
-    expect(billingAction).not.toContain("stripe");
-    expect(billingAction).not.toContain("checkout");
+  it("fails the legacy plan mutation closed", () => {
+    expect(billingAction).toContain("billingAction=out-of-scope");
+    expect(billingAction).not.toContain(".rpc(");
   });
 });

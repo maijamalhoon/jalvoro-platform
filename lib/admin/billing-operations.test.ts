@@ -172,22 +172,20 @@ describe("billing plan operations contracts", () => {
     expect(formatPlanPrice(parsed!.planCatalog[1])).toMatch(/9\.99/);
   });
 
-  it("keeps billing operations server-rendered and owner-gated", () => {
+  it("keeps billing data read-only and paid administration out of launch", () => {
     const page = read("app/admin/page.tsx");
-    const component = read("components/admin/BillingPlanOperations.tsx");
     const action = read("app/admin/billing-actions.ts");
     const migration = read(
       "supabase/migrations/20260724041000_billing_plan_operations.sql",
     );
 
     expect(page).not.toContain('"use client"');
-    expect(component).not.toContain('"use client"');
     expect(action).toContain('"use server"');
     expect(page.match(/\.rpc\(/g)).toHaveLength(1);
     expect(page).toContain("parseBillingOperationsSnapshot");
-    expect(page).toContain("BillingPlanOperations");
-    expect(action).toContain('"apply_billing_plan_operation"');
-    expect(component).not.toContain("recharts");
+    expect(page).not.toContain("BillingPlanOperations");
+    expect(action).toContain("billingAction=out-of-scope");
+    expect(action).not.toContain(".rpc(");
 
     expect(migration).toContain("private.billing_plan_audit");
     expect(migration).toContain("billing_plan_audit_deny_direct");

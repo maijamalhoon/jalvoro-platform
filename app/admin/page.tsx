@@ -9,7 +9,6 @@ import AdminReleaseReadinessPanel, {
 import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePanel";
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
-import BillingPlanOperations from "@/components/admin/BillingPlanOperations";
 import PrivacyGovernancePanel from "@/components/admin/PrivacyGovernancePanel";
 import PrivacyRequestOperations from "@/components/admin/PrivacyRequestOperations";
 import { parseAdminAccessSnapshot } from "@/lib/admin/access-operations";
@@ -74,13 +73,6 @@ const RELEASE_ACTION_RESULTS = new Set<ReleaseActionResult>([
   "invalid",
   "forbidden",
   "missing",
-  "unavailable",
-]);
-
-const BILLING_ACTION_RESULTS = new Set([
-  "saved",
-  "invalid",
-  "forbidden",
   "unavailable",
 ]);
 
@@ -217,17 +209,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       ? (rawReleaseActionResult as ReleaseActionResult)
       : null;
 
-  const rawBillingActionResult = resolvedSearchParams.billingAction;
-  const billingActionResult =
-    typeof rawBillingActionResult === "string" &&
-    BILLING_ACTION_RESULTS.has(rawBillingActionResult)
-      ? (rawBillingActionResult as
-          | "saved"
-          | "invalid"
-          | "forbidden"
-          | "unavailable")
-      : null;
-
   const rawAuditDomain = resolvedSearchParams.auditDomain;
   const auditDomain =
     typeof rawAuditDomain === "string" &&
@@ -259,15 +240,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           readiness={releaseReadiness}
           release={releaseSnapshot}
           actionResult={releaseActionResult}
-        />
-      </section>
-      <section
-        id="admin-billing"
-        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
-      >
-        <BillingPlanOperations
-          billing={billingOperations}
-          actionResult={billingActionResult}
         />
       </section>
       <section id="admin-incidents" className="scroll-mt-24">
