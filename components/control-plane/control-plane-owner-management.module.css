@@ -144,7 +144,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .root * { scroll-behavior: auto !important; }
+  .root .root * { scroll-behavior: auto !important; }
 }
 
 @media (forced-colors: active) {
