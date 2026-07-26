@@ -6,6 +6,10 @@ on:
       - agent/final-production-audit-20260726
     paths:
       - ".github/workflows/agent-audit-checkout.yml"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".github/workflows/agent-audit-checkout.yml"
 
 permissions:
   contents: read
