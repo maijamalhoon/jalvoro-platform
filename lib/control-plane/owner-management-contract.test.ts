@@ -103,7 +103,9 @@ describe("Control Plane owner management contracts", () => {
     const normalAuth = source.indexOf("updateSession(request)", inviteRoute);
     expect(inviteRoute).toBeGreaterThan(-1);
     expect(normalAuth).toBeGreaterThan(inviteRoute);
-    expect(source).toContain('"X-Robots-Tag", "noindex, nofollow, noarchive"');
-    expect(source).toContain('"Referrer-Policy", "no-referrer"');
+    expect(source).toContain(
+      '"X-Robots-Tag": "noindex, nofollow, noarchive"',
+    );
+    expect(source).toContain('"Referrer-Policy": "no-referrer"');
   });
 });

@@ -71,7 +71,7 @@ describe("canonical Command Center authentication", () => {
     expect(layout).toContain("AdminCommandCenterShell");
     expect(layout).toContain("AdminCommandCenterOperatorAssist");
     expect(globalOperations).toContain("AdminGlobalOperationsPage");
-    expect(organizations).toContain("AdminOrganizationsPage");
+    expect(organizations).toContain("AdminOrganizationOperationsPage");
     expect(iconSystem).toContain("AdminIconSystemPage");
   });
 });

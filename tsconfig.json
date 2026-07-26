@@ -41,6 +41,7 @@
     "design of  UI/**",
     "components/settings/SettingsOneUI.tsx",
     "components/settings/SettingsExperience.tsx",
+    "supabase/functions/**",
     "supabase/control-plane/functions/**"
   ]
 }
