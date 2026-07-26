@@ -6,6 +6,13 @@ const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
   "/api/security/password-check",
 ]);
 
+const COMMAND_CENTER_RESPONSE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+  Pragma: "no-cache",
+  "X-Robots-Tag": "noindex, nofollow, noarchive",
+  "Referrer-Policy": "no-referrer",
+} as const;
+
 function getAIRewritePath(request: NextRequest) {
   if (request.nextUrl.pathname !== "/api/ai-insights") return null;
   if (request.method === "POST") return "/api/ai-insights/advanced";
@@ -44,6 +51,13 @@ function isRetiredControlPlanePath(pathname: string) {
   );
 }
 
+function hardenCommandCenterResponse(response: NextResponse) {
+  Object.entries(COMMAND_CENTER_RESPONSE_HEADERS).forEach(([name, value]) =>
+    response.headers.set(name, value),
+  );
+  return response;
+}
+
 function copyResponseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
     target.cookies.set(cookie);
@@ -55,50 +69,27 @@ function copyResponseState(source: NextResponse, target: NextResponse) {
   return target;
 }
 
-function isLoginRedirect(response: NextResponse) {
-  if (response.status < 300 || response.status >= 400) return false;
-  const location = response.headers.get("location");
-  if (!location) return false;
-  try {
-    return new URL(location).pathname === "/login";
-  } catch {
-    return location.startsWith("/login");
-  }
-}
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const canonicalPath = canonicalCommandCenterPath(pathname);
   if (canonicalPath) {
-    return NextResponse.redirect(commandCenterDestination(request, canonicalPath));
+    return hardenCommandCenterResponse(
+      NextResponse.redirect(commandCenterDestination(request, canonicalPath)),
+    );
   }
 
   if (isRetiredControlPlanePath(pathname)) {
-    return NextResponse.redirect(commandCenterDestination(request));
+    return hardenCommandCenterResponse(
+      NextResponse.redirect(commandCenterDestination(request)),
+    );
   }
 
   if (isCommandCenterPath(pathname)) {
-    const sessionResponse = await updateSession(request);
-
-    if (isLoginRedirect(sessionResponse)) {
-      // `/commandcenter` is the only Command Center sign-in screen. An expired
-      // session on any nested module returns here instead of opening the normal
-      // website login or the retired Control Plane flow.
-      if (pathname === "/commandcenter") {
-        return copyResponseState(
-          sessionResponse,
-          NextResponse.next({ request }),
-        );
-      }
-
-      return copyResponseState(
-        sessionResponse,
-        NextResponse.redirect(commandCenterDestination(request)),
-      );
-    }
-
-    return sessionResponse;
+    // `/commandcenter` owns its dedicated authentication flow. Do not send this
+    // request through normal website middleware because cookies from the two
+    // Supabase projects must coexist and the page performs the bounded bridge.
+    return hardenCommandCenterResponse(NextResponse.next({ request }));
   }
 
   if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(pathname)) {
