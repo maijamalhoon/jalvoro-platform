@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,6 +7,30 @@ const root = resolve(process.cwd());
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 describe("zero-trust Control Plane source contracts", () => {
+  it("tracks the exact applied Control Plane foundation migration", () => {
+    const migration = read(
+      "supabase/control-plane/migrations/20260725131116_zero_trust_control_plane_foundation.sql",
+    );
+    const appliedStatement = migration.endsWith("\n")
+      ? migration.slice(0, -1)
+      : migration;
+
+    expect(
+      createHash("sha256").update(appliedStatement).digest("hex"),
+    ).toBe("ec2bf014754d0c500afb9968ab1b51f4c28da77702c5892e1768deb815066ae9");
+    expect(migration).toContain(
+      "create schema if not exists private",
+    );
+    expect(migration).toContain(
+      "create or replace function private.require_control_plane_operator",
+    );
+    expect(migration).toContain("v_user_id uuid := auth.uid()");
+    expect(migration).toContain("if v_aal <> 'aal2'");
+    expect(migration).toContain(
+      "revoke all on private.control_plane_operators",
+    );
+  });
+
   it("gates every admin route with Control Plane authority before app auth", () => {
     const source = read("proxy.ts");
     const controlGate = source.indexOf("updateControlPlaneSession(request)");
