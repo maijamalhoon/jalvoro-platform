@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import AdminCommandCenterOperatorAssist from "@/components/admin/AdminCommandCenterOperatorAssist";
 import AdminCommandCenterShell from "@/components/admin/AdminCommandCenterShell";
+import { readUnifiedCommandCenterSession } from "@/lib/command-center/server-access";
 
 import "../admin/command-center-world.css";
 import "../admin/command-center-launch.css";
@@ -31,11 +32,15 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function CommandCenterLayout({
+export default async function CommandCenterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await readUnifiedCommandCenterSession();
+
+  if (!session) return <>{children}</>;
+
   return (
     <>
       <AdminCommandCenterShell>{children}</AdminCommandCenterShell>
