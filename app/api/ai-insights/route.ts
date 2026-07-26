@@ -1,3 +1,8 @@
+import {
+  callGeminiProvider,
+  describeGeminiProviderError,
+  GeminiProviderError,
+} from "@/lib/ai-insights/gemini-provider";
 import { APP_NAME } from "@/lib/brand";
 import { getAppMonthRange, getDaysInMonth, formatDateKey } from "@/lib/dates";
 import { getPayableStatus } from "@/lib/finance-options";
@@ -16,7 +21,6 @@ export const dynamic = "force-dynamic";
 const AI_UNAVAILABLE_MESSAGE =
   "AI insights are temporarily unavailable. Try again later.";
 const GEMINI_MODEL_FALLBACK = "gemini-2.5-flash";
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 type InsightType = "positive" | "warning" | "tip";
 type SummaryTone = "positive" | "warning" | "danger" | "info" | "neutral";
@@ -163,25 +167,40 @@ type CurrencyRequestContext = {
   live: boolean;
 };
 
-type GeminiGenerateContentResponse = {
-  candidates?: {
-    content?: {
-      parts?: { text?: string }[];
-    };
-  }[];
-  error?: {
-    code?: number;
-    message?: string;
-    status?: string;
-  };
-};
-
 function errorResponse(
   error: string,
   status: number,
   message = AI_UNAVAILABLE_MESSAGE,
+  retryable = false,
+  correlationId: string | null = null,
 ) {
-  return NextResponse.json({ error, message }, { status });
+  return NextResponse.json(
+    { error, message, retryable, correlationId },
+    {
+      status,
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
+  );
+}
+
+function providerFailureResponse(error: unknown) {
+  const failure = describeGeminiProviderError(error);
+  console.warn("AI provider request failed", {
+    code: failure.code,
+    providerStatus: failure.providerStatus,
+    correlationId: failure.correlationId,
+    retryable: failure.retryable,
+  });
+  return errorResponse(
+    failure.code,
+    failure.status,
+    AI_UNAVAILABLE_MESSAGE,
+    failure.retryable,
+    failure.correlationId,
+  );
 }
 
 function logSafeError(context: string, error: unknown) {
@@ -424,61 +443,6 @@ function parseChatResponse(text: string): Pick<ChatResponse, "answer" | "followU
     ),
     followUps,
   };
-}
-
-function extractGeminiText(response: GeminiGenerateContentResponse) {
-  return (
-    response.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? "")
-      .join("")
-      .trim() ?? ""
-  );
-}
-
-async function callGemini({
-  apiKey,
-  model,
-  prompt,
-}: {
-  apiKey: string;
-  model: string;
-  prompt: string;
-}) {
-  const response = await fetch(
-    `${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens: 1200,
-          responseMimeType: "application/json",
-        },
-      }),
-    },
-  );
-
-  const json = (await response.json()) as GeminiGenerateContentResponse;
-
-  if (!response.ok || json.error) {
-    const status = json.error?.status ?? response.statusText;
-    const code = json.error?.code ?? response.status;
-    throw new Error(`Gemini request failed: ${code} ${status}`);
-  }
-
-  const text = extractGeminiText(json);
-  if (!text) throw new Error("Gemini returned an empty response");
-
-  return text;
 }
 
 async function readSummaryRows<T>(
@@ -1004,8 +968,6 @@ export async function GET(request: NextRequest) {
     const displaySummary = withCurrencyContext(summary, currencyContext);
     const { apiKey, model } = getGeminiConfig();
     const summaryCards = buildSummaryCards(summary, currencyContext);
-    const fallback = buildFallbackInsights(summary, currencyContext);
-
     if (!hasFinanceData) {
       return NextResponse.json({
         empty: true,
@@ -1021,40 +983,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (!apiKey) {
-      console.error("AI insights unavailable: missing GEMINI_API_KEY");
-      return NextResponse.json({
-        ...fallback,
-        provider: "gemini",
-        model,
-        generatedAt: new Date().toISOString(),
-        summaryCards,
-        financeSummary: displaySummary,
-        aiAvailable: false,
-        message: AI_UNAVAILABLE_MESSAGE,
-      } satisfies AIInsightsResponse);
-    }
-
     try {
-      const text = await callGemini({
+      const provider = await callGeminiProvider({
         apiKey,
         model,
         prompt: buildInsightPrompt(displaySummary, currencyContext),
       });
-      const generated = parseGeneratedInsights(text);
+      const generated = parseGeneratedInsights(provider.text);
 
       if (!generated) {
-        console.error("AI insights provider returned invalid JSON shape");
-        return NextResponse.json({
-          ...fallback,
-          provider: "gemini",
-          model,
-          generatedAt: new Date().toISOString(),
-          summaryCards,
-          financeSummary: displaySummary,
-          aiAvailable: false,
-          message: AI_UNAVAILABLE_MESSAGE,
-        } satisfies AIInsightsResponse);
+        throw new GeminiProviderError("invalid_ai_response", {
+          httpStatus: 502,
+          retryable: false,
+          correlationId: provider.correlationId,
+        });
       }
 
       return NextResponse.json({
@@ -1067,18 +1009,7 @@ export async function GET(request: NextRequest) {
         aiAvailable: true,
       } satisfies AIInsightsResponse);
     } catch (error) {
-      logSafeError("AI insights Gemini request failed", error);
-
-      return NextResponse.json({
-        ...fallback,
-        provider: "gemini",
-        model,
-        generatedAt: new Date().toISOString(),
-        summaryCards,
-        financeSummary: displaySummary,
-        aiAvailable: false,
-        message: AI_UNAVAILABLE_MESSAGE,
-      } satisfies AIInsightsResponse);
+      return providerFailureResponse(error);
     }
   } catch (error) {
     logSafeError("AI insights route failed", error);
@@ -1109,12 +1040,7 @@ export async function POST(request: NextRequest) {
 
     const { apiKey, model } = getGeminiConfig();
 
-    if (!apiKey) {
-      console.error("AI chat unavailable: missing GEMINI_API_KEY");
-      return errorResponse("missing_ai_configuration", 503);
-    }
-
-    const text = await callGemini({
+    const provider = await callGeminiProvider({
       apiKey,
       model,
       prompt: buildChatPrompt(
@@ -1123,11 +1049,16 @@ export async function POST(request: NextRequest) {
         currencyContext,
       ),
     });
-    const chat = parseChatResponse(text);
+    const chat = parseChatResponse(provider.text);
 
     if (!chat) {
-      console.error("AI chat provider returned invalid JSON shape");
-      return errorResponse("invalid_ai_response", 502);
+      return errorResponse(
+        "invalid_ai_response",
+        502,
+        AI_UNAVAILABLE_MESSAGE,
+        false,
+        provider.correlationId,
+      );
     }
 
     return NextResponse.json({
@@ -1136,7 +1067,6 @@ export async function POST(request: NextRequest) {
       ...chat,
     } satisfies ChatResponse);
   } catch (error) {
-    logSafeError("AI chat Gemini request failed", error);
-    return errorResponse("ai_provider_unavailable", 503);
+    return providerFailureResponse(error);
   }
 }
