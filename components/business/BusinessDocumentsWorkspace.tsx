@@ -105,6 +105,8 @@ type Props = {
   snapshot: BusinessDocumentsSnapshot;
 };
 
+const BUSINESS_DOCUMENT_UPLOADS_ENABLED = false;
+
 const DOCUMENT_TYPES = [
   "general",
   "contract",
@@ -268,6 +270,12 @@ export default function BusinessDocumentsWorkspace({
 
   async function uploadDocument(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!BUSINESS_DOCUMENT_UPLOADS_ENABLED) {
+      toast.error(
+        "New document uploads are unavailable until malware scanning is certified.",
+      );
+      return;
+    }
     if (!canManage || busy || !file) return;
     const normalizedMime = mimeFor(file);
     if (!normalizedMime) {
@@ -414,7 +422,7 @@ export default function BusinessDocumentsWorkspace({
           <SummaryCard icon={FileArchive} label="Private storage" value={displayBytes(summary.storage_bytes)} tone="success" />
         </section>
 
-        {canManage ? (
+        {canManage && BUSINESS_DOCUMENT_UPLOADS_ENABLED ? (
           <section className="mt-7 grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
             <form onSubmit={createFolder} className="rounded-[var(--radius-card)] bg-surface px-5 py-5 shadow-[var(--shadow-sm)] sm:px-6">
               <div className="flex items-center gap-3">
@@ -450,6 +458,24 @@ export default function BusinessDocumentsWorkspace({
                 {file ? <span className="text-xs font-bold text-text-secondary">{file.name} · {displayBytes(file.size)}</span> : null}
               </div>
             </form>
+          </section>
+        ) : canManage ? (
+          <section
+            className="mt-7 rounded-[var(--radius-card)] bg-warning-soft px-5 py-5 text-warning shadow-[var(--shadow-sm)] sm:px-6"
+            aria-labelledby="document-upload-status"
+          >
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+              <div>
+                <h2 id="document-upload-status" className="font-black">
+                  New uploads are temporarily disabled
+                </h2>
+                <p className="mt-2 text-sm leading-6">
+                  Existing private documents remain available. New files cannot be
+                  accepted until server-side malware scanning is certified.
+                </p>
+              </div>
+            </div>
           </section>
         ) : null}
 
@@ -492,7 +518,7 @@ export default function BusinessDocumentsWorkspace({
                 </details>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {document.current_version ? <Button type="button" size="sm" variant="secondary" loading={busy === `download:${document.current_version.id}`} onClick={() => void downloadVersion(document.current_version!)}><Download aria-hidden="true" /> Download</Button> : null}
-                  {canManage && document.status === "active" ? <Button type="button" size="sm" variant="ghost" onClick={() => startNewVersion(document)}><UploadCloud aria-hidden="true" /> New version</Button> : null}
+                  {canManage && BUSINESS_DOCUMENT_UPLOADS_ENABLED && document.status === "active" ? <Button type="button" size="sm" variant="ghost" onClick={() => startNewVersion(document)}><UploadCloud aria-hidden="true" /> New version</Button> : null}
                   {canManage ? <Button type="button" size="sm" variant="ghost" loading={busy === `archive:${document.id}`} onClick={() => void setArchived(document, document.status === "active")}>{document.status === "active" ? <Archive aria-hidden="true" /> : <ArchiveRestore aria-hidden="true" />}{document.status === "active" ? "Archive" : "Restore"}</Button> : null}
                 </div>
               </article>
