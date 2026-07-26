@@ -288,33 +288,26 @@ export function useInvestmentMarketPrices(
       window.removeEventListener(INVESTMENT_ASSET_UPDATE_EVENT, handleAssetsUpdated);
   }, [enabled]);
 
-  const assetKey = `${assetRevision}:${assets
-    .map((asset) => `${asset.id}:${asset.providerSymbol ?? ""}:${asset.binanceSymbol ?? ""}`)
-    .join("|")}`;
-
-  const binanceCryptoAssets = useMemo(
-    () =>
-      assets
-        .filter((asset) => asset.assetType === "crypto" && asset.binanceSymbol)
-        .map(toCryptoAsset),
-    [assetKey, assets],
-  );
-  const stockSymbols = useMemo(
-    () =>
-      assets
-        .filter((asset) => asset.assetType === "stock")
-        .map((asset) => normalizeProviderSymbol(asset.providerSymbol))
-        .filter(Boolean),
-    [assetKey, assets],
-  );
-  const forexSymbols = useMemo(
-    () =>
-      assets
-        .filter((asset) => asset.assetType === "forex")
-        .map((asset) => normalizeProviderSymbol(asset.providerSymbol))
-        .filter(Boolean),
-    [assetKey, assets],
-  );
+  const binanceCryptoAssets = useMemo(() => {
+    void assetRevision;
+    return assets
+      .filter((asset) => asset.assetType === "crypto" && asset.binanceSymbol)
+      .map(toCryptoAsset);
+  }, [assetRevision, assets]);
+  const stockSymbols = useMemo(() => {
+    void assetRevision;
+    return assets
+      .filter((asset) => asset.assetType === "stock")
+      .map((asset) => normalizeProviderSymbol(asset.providerSymbol))
+      .filter(Boolean);
+  }, [assetRevision, assets]);
+  const forexSymbols = useMemo(() => {
+    void assetRevision;
+    return assets
+      .filter((asset) => asset.assetType === "forex")
+      .map((asset) => normalizeProviderSymbol(asset.providerSymbol))
+      .filter(Boolean);
+  }, [assetRevision, assets]);
 
   const cryptoPrices = useBinanceSearchPrices(
     binanceCryptoAssets,
@@ -338,6 +331,7 @@ export function useInvestmentMarketPrices(
   });
 
   return useMemo(() => {
+    void assetRevision;
     const result: Record<string, MarketPriceSnapshot> = {};
 
     for (const asset of assets) {
@@ -377,7 +371,7 @@ export function useInvestmentMarketPrices(
     }
 
     return result;
-  }, [assetKey, assets, cryptoPrices, forexPrices, stockPrices]);
+  }, [assetRevision, assets, cryptoPrices, forexPrices, stockPrices]);
 }
 
 export function useSelectedInvestmentMarketPrice(

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Ban,
-  Check,
   ChevronRight,
   Clipboard,
   Crown,
@@ -16,7 +15,6 @@ import {
   UserCog,
   UserRoundCheck,
   UserRoundX,
-  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 

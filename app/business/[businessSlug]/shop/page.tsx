@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Banknote,
   BarChart3,
-  Boxes,
   CircleDollarSign,
   ContactRound,
   PackageSearch,
@@ -291,11 +290,6 @@ export default async function SimpleShopPage({
   const metrics = snapshot.metrics;
   const customerNames = new Map(snapshot.customers.map((customer) => [customer.id, customer.name]));
   const supplierNames = new Map(snapshot.suppliers.map((supplier) => [supplier.id, supplier.name]));
-  const lowStock = snapshot.products.filter(
-    (product) =>
-      numeric(product.reorder_level) > 0 &&
-      numeric(product.quantity_on_hand) <= numeric(product.reorder_level),
-  );
   const activities: ActivityRow[] = [
     ...snapshot.recent_sales.map((sale) => ({
       id: sale.id,

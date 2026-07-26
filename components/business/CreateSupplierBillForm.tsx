@@ -110,7 +110,7 @@ export default function CreateSupplierBillForm({
 }: CreateSupplierBillFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const today = useMemo(localDateString, []);
+  const today = useMemo(() => localDateString(), []);
   const firstSupplier = suppliers[0] ?? null;
   const defaultAccountId = allocationAccounts[0]?.id ?? "";
   const idempotencyKey = useRef(requestKey());

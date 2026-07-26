@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowLeftRight,
   ArrowRight,
   BarChart3,
   BrainCircuit,
@@ -11,7 +10,6 @@ import {
   Goal,
   Handshake,
   Landmark,
-  LineChart,
   LockKeyhole,
   PackageSearch,
   PieChart,
@@ -19,7 +17,6 @@ import {
   ShieldCheck,
   ShoppingCart,
   Sparkles,
-  Target,
   TrendingDown,
   TrendingUp,
   WalletCards,

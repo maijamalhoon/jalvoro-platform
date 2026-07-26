@@ -283,6 +283,7 @@ export default async function BusinessCrmPage({
     opportunitiesResult,
     linesResult,
     activitiesResult,
+    dueActivitiesResult,
     contactsResult,
     membersResult,
     productsResult,
@@ -325,6 +326,13 @@ export default async function BusinessCrmPage({
       .order("created_at", { ascending: false })
       .limit(150),
     supabase
+      .from("business_crm_activities")
+      .select("id")
+      .eq("business_id", business.id)
+      .eq("status", "open")
+      .not("due_at", "is", null)
+      .lte("due_at", "now"),
+    supabase
       .from("business_contacts")
       .select("id, display_name, currency, payment_terms_days")
       .eq("business_id", business.id)
@@ -362,6 +370,7 @@ export default async function BusinessCrmPage({
     opportunitiesResult.error,
     linesResult.error,
     activitiesResult.error,
+    dueActivitiesResult.error,
     contactsResult.error,
     membersResult.error,
     productsResult.error,
@@ -377,6 +386,9 @@ export default async function BusinessCrmPage({
   const opportunities = (opportunitiesResult.data ?? []) as OpportunityRow[];
   const lines = (linesResult.data ?? []) as OpportunityLineRow[];
   const activities = (activitiesResult.data ?? []) as ActivityRow[];
+  const dueActivityIds = new Set(
+    (dueActivitiesResult.data ?? []).map((activity) => activity.id),
+  );
   const contacts = (contactsResult.data ?? []) as ContactRow[];
   const members = (membersResult.data ?? []) as MemberRow[];
   const products = (productsResult.data ?? []) as ProductRow[];
@@ -399,9 +411,8 @@ export default async function BusinessCrmPage({
   const weightedForecast = openOpportunities
     .filter((opportunity) => opportunity.currency === business.base_currency)
     .reduce((sum, opportunity) => sum + numeric(opportunity.amount) * (numeric(opportunity.probability) / 100), 0);
-  const nowTime = Date.now();
-  const dueFollowUps = activities.filter(
-    (activity) => activity.status === "open" && activity.due_at && new Date(activity.due_at).getTime() <= nowTime,
+  const dueFollowUps = activities.filter((activity) =>
+    dueActivityIds.has(activity.id),
   );
   const wonCount = opportunities.filter((opportunity) => opportunity.status === "won").length;
 
@@ -716,7 +727,7 @@ export default async function BusinessCrmPage({
                           <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusClass(activity.status)}`}>{formatLabel(activity.status)}</span>
                         </div>
                         <p className="mt-1 text-xs text-text-secondary">{target ?? "CRM record"} · {formatLabel(activity.activity_type)} · {activity.assigned_to ? memberNames.get(activity.assigned_to) ?? "Team member" : "Unassigned"}</p>
-                        <p className={`mt-1 text-xs ${activity.status === "open" && activity.due_at && new Date(activity.due_at).getTime() <= nowTime ? "font-black text-danger" : "text-text-tertiary"}`}>Due {formatDateTime(activity.due_at, business.timezone)}</p>
+                        <p className={`mt-1 text-xs ${dueActivityIds.has(activity.id) ? "font-black text-danger" : "text-text-tertiary"}`}>Due {formatDateTime(activity.due_at, business.timezone)}</p>
                         {activity.details ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{activity.details}</p> : null}
                       </div>
                     </div>

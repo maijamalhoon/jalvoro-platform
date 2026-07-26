@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { APP_URL } from "@/lib/brand";
 import {
   detectAccountBrand,
   shouldAttemptAccountLogo,
 } from "@/lib/account-identity";
 
-const USER_AGENT =
-  "JamalsFinance/1.0 (account logo resolver; https://jamals-finance-sable.vercel.app)";
+const USER_AGENT = `Jalvoro/1.0 (account logo resolver; ${APP_URL})`;
+const UPSTREAM_TIMEOUT_MS = 5_000;
 const CACHE_CONTROL =
   "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000";
 const MISS_CACHE_CONTROL =
@@ -339,6 +340,7 @@ async function searchWikidata(searchName: string) {
 
       const response = await fetch(searchUrl, {
         headers: { "User-Agent": USER_AGENT },
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
         next: { revalidate: 2_592_000 },
       });
       if (!response.ok) continue;
@@ -382,6 +384,7 @@ async function resolveWikidataIdentity(
         )}.json`,
         {
           headers: { "User-Agent": USER_AGENT },
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
           next: { revalidate: 2_592_000 },
         },
       );
@@ -419,6 +422,7 @@ async function resolveCompanyDomain(searchName: string) {
         )}`,
         {
           headers: { "User-Agent": USER_AGENT },
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
           next: { revalidate: 2_592_000 },
         },
       );

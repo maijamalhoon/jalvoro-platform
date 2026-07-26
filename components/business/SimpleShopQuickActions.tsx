@@ -4,7 +4,6 @@ import { type FormEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Banknote,
-  Minus,
   Plus,
   ReceiptText,
   ShoppingCart,
@@ -119,7 +118,7 @@ export default function SimpleShopQuickActions({
 }: SimpleShopQuickActionsProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const today = useMemo(localDateString, []);
+  const today = useMemo(() => localDateString(), []);
   const availableModes = useMemo(
     () =>
       [canSell ? "sale" : null, canPurchase ? "purchase" : null, canExpense ? "expense" : null].filter(

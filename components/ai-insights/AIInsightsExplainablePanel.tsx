@@ -395,6 +395,7 @@ export default function AIInsightsExplainablePanel() {
 
   const load = useCallback(
     async ({ regenerate = false } = {}) => {
+      const requestCopy = getAIInsightsCopy(language);
       if (regenerate) setRegenerating(true);
       else setLoading(true);
       setError("");
@@ -418,13 +419,13 @@ export default function AIInsightsExplainablePanel() {
           | { error?: string; message?: string };
 
         if (!response.ok || "error" in body) {
-          throw new Error(body.message ?? copy.panel.unavailable);
+          throw new Error(body.message ?? requestCopy.panel.unavailable);
         }
         if ("summaryCards" in body) setSummaryCards(body.summaryCards);
         if ("financeSummary" in body) setSummary(body.financeSummary);
         if ("empty" in body && body.empty) {
           setData(null);
-          setEmptyMessage(body.message ?? copy.server.emptyMessage);
+          setEmptyMessage(body.message ?? requestCopy.server.emptyMessage);
           return;
         }
         setData(body as AIData);
@@ -433,14 +434,14 @@ export default function AIInsightsExplainablePanel() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : copy.panel.unavailable,
+            : requestCopy.panel.unavailable,
         );
       } finally {
         setLoading(false);
         setRegenerating(false);
       }
     },
-    [copy, currency, language, live, rate],
+    [currency, language, live, rate],
   );
 
   useEffect(() => {

@@ -119,10 +119,7 @@ function selectedClass(selected: boolean) {
     : "text-text-primary hover:bg-hover";
 }
 
-export default function TransactionFilters(_props: {
-  categories?: TransactionFilterOption[];
-  accounts?: TransactionFilterOption[];
-}) {
+export default function TransactionFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
