@@ -144,7 +144,7 @@ describe("Gemini provider contract", () => {
   });
 
   it("reports retry exhaustion after a temporary outage", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(response({}, 503));
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(response({}, 503)));
     await expectProviderError(
       callGeminiProvider({
         apiKey: "test-key",

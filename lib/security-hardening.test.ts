@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 
 const root = resolve(process.cwd());
 const applicationSourceDirectories = ["app", "components", "lib", "public"];
-const thisTestFile = join(root, "lib/security-hardening.test.ts");
-
 function read(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
@@ -50,11 +48,14 @@ describe("security hardening contracts", () => {
 
   it("rejects cross-site and oversized authenticated API requests", () => {
     const proxy = read("lib/supabase/proxy.ts");
+    const requestGuard = read("lib/security/request-guard.ts");
+    const mutationSecurity = `${proxy}\n${requestGuard}`;
 
-    expect(proxy).toContain('request.headers.get("origin")');
-    expect(proxy).toContain('request.headers.get("sec-fetch-site")');
-    expect(proxy).toContain('startsWith("application/json")');
-    expect(proxy).toContain("MAX_PROTECTED_JSON_BYTES");
+    expect(mutationSecurity).toContain('request.headers.get("origin")');
+    expect(mutationSecurity).toContain('request.headers.get("sec-fetch-site")');
+    expect(mutationSecurity).toContain('startsWith("application/json")');
+    expect(mutationSecurity).toContain("MAX_PROTECTED_JSON_BYTES");
+    expect(requestGuard).toContain("MUTATION_ROUTE_CONTRACTS");
     expect(proxy).toContain('"consume_api_rate_limit"');
     expect(proxy).toContain('"rate_limit_unavailable"');
   });
@@ -86,7 +87,7 @@ describe("security hardening contracts", () => {
   it("does not place administrative Supabase secrets in application source", () => {
     const source = applicationSourceDirectories
       .flatMap(collectSourceFiles)
-      .filter((path) => path !== thisTestFile)
+      .filter((path) => !/\.(?:test|spec)\.(?:ts|tsx|js|jsx)$/.test(path))
       .map((path) => readFileSync(path, "utf8"))
       .join("\n");
 
