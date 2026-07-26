@@ -1,5 +1,19 @@
-import { redirect } from "next/navigation";
+import ProductRealmAuth from "@/components/auth/ProductRealmAuth";
 
-export default function IndividualLoginPage() {
-  redirect("/login?realm=individual&next=%2Fdashboard");
+type IndividualLoginPageProps = {
+  searchParams: Promise<{ next?: string; error?: string }>;
+};
+
+export default async function IndividualLoginPage({
+  searchParams,
+}: IndividualLoginPageProps) {
+  const params = await searchParams;
+  return (
+    <ProductRealmAuth
+      realm="individual"
+      mode="login"
+      next={params.next}
+      initialError={params.error}
+    />
+  );
 }
