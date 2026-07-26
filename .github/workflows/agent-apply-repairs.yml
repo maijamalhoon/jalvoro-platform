@@ -6,6 +6,10 @@ on:
       - agent/final-production-audit-20260726
     paths:
       - ".github/workflows/agent-apply-repairs.yml"
+  pull_request:
+    types: [synchronize]
+    paths:
+      - ".github/workflows/agent-apply-repairs.yml"
 
 permissions:
   contents: write
