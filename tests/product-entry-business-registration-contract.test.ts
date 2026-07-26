@@ -7,8 +7,9 @@ const read = (path: string) =>
 const landing = read("../components/landing/PremiumLandingPage.tsx");
 const startPage = read("../app/start/page.tsx");
 const businessRegistration = read("../app/business/register/page.tsx");
-const login = read("../app/login/page.tsx");
-const onboarding = read("../app/onboarding/page.tsx");
+const productAuth = read("../components/auth/ProductRealmAuth.tsx");
+const realmSetup = read("../app/auth/realm-setup/page.tsx");
+const proxy = read("../proxy.ts");
 const businessForm = read("../components/business/CreateBusinessWorkspaceForm.tsx");
 const migration = read(
   "../supabase/migrations/20260726181500_business_product_tier_foundation.sql",
@@ -38,25 +39,35 @@ describe("product entry and Business registration contract", () => {
     expect(businessRegistration).toContain(
       "Employees do not create public Business memberships.",
     );
+    expect(businessRegistration).toContain("/business/signup?");
   });
 
-  it("does not expose public Business signup from the employee login path", () => {
-    expect(login).toContain(
-      'mode === "signup" && authRealm === "business" && !organizationRegistration',
+  it("keeps Business employee login organization-controlled", () => {
+    expect(productAuth).toContain('type ProductRealm = "individual" | "business"');
+    expect(productAuth).toContain('.from("business_members")');
+    expect(productAuth).toContain('.eq("status", "active")');
+    expect(productAuth).toContain(
+      "This account has no active Business organization access.",
     );
-    expect(login).toContain("Register through the Business products page");
-    expect(login).toContain(
-      "Staff access is created from inside the organization.",
-    );
+    expect(productAuth).toContain("Staff are invited from inside the organization.");
+    expect(productAuth).toContain('href="/business/register"');
   });
 
-  it("removes the legacy one-account-two-workspaces onboarding promise", () => {
-    expect(onboarding).not.toContain("One account · two workspaces");
-    expect(onboarding).not.toContain(
-      "You can use both workspaces and switch between them later.",
-    );
-    expect(onboarding).toContain('pageParams.get("realm") === "business"');
-    expect(onboarding).toContain("setForcedWorkspaceChoice(requestedChoice)");
+  it("seeds the selected realm before existing onboarding can show a workspace chooser", () => {
+    expect(productAuth).toContain('.from("business_workspace_preferences")');
+    expect(productAuth).toContain('default_workspace: choice');
+    expect(productAuth).toContain('onboarding_choice: choice');
+    expect(realmSetup).toContain('.from("business_workspace_preferences")');
+    expect(realmSetup).toContain('router.replace(`/onboarding?next=');
+    expect(realmSetup).toContain('router.replace(`/business?');
+  });
+
+  it("routes legacy login entry to dedicated product access while preserving recovery", () => {
+    expect(proxy).toContain('if (request.nextUrl.pathname !== "/login") return null;');
+    expect(proxy).toContain('if (mode === "forgot") return null;');
+    expect(proxy).toContain('destination.pathname = "/business/login";');
+    expect(proxy).toContain('destination.pathname = "/individual/login";');
+    expect(proxy).toContain('destination.pathname = "/start";');
   });
 
   it("persists Business product tier through the creation RPC", () => {
@@ -73,6 +84,5 @@ describe("product entry and Business registration contract", () => {
     expect(migration).toContain("p_product_tier text default 'growing_business'");
     expect(migration).toContain("normalized_tier='retail_pos'");
     expect(migration).toContain("text,text,text,text,text,text,text");
-    expect(migration).not.toContain("create or replace function public.create_business_workspace_with_mode(\n  p_name text,\n  p_business_type text,\n  p_workspace_mode text default 'advanced_company',\n  p_country_code text default null,\n  p_base_currency text default 'PKR',\n  p_timezone text default 'UTC',\n  p_product_tier text");
   });
 });
