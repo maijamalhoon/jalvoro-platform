@@ -1,5 +1,19 @@
-import { redirect } from "next/navigation";
+import ProductRealmAuth from "@/components/auth/ProductRealmAuth";
 
-export default function BusinessLoginPage() {
-  redirect("/login?realm=business&next=%2Fbusiness");
+type BusinessLoginPageProps = {
+  searchParams: Promise<{ next?: string; error?: string }>;
+};
+
+export default async function BusinessLoginPage({
+  searchParams,
+}: BusinessLoginPageProps) {
+  const params = await searchParams;
+  return (
+    <ProductRealmAuth
+      realm="business"
+      mode="login"
+      next={params.next}
+      initialError={params.error}
+    />
+  );
 }
