@@ -8,12 +8,19 @@ import {
   initializePrivacyTelemetry,
   reportTelemetryRouterTransition,
 } from "./lib/telemetry/client";
-import { beforeSend, tracesSampleRate } from "./sentry.shared.config";
+import {
+  beforeSend,
+  sentryEnvironment,
+  sentryRelease,
+  tracesSampleRate,
+} from "./sentry.shared.config";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   tracesSampleRate,
   beforeSend,
+  release: sentryRelease,
+  environment: sentryEnvironment,
   enableLogs: process.env.NODE_ENV === "development",
   sendDefaultPii: false,
   integrations: [],
