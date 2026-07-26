@@ -163,7 +163,7 @@ function transmit(payload: TelemetryClientPayload) {
 
 function installApiFetchInstrumentation() {
   const marker = "__jalvoroTelemetryFetchInstalled";
-  const instrumentedWindow = window as Window & Record<string, unknown>;
+  const instrumentedWindow = window as unknown as Window & Record<string, unknown>;
   if (instrumentedWindow[marker] === true) return;
   instrumentedWindow[marker] = true;
 
