@@ -1,0 +1,305 @@
+name: Agent browser and Lighthouse audit
+
+on:
+  push:
+    branches: [agent/final-production-audit-20260726]
+    paths: [".github/workflows/agent-browser-audit.yml"]
+  pull_request:
+    types: [synchronize]
+    paths: [".github/workflows/agent-browser-audit.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder
+      NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check out audit branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: agent/final-production-audit-20260726
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          package-manager-cache: true
+
+      - name: Install application dependencies
+        run: npm ci --silent
+
+      - name: Install pinned-at-run browser audit tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLAYWRIGHT_VERSION="$(npm view playwright version)"
+          AXE_VERSION="$(npm view axe-core version)"
+          LIGHTHOUSE_VERSION="$(npm view lighthouse version)"
+          printf 'playwright=%s\naxe-core=%s\nlighthouse=%s\n' \
+            "$PLAYWRIGHT_VERSION" "$AXE_VERSION" "$LIGHTHOUSE_VERSION" | tee browser-audit-tools.txt
+          npm install --no-save --package-lock=false \
+            "playwright@${PLAYWRIGHT_VERSION}" \
+            "axe-core@${AXE_VERSION}" \
+            "lighthouse@${LIGHTHOUSE_VERSION}"
+          npx playwright install --with-deps chromium
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Start production application
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .browser-audit
+          npm run start > .browser-audit/server.log 2>&1 &
+          echo $! > .browser-audit/server.pid
+          for _ in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null http://127.0.0.1:3000/; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat .browser-audit/server.log
+          exit 1
+
+      - name: Run responsive, functional, network, and accessibility audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/browser-audit.mjs <<'JS'
+          import fs from 'node:fs/promises';
+          import path from 'node:path';
+          import { chromium } from 'playwright';
+
+          const origin = 'http://127.0.0.1:3000';
+          const publicRoutes = ['/', '/login', '/privacy', '/terms', '/disclosures', '/support'];
+          const guardedRoutes = ['/dashboard', '/business', '/admin', '/control'];
+          const viewports = [
+            { name: 'mobile-320', width: 320, height: 800 },
+            { name: 'mobile-375', width: 375, height: 812 },
+            { name: 'tablet-768', width: 768, height: 1024 },
+            { name: 'desktop-1440', width: 1440, height: 900 },
+            { name: 'desktop-1920', width: 1920, height: 1080 },
+          ];
+          const results = { pages: [], guardedRoutes: [], navigation: {}, issues: [] };
+          const browser = await chromium.launch({ headless: true });
+          const axePath = path.resolve('node_modules/axe-core/axe.min.js');
+
+          const addIssue = (issue) => results.issues.push(issue);
+
+          for (const viewport of viewports) {
+            const context = await browser.newContext({ viewport, reducedMotion: 'reduce' });
+            for (const route of publicRoutes) {
+              const page = await context.newPage();
+              const consoleErrors = [];
+              const pageErrors = [];
+              const requestFailures = [];
+              const serverErrors = [];
+              page.on('console', (message) => {
+                if (message.type() === 'error') consoleErrors.push(message.text());
+              });
+              page.on('pageerror', (error) => pageErrors.push(error.message));
+              page.on('requestfailed', (request) => {
+                const url = request.url();
+                if (url.startsWith(origin)) {
+                  requestFailures.push(`${request.method()} ${url}: ${request.failure()?.errorText ?? 'failed'}`);
+                }
+              });
+              page.on('response', (response) => {
+                if (response.url().startsWith(origin) && response.status() >= 500) {
+                  serverErrors.push(`${response.status()} ${response.url()}`);
+                }
+              });
+
+              const response = await page.goto(`${origin}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
+              const status = response?.status() ?? 0;
+              const metrics = await page.evaluate(() => ({
+                title: document.title.trim(),
+                metaDescription: document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? '',
+                canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? '',
+                h1Count: document.querySelectorAll('h1').length,
+                horizontalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth,
+                emptyInteractiveNames: Array.from(document.querySelectorAll('a,button,input,select,textarea'))
+                  .filter((element) => {
+                    if (element instanceof HTMLInputElement && element.type === 'hidden') return false;
+                    const style = getComputedStyle(element);
+                    if (style.display === 'none' || style.visibility === 'hidden') return false;
+                    const name = (element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent || '').trim();
+                    return !name;
+                  })
+                  .slice(0, 10)
+                  .map((element) => element.outerHTML.slice(0, 180)),
+              }));
+
+              await page.addScriptTag({ path: axePath });
+              const axe = await page.evaluate(async () => {
+                const outcome = await window.axe.run(document, {
+                  runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
+                });
+                return outcome.violations
+                  .filter((violation) => violation.impact === 'critical' || violation.impact === 'serious')
+                  .map((violation) => ({
+                    id: violation.id,
+                    impact: violation.impact,
+                    help: violation.help,
+                    nodes: violation.nodes.slice(0, 5).map((node) => node.target),
+                  }));
+              });
+
+              const record = {
+                route,
+                viewport: viewport.name,
+                status,
+                finalUrl: page.url(),
+                ...metrics,
+                consoleErrors,
+                pageErrors,
+                requestFailures,
+                serverErrors,
+                axe,
+              };
+              results.pages.push(record);
+
+              if (status >= 400 || status === 0) addIssue({ type: 'http', route, viewport: viewport.name, status });
+              if (!metrics.title) addIssue({ type: 'missing-title', route, viewport: viewport.name });
+              if (!metrics.metaDescription) addIssue({ type: 'missing-description', route, viewport: viewport.name });
+              if (!metrics.canonical) addIssue({ type: 'missing-canonical', route, viewport: viewport.name });
+              if (metrics.h1Count !== 1) addIssue({ type: 'heading', route, viewport: viewport.name, h1Count: metrics.h1Count });
+              if (metrics.horizontalOverflow > 1) addIssue({ type: 'horizontal-overflow', route, viewport: viewport.name, pixels: metrics.horizontalOverflow });
+              if (metrics.emptyInteractiveNames.length) addIssue({ type: 'unnamed-controls', route, viewport: viewport.name, nodes: metrics.emptyInteractiveNames });
+              if (consoleErrors.length) addIssue({ type: 'console-errors', route, viewport: viewport.name, messages: consoleErrors });
+              if (pageErrors.length) addIssue({ type: 'page-errors', route, viewport: viewport.name, messages: pageErrors });
+              if (requestFailures.length) addIssue({ type: 'request-failures', route, viewport: viewport.name, messages: requestFailures });
+              if (serverErrors.length) addIssue({ type: 'server-errors', route, viewport: viewport.name, messages: serverErrors });
+              if (axe.length) addIssue({ type: 'accessibility', route, viewport: viewport.name, violations: axe });
+
+              if ((viewport.width === 320 || viewport.width === 1440) && ['/', '/login', '/support'].includes(route)) {
+                const safeRoute = route === '/' ? 'home' : route.slice(1);
+                await page.screenshot({ path: `.browser-audit/${safeRoute}-${viewport.name}.png`, fullPage: true });
+              }
+              await page.close();
+            }
+            await context.close();
+          }
+
+          const guardContext = await browser.newContext({ viewport: { width: 375, height: 812 } });
+          for (const route of guardedRoutes) {
+            const page = await guardContext.newPage();
+            const response = await page.goto(`${origin}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
+            const finalUrl = new URL(page.url());
+            const guarded = finalUrl.pathname !== route || /sign in|log in|login/i.test(await page.locator('body').innerText());
+            const record = { route, status: response?.status() ?? 0, finalPath: finalUrl.pathname, guarded };
+            results.guardedRoutes.push(record);
+            if (!guarded || record.status >= 500) addIssue({ type: 'guard-failure', ...record });
+            await page.reload({ waitUntil: 'networkidle' });
+            await page.close();
+          }
+
+          const navigationPage = await guardContext.newPage();
+          await navigationPage.goto(`${origin}/`, { waitUntil: 'networkidle' });
+          await navigationPage.goto(`${origin}/privacy`, { waitUntil: 'networkidle' });
+          await navigationPage.goBack({ waitUntil: 'networkidle' });
+          results.navigation.backReturnedHome = new URL(navigationPage.url()).pathname === '/';
+          if (!results.navigation.backReturnedHome) addIssue({ type: 'back-navigation' });
+
+          await navigationPage.goto(`${origin}/login`, { waitUntil: 'networkidle' });
+          const form = navigationPage.locator('form').first();
+          if (await form.count()) {
+            const submit = form.locator('button[type="submit"], input[type="submit"]').first();
+            if (await submit.count()) {
+              await submit.click();
+              results.navigation.emptyLoginStayedPublic = new URL(navigationPage.url()).pathname === '/login';
+              const invalidCount = await form.locator(':invalid').count();
+              results.navigation.emptyLoginInvalidCount = invalidCount;
+              if (!results.navigation.emptyLoginStayedPublic || invalidCount === 0) {
+                addIssue({ type: 'login-validation', ...results.navigation });
+              }
+            }
+          }
+          await navigationPage.close();
+          await guardContext.close();
+          await browser.close();
+
+          await fs.writeFile('.browser-audit/browser-results.json', JSON.stringify(results, null, 2));
+          console.log(JSON.stringify({ issueCount: results.issues.length, issues: results.issues }, null, 2));
+          if (results.issues.length) process.exit(1);
+          JS
+          node /tmp/browser-audit.mjs
+
+      - name: Run Lighthouse on major public routes
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .browser-audit/lighthouse
+          export CHROME_PATH="$(node --input-type=module -e "import { chromium } from 'playwright'; console.log(chromium.executablePath())")"
+          routes=(home login privacy terms disclosures support)
+          paths=(/ /login /privacy /terms /disclosures /support)
+          : > .browser-audit/lighthouse-scores.tsv
+          lighthouse_failed=0
+          for index in "${!routes[@]}"; do
+            name="${routes[$index]}"
+            route="${paths[$index]}"
+            npx lighthouse "http://127.0.0.1:3000${route}" \
+              --quiet \
+              --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json \
+              --output-path=".browser-audit/lighthouse/${name}.json"
+            code=$?
+            if [ "$code" -ne 0 ]; then
+              lighthouse_failed=1
+              continue
+            fi
+            node --input-type=module - ".browser-audit/lighthouse/${name}.json" "$name" <<'JS' | tee -a .browser-audit/lighthouse-scores.tsv
+            import fs from 'node:fs';
+            const [file, name] = process.argv.slice(2);
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const c = report.categories;
+            const scores = {
+              performance: Math.round(c.performance.score * 100),
+              accessibility: Math.round(c.accessibility.score * 100),
+              bestPractices: Math.round(c['best-practices'].score * 100),
+              seo: Math.round(c.seo.score * 100),
+            };
+            console.log([name, scores.performance, scores.accessibility, scores.bestPractices, scores.seo].join('\t'));
+            if (scores.performance < 90 || scores.accessibility < 95 || scores.bestPractices < 95 || scores.seo < 95) {
+              process.exitCode = 2;
+            }
+            JS
+            score_code=${PIPESTATUS[0]}
+            if [ "$score_code" -ne 0 ]; then lighthouse_failed=1; fi
+          done
+          exit "$lighthouse_failed"
+
+      - name: Stop production application
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .browser-audit/server.pid ]; then
+            kill "$(cat .browser-audit/server.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload browser and Lighthouse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-and-lighthouse-evidence
+          path: |
+            .browser-audit
+            browser-audit-tools.txt
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
