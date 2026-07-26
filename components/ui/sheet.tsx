@@ -45,16 +45,22 @@ function SheetViewport({
 }: SheetPrimitive.Viewport.Props & {
   side: SheetSide
 }) {
+  const alignmentClass =
+    side === "left"
+      ? "items-stretch justify-start"
+      : side === "right"
+        ? "items-stretch justify-end"
+        : side === "bottom"
+          ? "items-end justify-center"
+          : "items-start justify-center"
+
   return (
     <SheetPrimitive.Viewport
       data-slot="sheet-viewport"
       data-side={side}
       className={cn(
-        "pointer-events-none fixed inset-0 z-50 flex",
-        "data-[side=bottom]:items-end data-[side=bottom]:justify-center",
-        "data-[side=left]:items-stretch data-[side=left]:justify-start",
-        "data-[side=right]:items-stretch data-[side=right]:justify-end",
-        "data-[side=top]:items-start data-[side=top]:justify-center",
+        "pointer-events-none fixed inset-0 z-50 flex min-w-0",
+        alignmentClass,
         className
       )}
       {...props}
