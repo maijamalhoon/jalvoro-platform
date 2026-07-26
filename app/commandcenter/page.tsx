@@ -26,9 +26,8 @@ export default async function CommandCenterPage(props: CommandCenterPageProps) {
   const navigationResult = await supabase.rpc("get_command_center_navigation", {
     p_environment: resolveCommandCenterEnvironment(),
   });
-  const navigation = parseResolvedCommandCenterNavigation(navigationResult.data);
 
-  if (navigationResult.error?.code === "42501" || !navigation) {
+  if (navigationResult.error?.code === "42501") {
     return (
       <CommandCenterLogin
         accessDenied
@@ -41,6 +40,11 @@ export default async function CommandCenterPage(props: CommandCenterPageProps) {
     throw new Error(
       `Command Center authorization unavailable: ${navigationResult.error.code ?? "unknown"}`,
     );
+  }
+
+  const navigation = parseResolvedCommandCenterNavigation(navigationResult.data);
+  if (!navigation) {
+    throw new Error("Command Center authorization returned an invalid contract.");
   }
 
   return AdminPage(props);
