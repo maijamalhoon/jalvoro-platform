@@ -62,9 +62,7 @@ jobs:
           lint_code=${PIPESTATUS[0]}
           npm run typecheck 2>&1 | tee .repair-logs/typecheck.log
           type_code=${PIPESTATUS[0]}
-          printf 'lint=%s
-typecheck=%s
-' "$lint_code" "$type_code" | tee .repair-logs/status.txt
+          printf 'lint=%s\ntypecheck=%s\n' "$lint_code" "$type_code" | tee .repair-logs/status.txt
           echo "lint_code=$lint_code" >> "$GITHUB_OUTPUT"
           echo "type_code=$type_code" >> "$GITHUB_OUTPUT"
           exit 0
