@@ -66,6 +66,8 @@ export default function RealmSetupPage() {
         return;
       }
 
+      let shouldPrepareNewIdentity = mode === "signup";
+
       if (mode === "signup") {
         const { error: realmError } = await supabase.rpc("claim_account_realm", {
           p_realm: realm,
@@ -88,7 +90,16 @@ export default function RealmSetupPage() {
           return;
         }
 
-        if (!accountRealmAllows(currentRealm, realm)) {
+        if (currentRealm === null && realm === "individual") {
+          const { error: claimError } = await supabase.rpc("claim_account_realm", {
+            p_realm: "individual",
+          });
+          if (claimError) {
+            setError("Your new Individual account could not be prepared. Try signing in again.");
+            return;
+          }
+          shouldPrepareNewIdentity = true;
+        } else if (!accountRealmAllows(currentRealm, realm)) {
           await supabase.auth.signOut({ scope: "local" });
           router.replace(
             `${realm === "business" ? "/business/login" : "/individual/login"}?error=wrong_realm`,
@@ -127,7 +138,7 @@ export default function RealmSetupPage() {
         }
       }
 
-      if (mode === "signup") {
+      if (shouldPrepareNewIdentity) {
         const choice = realm === "business" ? "business" : "personal";
         const { error: preferenceError } = await supabase
           .from("business_workspace_preferences")

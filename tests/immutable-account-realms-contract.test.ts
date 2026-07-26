@@ -128,6 +128,9 @@ describe("immutable account realm contract", () => {
     expect(productAuth).toContain('membershipState === "none"');
     expect(realmSetup).toContain("memberships.length > 0");
     expect(realmSetup).toContain('router.replace("/business?setup=1")');
+    expect(realmSetup).toContain('currentRealm === null && realm === "individual"');
+    expect(realmSetup).toContain('p_realm: "individual"');
+    expect(realmSetup).toContain("shouldPrepareNewIdentity = true");
   });
 
   it("ships a disposable database regression for cross-realm denial", () => {
