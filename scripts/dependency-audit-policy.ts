@@ -10,15 +10,23 @@ const TRACKING_ISSUE =
   "https://github.com/maijamalhoon/jalvoro-platform/issues/141";
 
 const ALLOWED_DEVELOPMENT_CHAIN = new Set([
+  "@eslint-community/eslint-utils",
   "@eslint/config-array",
   "@eslint/eslintrc",
+  "@typescript-eslint/eslint-plugin",
+  "@typescript-eslint/parser",
+  "@typescript-eslint/type-utils",
+  "@typescript-eslint/utils",
   "brace-expansion",
   "eslint",
   "eslint-config-next",
+  "eslint-import-resolver-typescript",
   "eslint-plugin-import",
   "eslint-plugin-jsx-a11y",
   "eslint-plugin-react",
+  "eslint-plugin-react-hooks",
   "minimatch",
+  "typescript-eslint",
 ]);
 
 type AuditViaAdvisory = {

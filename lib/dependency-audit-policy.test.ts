@@ -14,8 +14,24 @@ const cleanReport: AuditReport = {
 const allowedDevelopmentReport: AuditReport = {
   auditReportVersion: 2,
   vulnerabilities: {
+    "@eslint-community/eslint-utils": { via: ["eslint"] },
     "@eslint/config-array": { via: ["minimatch"] },
     "@eslint/eslintrc": { via: ["minimatch"] },
+    "@typescript-eslint/eslint-plugin": {
+      via: [
+        "@typescript-eslint/parser",
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils",
+        "eslint",
+      ],
+    },
+    "@typescript-eslint/parser": { via: ["eslint"] },
+    "@typescript-eslint/type-utils": {
+      via: ["@typescript-eslint/utils", "eslint"],
+    },
+    "@typescript-eslint/utils": {
+      via: ["@eslint-community/eslint-utils", "eslint"],
+    },
     "brace-expansion": {
       via: [
         {
@@ -26,12 +42,24 @@ const allowedDevelopmentReport: AuditReport = {
     },
     eslint: { via: ["minimatch"] },
     "eslint-config-next": { via: ["eslint-plugin-import"] },
+    "eslint-import-resolver-typescript": {
+      via: ["eslint", "eslint-plugin-import"],
+    },
     "eslint-plugin-import": { via: ["minimatch"] },
     "eslint-plugin-jsx-a11y": { via: ["minimatch"] },
     "eslint-plugin-react": { via: ["minimatch"] },
+    "eslint-plugin-react-hooks": { via: ["eslint"] },
     minimatch: { via: ["brace-expansion"] },
+    "typescript-eslint": {
+      via: [
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "@typescript-eslint/utils",
+        "eslint",
+      ],
+    },
   },
-  metadata: { vulnerabilities: { total: 9, critical: 0 } },
+  metadata: { vulnerabilities: { total: 17, critical: 0 } },
 };
 
 describe("dependency audit policy", () => {
@@ -70,7 +98,7 @@ describe("dependency audit policy", () => {
       ...unexpected.vulnerabilities,
       "unexpected-package": { via: [] },
     };
-    unexpected.metadata = { vulnerabilities: { total: 10, critical: 0 } };
+    unexpected.metadata = { vulnerabilities: { total: 18, critical: 0 } };
 
     expect(
       evaluateAuditReports(cleanReport, unexpected, new Date("2026-07-25")),
