@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     const role = typeof body.role === "string" ? body.role.trim().toLowerCase() : "";
     const permissions = Array.isArray(body.permissions)
       ? body.permissions.filter((value): value is string => typeof value === "string")
-      : [];
+      : null;
 
     if (!email || email.length > 320 || !email.includes("@")) {
       return response({ ok: false, message: "Enter a valid team member email." }, 400);
