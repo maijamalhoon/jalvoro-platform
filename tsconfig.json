@@ -40,6 +40,7 @@
     "node_modules",
     "design of  UI/**",
     "components/settings/SettingsOneUI.tsx",
-    "components/settings/SettingsExperience.tsx"
+    "components/settings/SettingsExperience.tsx",
+    "supabase/**/functions/**"
   ]
 }

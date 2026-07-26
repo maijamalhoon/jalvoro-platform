@@ -351,6 +351,8 @@ export default function AIInsightsExplainablePanel() {
   const { language, option } = useLanguage();
   const copy = getAIInsightsCopy(language);
   const actionableCopy = getAIInsightsActionableCopy(language);
+  const unavailableMessage = copy.panel.unavailable;
+  const emptyServerMessage = copy.server.emptyMessage;
   const { currency, formatCurrency, live, rate } = useCurrency();
   const [data, setData] = useState<AIData | null>(null);
   const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([]);
@@ -418,13 +420,13 @@ export default function AIInsightsExplainablePanel() {
           | { error?: string; message?: string };
 
         if (!response.ok || "error" in body) {
-          throw new Error(body.message ?? copy.panel.unavailable);
+          throw new Error(body.message ?? unavailableMessage);
         }
         if ("summaryCards" in body) setSummaryCards(body.summaryCards);
         if ("financeSummary" in body) setSummary(body.financeSummary);
         if ("empty" in body && body.empty) {
           setData(null);
-          setEmptyMessage(body.message ?? copy.server.emptyMessage);
+          setEmptyMessage(body.message ?? emptyServerMessage);
           return;
         }
         setData(body as AIData);
@@ -433,14 +435,14 @@ export default function AIInsightsExplainablePanel() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : copy.panel.unavailable,
+            : unavailableMessage,
         );
       } finally {
         setLoading(false);
         setRegenerating(false);
       }
     },
-    [copy.panel.unavailable, copy.server.emptyMessage, currency, language, live, rate],
+    [currency, emptyServerMessage, language, live, rate, unavailableMessage],
   );
 
   useEffect(() => {

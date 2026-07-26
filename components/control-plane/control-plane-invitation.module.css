@@ -28,5 +28,5 @@
 .help code { display: block; margin-top: .45rem; overflow-wrap: anywhere; border-radius: .6rem; background: #06101f; color: #fef3c7; padding: .65rem; }
 .qr { justify-self: center; padding: .65rem; border-radius: 1rem; background: white; line-height: 0; }
 .code { text-align: center; letter-spacing: .35em; font-size: 1.2rem !important; }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion: reduce) { .root * { scroll-behavior: auto !important; } }
 @media (forced-colors: active) { .card, .field input, .field select { border: 1px solid CanvasText; } }

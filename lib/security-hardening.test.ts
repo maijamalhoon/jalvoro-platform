@@ -17,7 +17,10 @@ function collectSourceFiles(directory: string): string[] {
     if (statSync(path).isDirectory()) {
       return collectSourceFiles(path.slice(root.length + 1));
     }
-    return /\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path) ? [path] : [];
+    return /\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path) &&
+      !/\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs|cjs)$/.test(path)
+      ? [path]
+      : [];
   });
 }
 
