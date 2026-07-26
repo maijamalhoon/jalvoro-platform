@@ -3,7 +3,7 @@
 This directory stores the reproducible Trusted Web Activity configuration for the Android package.
 
 - Package ID: `com.jamalsfinance.app`
-- Production host: `jamals-finance-sable.vercel.app`
+- Production host: not configured; `example.invalid` is a deliberate build blocker until an owned canonical host is certified.
 - Signing keys and passwords must never be committed.
 - Website UI, data, calculations, and application logic remain owned by the existing web project.
 

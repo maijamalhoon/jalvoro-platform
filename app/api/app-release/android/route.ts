@@ -21,7 +21,7 @@ type GitHubRelease = {
 };
 
 const RELEASES_API =
-  "https://api.github.com/repos/maijamalhoon/Jamals-finance/releases?per_page=20";
+  "https://api.github.com/repos/maijamalhoon/jalvoro-platform/releases?per_page=20";
 
 function normalizeVersion(tagName: string) {
   return tagName.trim().replace(/^v/i, "");
@@ -63,7 +63,7 @@ export async function GET() {
     const response = await fetch(RELEASES_API, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "Jamals-Finance-App-Release-Resolver",
+        "User-Agent": "JALVORO-App-Release-Resolver",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       next: { revalidate: 300 },

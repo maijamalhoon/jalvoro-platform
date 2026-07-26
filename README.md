@@ -10,19 +10,19 @@
 
 A privacy-minded personal finance workspace for tracking income, expenses, accounts, goals, payables, investments, and truthful financial trends from one calm dashboard.
 
-[![Live application](https://img.shields.io/badge/Live%20Application-Open-2457d6?style=for-the-badge)](https://jalvoro.com)
+![Release status](https://img.shields.io/badge/Release-Pre--production-f59e0b?style=for-the-badge)
 [![Next.js](https://img.shields.io/badge/Next.js-16-111827?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-087ea4?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-1f9d73?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-111827?style=for-the-badge&logo=vercel)](https://vercel.com/)
 
-[Live app](https://jalvoro.com) | [Security](SECURITY.md) | [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md) | [Local setup](#local-development)
+[Security](SECURITY.md) | [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md) | [Local setup](#local-development)
 
 </div>
 
 > [!IMPORTANT]
-> **Project status: active development.** The product is usable today, while analytics, UI/UX consistency, accessibility, performance, globalisation, reporting, and cross-device polish continue to be hardened through small, auditable roadmap nodes.
+> **Project status: pre-production.** No public production hostname has been certified. The release candidate remains blocked while analytics, UI/UX consistency, accessibility, performance, globalisation, reporting, and cross-device polish continue to be hardened through small, auditable roadmap nodes.
 
 ## Why this project exists
 
@@ -56,7 +56,7 @@ Personal-finance software should make money clearer without pretending to know m
 - Responsive desktop and mobile navigation
 - Supabase-backed persistence with owner-scoped Row Level Security
 - Sentry integration points for production monitoring
-- Vercel production deployment
+- Vercel preview deployment under release certification
 
 Some visible modules are still evolving. A control is not considered complete merely because it renders; it must also have truthful behavior, safe failure states, accessibility, responsive states, and production verification.
 
@@ -225,7 +225,7 @@ proxy.ts                  Route and session boundary logic
 
 ### Prerequisites
 
-- Node.js 20 or newer
+- Node.js 24
 - npm
 - A Supabase project for authenticated, persistent data
 
@@ -268,8 +268,14 @@ Optional integrations are configured only when the related feature is enabled:
 ```env
 NEXT_PUBLIC_ENABLE_GOOGLE_AUTH=false
 
+NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_SUPPORT_EMAIL=
+
 NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_AUTH_TOKEN=
+SENTRY_ORG=
+SENTRY_PROJECT=
+SENTRY_RELEASE=
 
 GEMINI_API_KEY=
 GEMINI_MODEL=
@@ -277,8 +283,6 @@ GEMINI_MODEL=
 ALPHA_VANTAGE_API_KEY=
 EXCHANGE_RATE_API_KEY=
 
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
 ```
 
 Never commit real credentials. Server secrets must never use the `NEXT_PUBLIC_` prefix.
@@ -298,10 +302,11 @@ Open `http://localhost:3000`.
 | `npm run dev` | Start the development server |
 | `npm run build` | Create a production build |
 | `npm run start` | Start the built production server |
+| `npm run format:check` | Check tracked source formatting hygiene |
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Run TypeScript validation |
 | `npm test` | Run the complete Vitest suite |
-| `npm run check` | Run lint, typecheck, and all tests |
+| `npm run check` | Run brand, formatting, lint, typecheck, and all tests |
 | `npm run test:analytics` | Run deterministic analytics tests |
 | `npm run test:settings` | Run settings security tests |
 | `npm run test:session` | Run session and recovery tests |
@@ -356,10 +361,7 @@ Please follow [SECURITY.md](SECURITY.md) for responsible disclosure. Do not publ
 
 ## Deployment
 
-Production is deployed through Vercel from the reviewed `main` branch:
-
-- **Application:** [jamals-finance-sable.vercel.app](https://jalvoro.com)
-- **Deployment source:** reviewed and merged `main` commits
+The application is not certified for production. Preview deployments are created from reviewed release-candidate commits. An owned canonical domain will be connected only after every mandatory gate passes against one frozen SHA.
 
 Environment variables must be configured separately for local, preview, and production environments. A deployment is complete only after the expected commit SHA is live and the affected flow is manually verified.
 

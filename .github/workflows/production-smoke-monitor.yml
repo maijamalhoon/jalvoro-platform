@@ -15,11 +15,20 @@ concurrency:
 jobs:
   smoke:
     name: Public and auth boundary checks
+    if: vars.PRODUCTION_BASE_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      BASE_URL: https://jamals-finance-sable.vercel.app
+      BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
     steps:
+      - name: Validate owned production host
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$BASE_URL" =~ ^https://[^/]+$ ]] || [[ "$BASE_URL" == *.vercel.app ]]; then
+            echo "PRODUCTION_BASE_URL must be an owned HTTPS origin, not a Vercel deployment hostname."
+            exit 1
+          fi
       - name: Check public routes
         shell: bash
         run: |

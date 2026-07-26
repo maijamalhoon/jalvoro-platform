@@ -6,7 +6,7 @@ import {
 } from "@/lib/account-identity";
 
 const USER_AGENT =
-  "JamalsFinance/1.0 (account logo resolver; https://jamals-finance-sable.vercel.app)";
+  "JALVORO/1.0 (account logo resolver; https://github.com/maijamalhoon/jalvoro-platform)";
 const CACHE_CONTROL =
   "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000";
 const MISS_CACHE_CONTROL =

@@ -1,4 +1,4 @@
-# Contributing to Jamal's Finance
+# Contributing to JALVORO
 
 Thank you for taking an interest in the project. The repository is publicly visible, but product direction, release sequencing, and merges are controlled by the maintainer.
 
@@ -13,8 +13,8 @@ Thank you for taking an interest in the project. The repository is publicly visi
 ## Development setup
 
 ```bash
-git clone https://github.com/maijamalhoon/Jamals-finance.git
-cd Jamals-finance
+git clone https://github.com/maijamalhoon/jalvoro-platform.git
+cd jalvoro-platform
 npm install
 copy .env.example .env.local
 npm run dev
