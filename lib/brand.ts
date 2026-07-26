@@ -1,6 +1,6 @@
 import { BRAND } from "@/brand/brand.config";
 
-const FALLBACK_SITE_URL = "https://jalvoro-app.vercel.app";
+const FALLBACK_SITE_URL = "https://jalvoro.com";
 
 function normalizeOrigin(value: string | undefined) {
   const candidate = value?.trim();

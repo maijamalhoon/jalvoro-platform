@@ -4,20 +4,20 @@
 
 <sub>Concept illustration. Financial values shown in the artwork are illustrative only.</sub>
 
-# Jamal's Finance
+# JALVORO
 
 ### Understand your money. Plan with clarity.
 
 A privacy-minded personal finance workspace for tracking income, expenses, accounts, goals, payables, investments, and truthful financial trends from one calm dashboard.
 
-[![Live application](https://img.shields.io/badge/Live%20Application-Open-2457d6?style=for-the-badge)](https://jamals-finance-sable.vercel.app)
+[![Live application](https://img.shields.io/badge/Live%20Application-Open-2457d6?style=for-the-badge)](https://jalvoro.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16-111827?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-087ea4?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-1f9d73?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-111827?style=for-the-badge&logo=vercel)](https://vercel.com/)
 
-[Live app](https://jamals-finance-sable.vercel.app) | [Security](SECURITY.md) | [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md) | [Local setup](#local-development)
+[Live app](https://jalvoro.com) | [Security](SECURITY.md) | [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md) | [Local setup](#local-development)
 
 </div>
 
@@ -26,7 +26,7 @@ A privacy-minded personal finance workspace for tracking income, expenses, accou
 
 ## Why this project exists
 
-Personal-finance software should make money clearer without pretending to know more than the data actually says. Jamal's Finance is being built around four product principles:
+Personal-finance software should make money clearer without pretending to know more than the data actually says. JALVORO is being built around four product principles:
 
 | Principle | What it means in practice |
 | --- | --- |
@@ -232,8 +232,8 @@ proxy.ts                  Route and session boundary logic
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/maijamalhoon/Jamals-finance.git
-cd Jamals-finance
+git clone https://github.com/maijamalhoon/jalvoro-platform.git
+cd jalvoro-platform
 ```
 
 ### 2. Install dependencies
@@ -358,7 +358,7 @@ Please follow [SECURITY.md](SECURITY.md) for responsible disclosure. Do not publ
 
 Production is deployed through Vercel from the reviewed `main` branch:
 
-- **Application:** [jamals-finance-sable.vercel.app](https://jamals-finance-sable.vercel.app)
+- **Application:** [jamals-finance-sable.vercel.app](https://jalvoro.com)
 - **Deployment source:** reviewed and merged `main` commits
 
 Environment variables must be configured separately for local, preview, and production environments. A deployment is complete only after the expected commit SHA is live and the affected flow is manually verified.

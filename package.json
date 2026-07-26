@@ -1,17 +1,17 @@
 {
-  "name": "jamals-finance",
+  "name": "jalvoro-platform",
   "version": "0.1.0",
   "description": "A privacy-minded platform for personal finance, shops, teams, and business operations.",
   "private": true,
   "license": "UNLICENSED",
   "author": "Jamal Yaqoob",
-  "homepage": "https://jamals-finance-sable.vercel.app",
+  "homepage": "https://jalvoro.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/maijamalhoon/Jamals-finance.git"
+    "url": "git+https://github.com/maijamalhoon/jalvoro-platform.git"
   },
   "bugs": {
-    "url": "https://github.com/maijamalhoon/Jamals-finance/issues"
+    "url": "https://github.com/maijamalhoon/jalvoro-platform/issues"
   },
   "engines": {
     "node": "24.x"
