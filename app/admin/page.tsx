@@ -230,7 +230,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         posture={securityPosture}
         incidents={incidentOperations}
         access={accessOperations}
-        billing={billingOperations}
       />
       <section id="admin-security" className="scroll-mt-24">
         <AdminSecurityPosturePanel posture={securityPosture} />

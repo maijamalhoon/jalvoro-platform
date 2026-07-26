@@ -1,5 +1,4 @@
 import type { AdminAccessSnapshot } from "./access-operations";
-import type { BillingOperationsSnapshot } from "./billing-operations";
 import type {
   AdminControlCenterSnapshot,
   AdminCountBreakdown,
@@ -122,14 +121,12 @@ export function deriveCommandCenterDecisionOverview({
   posture,
   incidents,
   access,
-  billing,
   nowMs = Date.now(),
 }: {
   snapshot: AdminControlCenterSnapshot;
   posture: AdminSecurityPosture;
   incidents: AdminIncidentOperationsSnapshot;
   access: AdminAccessSnapshot;
-  billing: BillingOperationsSnapshot;
   nowMs?: number;
 }): CommandCenterDecisionOverview {
   const openIncidents =
@@ -144,16 +141,11 @@ export function deriveCommandCenterDecisionOverview({
   const pendingReviewsHref =
     access.counts.pendingInvitations > 0 ? "#admin-access" : "#admin-privacy";
   const freshness = deriveCommandCenterFreshness(snapshot.generatedAt, nowMs);
-  const connectedPastDue =
-    billing.providerConnected && snapshot.billing.pastDueUsers > 0;
-  const dormantPastDue =
-    !billing.providerConnected && snapshot.billing.pastDueUsers > 0;
 
   const hasCriticalSignal =
     incidents.counts.criticalOpen > 0 ||
     posture.overall === "critical" ||
     snapshot.privacy.overdueRequests > 0 ||
-    connectedPastDue ||
     freshness.tone === "critical";
   const hasAttentionSignal =
     openIncidents > 0 ||
@@ -161,7 +153,6 @@ export function deriveCommandCenterDecisionOverview({
     snapshot.telemetry.failedOperations7d > 0 ||
     snapshot.telemetry.poorPerformanceSignals7d > 0 ||
     pendingReviews > 0 ||
-    dormantPastDue ||
     freshness.tone === "attention";
 
   const systemTone: CommandCenterDecisionTone = hasCriticalSignal
@@ -231,19 +222,6 @@ export function deriveCommandCenterDecisionOverview({
           tone: mapSecurityPostureTone(posture.overall),
           href: "#admin-security",
           priority: posture.overall === "critical" ? 20 : 45,
-        }
-      : null,
-    snapshot.billing.pastDueUsers > 0
-      ? {
-          key: "past-due",
-          label: "Payment recovery queue",
-          detail: billing.providerConnected
-            ? "Connected-provider past-due records require commercial review."
-            : "Past-due records exist while collection is dormant; verify their lifecycle state.",
-          value: snapshot.billing.pastDueUsers,
-          tone: billing.providerConnected ? "critical" : "attention",
-          href: "#admin-billing",
-          priority: billing.providerConnected ? 25 : 55,
         }
       : null,
     snapshot.telemetry.failedOperations7d > 0
@@ -323,11 +301,6 @@ export function deriveCommandCenterDecisionOverview({
       label: "Incident operations",
       value: incidents.operationsAllowed ? "Authorized" : "Read only",
       tone: incidents.operationsAllowed ? "healthy" : "neutral",
-    },
-    {
-      label: "Billing provider",
-      value: billing.providerConnected ? "Connected" : "Dormant",
-      tone: billing.providerConnected ? "healthy" : "neutral",
     },
     {
       label: "Privacy deadline queue",

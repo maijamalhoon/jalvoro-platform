@@ -1,9 +1,7 @@
 import { JalvoroGlobeIcon } from "@/components/icons/jalvoro/components/communication";
 import {
-  JalvoroCardIcon,
   JalvoroShieldMoneyIcon,
   JalvoroTrendUpIcon,
-  JalvoroWalletIcon,
 } from "@/components/icons/jalvoro/components/finance";
 import {
   JalvoroAnalyticsIcon,
@@ -21,7 +19,6 @@ import {
 } from "@/components/icons/jalvoro/components/status";
 import type { JalvoroIconComponent } from "@/components/icons/jalvoro/types";
 import type { AdminAccessSnapshot } from "@/lib/admin/access-operations";
-import type { BillingOperationsSnapshot } from "@/lib/admin/billing-operations";
 import {
   deriveCommandCenterDecisionOverview,
   mapSecurityPostureTone,
@@ -132,7 +129,7 @@ function ActionCenter({ items }: { items: CommandCenterActionItem[] }) {
           </span>
           <p className="mt-3 font-medium text-foreground">No active action signal</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Incident, access, billing, privacy, performance, and freshness queues are clear.
+            Incident, access, privacy, performance, and freshness queues are clear.
           </p>
         </div>
       ) : (
@@ -410,20 +407,17 @@ export default function AdminDecisionOverview({
   posture,
   incidents,
   access,
-  billing,
 }: {
   snapshot: AdminControlCenterSnapshot;
   posture: AdminSecurityPosture;
   incidents: AdminIncidentOperationsSnapshot;
   access: AdminAccessSnapshot;
-  billing: BillingOperationsSnapshot;
 }) {
   const overview = deriveCommandCenterDecisionOverview({
     snapshot,
     posture,
     incidents,
     access,
-    billing,
   });
 
   return (
@@ -467,7 +461,7 @@ export default function AdminDecisionOverview({
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
               A privacy-minimised operational overview built only from verified
-              server-side counts, queues, access state, billing state, and product-health signals.
+              server-side counts, queues, access state, privacy deadlines, and product-health signals.
             </p>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
@@ -519,26 +513,6 @@ export default function AdminDecisionOverview({
           href="#admin-security"
         />
         <StatusCard
-          label="Past-due accounts"
-          value={formatAdminCount(snapshot.billing.pastDueUsers)}
-          detail={
-            billing.providerConnected
-              ? "Connected-provider payment recovery signal."
-              : "Collection is dormant; verify any retained past-due lifecycle state."
-          }
-          tone={
-            snapshot.billing.pastDueUsers > 0
-              ? billing.providerConnected
-                ? "critical"
-                : "attention"
-              : billing.providerConnected
-                ? "healthy"
-                : "neutral"
-          }
-          icon={JalvoroCardIcon}
-          href="#admin-billing"
-        />
-        <StatusCard
           label="Pending reviews"
           value={formatAdminCount(overview.pendingReviews)}
           detail="Access invitations plus open structured privacy requests."
@@ -568,8 +542,8 @@ export default function AdminDecisionOverview({
 
       <section
         id="admin-product-health"
-        aria-label="Usage and commercial pulse"
-        className="grid scroll-mt-24 gap-5 xl:grid-cols-2"
+        aria-label="Usage and product-health pulse"
+        className="scroll-mt-24"
       >
         <PulsePanel
           title="Audience and product usage"
@@ -590,26 +564,6 @@ export default function AdminDecisionOverview({
                 snapshot.telemetry.failedOperations7d > 0
                   ? "attention"
                   : "healthy",
-            },
-          ]}
-        />
-        <PulsePanel
-          title="Commercial state"
-          eyebrow="Provider-neutral"
-          icon={JalvoroWalletIcon}
-          items={[
-            { label: "Free users", value: snapshot.billing.freeUsers, tone: "info" },
-            {
-              label: "Trial users",
-              value: snapshot.billing.trialUsers,
-              tone: snapshot.billing.trialUsers > 0 ? "info" : "neutral",
-            },
-            { label: "Paid users", value: snapshot.billing.paidUsers, tone: "healthy" },
-            {
-              label: "Past due",
-              value: snapshot.billing.pastDueUsers,
-              tone:
-                snapshot.billing.pastDueUsers > 0 ? "critical" : "healthy",
             },
           ]}
         />

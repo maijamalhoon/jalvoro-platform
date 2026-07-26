@@ -10,6 +10,14 @@ const billingAction = readFileSync(
   resolve(root, "app/admin/billing-actions.ts"),
   "utf8",
 );
+const adminDecisionOverview = readFileSync(
+  resolve(root, "components/admin/AdminDecisionOverview.tsx"),
+  "utf8",
+);
+const adminDecisionModel = readFileSync(
+  resolve(root, "lib/admin/command-center-decision-overview.ts"),
+  "utf8",
+);
 
 describe("payment launch scope", () => {
   it("does not ship Stripe runtime dependencies", () => {
@@ -19,6 +27,9 @@ describe("payment launch scope", () => {
 
   it("does not render paid-plan administration", () => {
     expect(adminPage).not.toContain("BillingPlanOperations");
+    expect(`${adminDecisionOverview}\n${adminDecisionModel}`).not.toMatch(
+      /#admin-billing|Commercial state|Payment recovery queue|Past-due accounts/,
+    );
   });
 
   it("fails the legacy plan mutation closed", () => {
