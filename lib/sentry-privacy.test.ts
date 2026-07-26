@@ -7,7 +7,7 @@ describe("Sentry privacy and diagnostics contract", () => {
     expect(
       beforeSend({
         event_id: "1",
-        type: "error" as const,
+        type: undefined,
         tags: { "jalvoro.error_code": "session_expired" },
       }),
     ).toBeNull();
@@ -16,7 +16,7 @@ describe("Sentry privacy and diagnostics contract", () => {
   it("keeps allowlisted diagnostic breadcrumbs and removes arbitrary messages", () => {
     const event = beforeSend({
       event_id: "2",
-      type: "error" as const,
+      type: undefined,
       breadcrumbs: [
         {
           category: "navigation",
@@ -41,7 +41,7 @@ describe("Sentry privacy and diagnostics contract", () => {
   it("removes request details, users, extras and sensitive tags", () => {
     const event = beforeSend({
       event_id: "3",
-      type: "error" as const,
+      type: undefined,
       user: { id: "private" },
       request: {
         url: "https://example.test/private",
