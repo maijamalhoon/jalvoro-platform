@@ -4,7 +4,6 @@ import { type FormEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Banknote,
-  Minus,
   Plus,
   ReceiptText,
   ShoppingCart,

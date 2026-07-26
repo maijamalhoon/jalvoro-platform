@@ -52,11 +52,6 @@ type RawAccount = {
   balance?: number | string | null;
 };
 
-type RpcRankedAmount = {
-  label?: unknown;
-  amount?: unknown;
-};
-
 type RpcHistory = {
   firstDate?: unknown;
   lastDate?: unknown;

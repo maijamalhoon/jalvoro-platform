@@ -3,7 +3,6 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import {
   BadgeCheck,
-  CalendarRange,
   ChartNoAxesCombined,
   CircleDollarSign,
   Copy,
@@ -160,7 +159,7 @@ export default function BusinessBudgetingWorkspace({
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const scenarios = snapshot.scenarios ?? [];
-  const accounts = snapshot.accounts ?? [];
+  const accounts = useMemo(() => snapshot.accounts ?? [], [snapshot.accounts]);
   const months = snapshot.months ?? [];
   const summary = snapshot.summary ?? {};
   const selectedId = snapshot.selected_scenario_id ?? "";

@@ -34,7 +34,7 @@ async function requireSignedInClient() {
   return supabase;
 }
 
-export async function approveCurrentAdminReleaseAction(_formData: FormData) {
+export async function approveCurrentAdminReleaseAction() {
   const runtime = getAdminReleaseRuntimeEvidence();
   if (
     !runtime.vercel ||

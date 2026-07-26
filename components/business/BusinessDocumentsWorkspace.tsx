@@ -173,7 +173,6 @@ async function sha256(file: File) {
 export default function BusinessDocumentsWorkspace({
   businessId,
   businessName,
-  businessSlug,
   snapshot,
 }: Props) {
   const router = useRouter();

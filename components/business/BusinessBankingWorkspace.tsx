@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Ban,
-  Building2,
   CalendarRange,
   CheckCircle2,
   FileSpreadsheet,
