@@ -351,8 +351,6 @@ export default function AIInsightsExplainablePanel() {
   const { language, option } = useLanguage();
   const copy = getAIInsightsCopy(language);
   const actionableCopy = getAIInsightsActionableCopy(language);
-  const panelUnavailable = copy.panel.unavailable;
-  const serverEmptyMessage = copy.server.emptyMessage;
   const { currency, formatCurrency, live, rate } = useCurrency();
   const [data, setData] = useState<AIData | null>(null);
   const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([]);
@@ -397,6 +395,7 @@ export default function AIInsightsExplainablePanel() {
 
   const load = useCallback(
     async ({ regenerate = false } = {}) => {
+      const requestCopy = getAIInsightsCopy(language);
       if (regenerate) setRegenerating(true);
       else setLoading(true);
       setError("");
@@ -420,13 +419,13 @@ export default function AIInsightsExplainablePanel() {
           | { error?: string; message?: string };
 
         if (!response.ok || "error" in body) {
-          throw new Error(body.message ?? panelUnavailable);
+          throw new Error(body.message ?? requestCopy.panel.unavailable);
         }
         if ("summaryCards" in body) setSummaryCards(body.summaryCards);
         if ("financeSummary" in body) setSummary(body.financeSummary);
         if ("empty" in body && body.empty) {
           setData(null);
-          setEmptyMessage(body.message ?? serverEmptyMessage);
+          setEmptyMessage(body.message ?? requestCopy.server.emptyMessage);
           return;
         }
         setData(body as AIData);
@@ -435,14 +434,14 @@ export default function AIInsightsExplainablePanel() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : panelUnavailable,
+            : requestCopy.panel.unavailable,
         );
       } finally {
         setLoading(false);
         setRegenerating(false);
       }
     },
-    [currency, language, live, panelUnavailable, rate, serverEmptyMessage],
+    [currency, language, live, rate],
   );
 
   useEffect(() => {

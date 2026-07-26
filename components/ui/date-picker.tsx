@@ -239,7 +239,6 @@ function DateWheelField({
   minDate,
   maxDate,
   openCalendar,
-  calendarOpen,
   calendarId,
 }: {
   id?: string;
@@ -251,7 +250,6 @@ function DateWheelField({
   minDate?: string;
   maxDate?: string;
   openCalendar: () => void;
-  calendarOpen: boolean;
   calendarId: string;
 }) {
   const currentValue = isIsoDate(value) ? value : getTodayIso();
@@ -890,7 +888,6 @@ export default function DatePicker({
             minDate={minDate}
             maxDate={maxDate}
             openCalendar={openCalendar}
-            calendarOpen={calendarOpen}
             calendarId={calendarId}
           />
         ) : (
