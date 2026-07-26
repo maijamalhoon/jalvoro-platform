@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 const releaseCandidateBranches = new Set([
   "design/command-center-decision-first-overview",
   "release/global-command-center-freeze-20260725",
+  "release/stabilization-20260726",
 ]);
 const shouldRunReleaseChecks = releaseCandidateBranches.has(
   process.env.VERCEL_GIT_COMMIT_REF ?? "",
