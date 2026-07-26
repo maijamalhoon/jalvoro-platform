@@ -1,4 +1,4 @@
-# trigger: retain browser diagnostics
+# trigger: fix browser module resolution
 name: Agent browser and Lighthouse audit
 
 on:
@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          cat > /tmp/browser-audit.mjs <<'JS'
+          cat > .browser-audit/browser-audit.mjs <<'JS'
           import fs from 'node:fs/promises';
           import path from 'node:path';
           import { chromium } from 'playwright';
@@ -237,7 +237,7 @@ jobs:
           console.log(JSON.stringify({ issueCount: results.issues.length, issues: results.issues }, null, 2));
           if (results.issues.length) process.exit(1);
           JS
-          node /tmp/browser-audit.mjs 2>&1 | tee .browser-audit/browser-command.log
+          node .browser-audit/browser-audit.mjs 2>&1 | tee .browser-audit/browser-command.log
           browser_code=${PIPESTATUS[0]}
           printf '%s\n' "$browser_code" > .browser-audit/browser-exit-code.txt
           exit 0
@@ -248,7 +248,9 @@ jobs:
         run: |
           set +e
           mkdir -p .browser-audit/lighthouse
-          export CHROME_PATH="$(node --input-type=module -e "import { chromium } from 'playwright'; console.log(chromium.executablePath())")"
+          CHROME_PATH="$(node -p 'require("playwright").chromium.executablePath()')"
+          export CHROME_PATH
+          printf 'CHROME_PATH=%s\n' "$CHROME_PATH" | tee .browser-audit/lighthouse-setup.log
           routes=(home login privacy terms disclosures support)
           paths=(/ /login /privacy /terms /disclosures /support)
           : > .browser-audit/lighthouse-scores.tsv
@@ -256,7 +258,7 @@ jobs:
           for index in "${!routes[@]}"; do
             name="${routes[$index]}"
             route="${paths[$index]}"
-            npx lighthouse "http://127.0.0.1:3000${route}" \
+            ./node_modules/.bin/lighthouse "http://127.0.0.1:3000${route}" \
               --quiet \
               --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
               --only-categories=performance,accessibility,best-practices,seo \
