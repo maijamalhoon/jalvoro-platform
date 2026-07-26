@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://jamals-finance-sable.vercel.app";
+import { APP_URL } from "@/lib/brand";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -18,7 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         "/settings/",
       ],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${APP_URL}/sitemap.xml`,
+    host: APP_URL,
   };
 }
