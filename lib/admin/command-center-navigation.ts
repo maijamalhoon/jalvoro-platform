@@ -12,7 +12,7 @@ export type ResolvedCommandCenterNavigationItem = {
 };
 
 const KEY_PATTERN = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
-const ADMIN_ROUTE_PATTERN = /^\/admin(?:\/[a-z0-9][a-z0-9/_-]*)?$/;
+const ADMIN_ROUTE_PATTERN = /^\/admin(?:\/[a-z0-9][a-z0-9_-]*)*$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

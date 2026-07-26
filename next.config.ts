@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 function safeOrigin(value: string | undefined, fallback: string) {
@@ -13,6 +14,12 @@ const supabaseOrigin = safeOrigin(
   "https://tdagzmgcgjlyqzegmizg.supabase.co",
 );
 const supabaseWebSocketOrigin = supabaseOrigin.replace(/^http/, "ws");
+const commandCenterSupabaseOrigin = safeOrigin(
+  process.env.NEXT_PUBLIC_COMMAND_CENTER_SUPABASE_URL,
+  "https://zzvpovvuybfihwgjrder.supabase.co",
+);
+const commandCenterSupabaseWebSocketOrigin =
+  commandCenterSupabaseOrigin.replace(/^http/, "ws");
 const productionScriptSources = ["'self'", "'unsafe-inline'"];
 const scriptSources =
   process.env.NODE_ENV === "production"
@@ -45,6 +52,8 @@ const contentSecurityPolicy = [
     "connect-src 'self'",
     supabaseOrigin,
     supabaseWebSocketOrigin,
+    commandCenterSupabaseOrigin,
+    commandCenterSupabaseWebSocketOrigin,
     "wss://stream.binance.com:9443",
     "wss://data-stream.binance.vision",
     "https://*.ingest.sentry.io",
@@ -71,7 +80,7 @@ const securityHeaders = [
   },
   {
     key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
+    value: "max-age=63072000",
   },
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
 ];
@@ -122,6 +131,11 @@ const forexMarketCacheHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "128kb",
+    },
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
@@ -144,6 +158,12 @@ const nextConfig: NextConfig = {
         ],
       },
       { source: "/dashboard/:path*", headers: privateNoStoreHeaders },
+      { source: "/admin/:path*", headers: privateNoStoreHeaders },
+      { source: "/commandcenter", headers: privateNoStoreHeaders },
+      { source: "/commandcenter/:path*", headers: privateNoStoreHeaders },
+      { source: "/control", headers: privateNoStoreHeaders },
+      { source: "/control-login", headers: privateNoStoreHeaders },
+      { source: "/control-invite", headers: privateNoStoreHeaders },
       { source: "/api/:path*", headers: privateNoStoreHeaders },
       { source: "/api/market/asset-search", headers: assetSearchCacheHeaders },
       { source: "/api/market/stock-prices", headers: stockMarketCacheHeaders },
@@ -155,4 +175,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const sentryBuildConfigured = Boolean(
+  process.env.SENTRY_AUTH_TOKEN &&
+    process.env.SENTRY_ORG &&
+    process.env.SENTRY_PROJECT &&
+    (process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA),
+);
+
+export default sentryBuildConfigured
+  ? withSentryConfig(nextConfig, {
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: true,
+    })
+  : nextConfig;

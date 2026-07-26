@@ -54,8 +54,19 @@ export type ControlPlaneDirectory = {
   activeGrants: Array<ControlPlaneGrant & { userReference: string }>;
 };
 
+const USER_REFERENCE_PATTERN = /^CPU-[A-F0-9]{12}$/;
+const INVITATION_CODE_PATTERN = /^CPI-[A-F0-9]{12}$/;
+const GRANT_CODE_PATTERN = /^CPG-[A-F0-9]{12}$/;
+const PERMISSION_KEY_PATTERN = /^[a-z][a-z0-9-]*(:[a-z][a-z0-9-]*){2,4}$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CONTROL_CHARACTER_PATTERN = new RegExp("[\\u0000-\\u001f\\u007f]");
+const CONTROL_ROUTE_PATTERN = /^\/control(?:\/[a-z0-9][a-z0-9_-]*)*$/;
+const ADMIN_ROUTE_PATTERN = /^\/admin(?:\/[a-z0-9][a-z0-9_-]*)*$/;
+const MAX_PATHNAME_DECODE_PASSES = 3;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function cleanText(value: unknown, maxLength = 180) {
@@ -70,9 +81,10 @@ function cleanNullableText(value: unknown, maxLength = 180) {
 }
 
 function cleanDateTime(value: unknown) {
-  if (typeof value !== "string") return null;
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return undefined;
   const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
 }
 
 function isRole(value: unknown): value is ControlPlaneRole {
@@ -87,53 +99,75 @@ function isRole(value: unknown): value is ControlPlaneRole {
 function parseGrant(value: unknown): ControlPlaneGrant | null {
   if (!isRecord(value)) return null;
 
-  const grantCode = cleanText(value.grantCode, 32);
-  const permissionKey = cleanText(value.permissionKey, 160);
-  if (!grantCode || !permissionKey) return null;
+  const grantCode = cleanText(value.grantCode, 16).toUpperCase();
+  const permissionKey = cleanText(value.permissionKey, 160).toLowerCase();
+  const productKey = cleanNullableText(value.productKey, 100);
+  const moduleKey = cleanNullableText(value.moduleKey, 100);
+  const environmentKey = cleanNullableText(value.environmentKey, 40);
+  const regionKey = cleanNullableText(value.regionKey, 80);
+  const organizationId = cleanNullableText(value.organizationId, 80);
+  const dataClassification = cleanNullableText(value.dataClassification, 40);
+  const expiresAt = cleanDateTime(value.expiresAt);
+
+  if (
+    !GRANT_CODE_PATTERN.test(grantCode) ||
+    !PERMISSION_KEY_PATTERN.test(permissionKey) ||
+    (organizationId !== null && !UUID_PATTERN.test(organizationId)) ||
+    expiresAt === undefined
+  ) {
+    return null;
+  }
 
   return {
     grantCode,
     permissionKey,
-    productKey: cleanNullableText(value.productKey, 100),
-    moduleKey: cleanNullableText(value.moduleKey, 100),
-    environmentKey: cleanNullableText(value.environmentKey, 40),
-    regionKey: cleanNullableText(value.regionKey, 80),
-    organizationId: cleanNullableText(value.organizationId, 80),
-    dataClassification: cleanNullableText(value.dataClassification, 40),
-    expiresAt: cleanDateTime(value.expiresAt),
+    productKey,
+    moduleKey,
+    environmentKey,
+    regionKey,
+    organizationId,
+    dataClassification,
+    expiresAt,
   };
 }
 
 export function parseControlPlaneAccess(value: unknown): ControlPlaneAccess | null {
   if (!isRecord(value)) return null;
 
-  const userReference = cleanText(value.userReference, 32);
+  const userReference = cleanText(value.userReference, 16).toUpperCase();
   const role = value.role;
+  const isRootOwner = value.isRootOwner === true;
   if (
-    !userReference ||
+    !USER_REFERENCE_PATTERN.test(userReference) ||
     !isRole(role) ||
     value.sessionAssurance !== "aal2" ||
-    !Array.isArray(value.grants)
+    !Array.isArray(value.grants) ||
+    (role === "owner") !== isRootOwner
   ) {
+    return null;
+  }
+
+  const grants = value.grants.map(parseGrant);
+  if (grants.some((grant) => grant === null)) return null;
+  const validGrants = grants as ControlPlaneGrant[];
+  if (new Set(validGrants.map((grant) => grant.grantCode)).size !== validGrants.length) {
     return null;
   }
 
   return {
     userReference,
     role,
-    isRootOwner: value.isRootOwner === true,
+    isRootOwner,
     sessionAssurance: "aal2",
-    grants: value.grants
-      .map(parseGrant)
-      .filter((grant): grant is ControlPlaneGrant => Boolean(grant)),
+    grants: validGrants,
   };
 }
 
 export function parseControlPlaneDirectory(
   value: unknown,
 ): ControlPlaneDirectory | null {
-  if (!isRecord(value)) return null;
   if (
+    !isRecord(value) ||
     !Array.isArray(value.operators) ||
     !Array.isArray(value.pendingInvitations) ||
     !Array.isArray(value.activeGrants)
@@ -141,51 +175,104 @@ export function parseControlPlaneDirectory(
     return null;
   }
 
-  const operators = value.operators.flatMap((entry) => {
-    if (!isRecord(entry) || !isRole(entry.role)) return [];
-    const userReference = cleanText(entry.userReference, 32);
-    if (!userReference) return [];
-    return [
-      {
-        userReference,
-        role: entry.role,
-        isRootOwner: entry.isRootOwner === true,
-        status: entry.status === "disabled" ? "disabled" : "active",
-        createdAt: cleanDateTime(entry.createdAt),
-        disabledAt: cleanDateTime(entry.disabledAt),
-      } satisfies ControlPlaneOperator,
-    ];
-  });
-
-  const pendingInvitations = value.pendingInvitations.flatMap((entry) => {
-    if (!isRecord(entry) || !isRole(entry.role) || entry.role === "owner") {
-      return [];
+  const operators: ControlPlaneOperator[] = [];
+  const operatorReferences = new Set<string>();
+  for (const entry of value.operators) {
+    if (!isRecord(entry) || !isRole(entry.role)) return null;
+    const userReference = cleanText(entry.userReference, 16).toUpperCase();
+    const isRootOwner = entry.isRootOwner === true;
+    const createdAt = cleanDateTime(entry.createdAt);
+    const disabledAt = cleanDateTime(entry.disabledAt);
+    if (
+      !USER_REFERENCE_PATTERN.test(userReference) ||
+      (entry.role === "owner") !== isRootOwner ||
+      (entry.status !== "active" && entry.status !== "disabled") ||
+      createdAt === undefined ||
+      disabledAt === undefined ||
+      operatorReferences.has(userReference)
+    ) {
+      return null;
     }
-    const invitationCode = cleanText(entry.invitationCode, 32);
-    const maskedEmail = cleanText(entry.maskedEmail, 180);
-    if (!invitationCode || !maskedEmail) return [];
-    return [
-      {
-        invitationCode,
-        maskedEmail,
-        role: entry.role,
-        expiresAt: cleanDateTime(entry.expiresAt),
-      } satisfies ControlPlaneInvitation,
-    ];
-  });
+    operatorReferences.add(userReference);
+    operators.push({
+      userReference,
+      role: entry.role,
+      isRootOwner,
+      status: entry.status,
+      createdAt,
+      disabledAt,
+    });
+  }
 
-  const activeGrants = value.activeGrants.flatMap((entry) => {
-    if (!isRecord(entry)) return [];
+  if (operators.filter((operator) => operator.isRootOwner).length !== 1) {
+    return null;
+  }
+
+  const pendingInvitations: ControlPlaneInvitation[] = [];
+  const invitationCodes = new Set<string>();
+  for (const entry of value.pendingInvitations) {
+    if (!isRecord(entry) || !isRole(entry.role) || entry.role === "owner") {
+      return null;
+    }
+    const invitationCode = cleanText(entry.invitationCode, 16).toUpperCase();
+    const maskedEmail = cleanText(entry.maskedEmail, 180);
+    const expiresAt = cleanDateTime(entry.expiresAt);
+    if (
+      !INVITATION_CODE_PATTERN.test(invitationCode) ||
+      !maskedEmail ||
+      !expiresAt ||
+      invitationCodes.has(invitationCode)
+    ) {
+      return null;
+    }
+    invitationCodes.add(invitationCode);
+    pendingInvitations.push({
+      invitationCode,
+      maskedEmail,
+      role: entry.role,
+      expiresAt,
+    });
+  }
+
+  const activeGrants: Array<ControlPlaneGrant & { userReference: string }> = [];
+  const grantCodes = new Set<string>();
+  for (const entry of value.activeGrants) {
+    if (!isRecord(entry)) return null;
     const grant = parseGrant(entry);
-    const userReference = cleanText(entry.userReference, 32);
-    return grant && userReference ? [{ ...grant, userReference }] : [];
-  });
+    const userReference = cleanText(entry.userReference, 16).toUpperCase();
+    if (
+      !grant ||
+      !USER_REFERENCE_PATTERN.test(userReference) ||
+      !operatorReferences.has(userReference) ||
+      grantCodes.has(grant.grantCode)
+    ) {
+      return null;
+    }
+    grantCodes.add(grant.grantCode);
+    activeGrants.push({ ...grant, userReference });
+  }
 
   return { operators, pendingInvitations, activeGrants };
 }
 
+function canonicalizeControlPathname(pathname: string) {
+  let current = pathname;
+  for (let pass = 0; pass < MAX_PATHNAME_DECODE_PASSES; pass += 1) {
+    if (CONTROL_CHARACTER_PATTERN.test(current)) return null;
+    try {
+      current = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
+    if (!current.includes("%")) break;
+  }
+
+  if (CONTROL_CHARACTER_PATTERN.test(current)) return null;
+  return current;
+}
+
 export function sanitizeControlDestination(value: string | null | undefined) {
-  if (!value || /[\\\u0000-\u001f\u007f]/.test(value)) {
+  if (!value || CONTROL_CHARACTER_PATTERN.test(value)) {
     return CONTROL_PLANE_HOME_PATH;
   }
 
@@ -195,14 +282,12 @@ export function sanitizeControlDestination(value: string | null | undefined) {
       return CONTROL_PLANE_HOME_PATH;
     }
 
-    const pathname = destination.pathname;
-    const isAllowed =
-      pathname === CONTROL_PLANE_HOME_PATH ||
-      pathname.startsWith(`${CONTROL_PLANE_HOME_PATH}/`) ||
-      pathname === "/admin" ||
-      pathname.startsWith("/admin/");
-
-    if (!isAllowed || pathname === CONTROL_PLANE_LOGIN_PATH) {
+    const pathname = canonicalizeControlPathname(destination.pathname);
+    if (
+      !pathname ||
+      (!CONTROL_ROUTE_PATTERN.test(pathname) && !ADMIN_ROUTE_PATTERN.test(pathname)) ||
+      pathname === CONTROL_PLANE_LOGIN_PATH
+    ) {
       return CONTROL_PLANE_HOME_PATH;
     }
 

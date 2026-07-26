@@ -48,6 +48,9 @@ jobs:
       - name: Enforce dependency audit policy
         run: npm run audit:ci
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
 

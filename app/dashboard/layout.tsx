@@ -124,8 +124,10 @@ import "./mobile-sidebar-edge-lock.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  alternates: {
-    canonical: "/dashboard",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
   },
 };
 

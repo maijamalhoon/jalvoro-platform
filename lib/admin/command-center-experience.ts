@@ -8,6 +8,8 @@ export const COMMAND_CENTER_GROUPS = [
   "ecosystem",
 ] as const;
 
+export const COMMAND_CENTER_BASE_PATH = "/commandcenter";
+
 export type CommandCenterGroup = (typeof COMMAND_CENTER_GROUPS)[number];
 
 export type CommandCenterExperienceItem =
@@ -77,6 +79,14 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLocaleLowerCase("en-US");
 }
 
+export function canonicalCommandCenterHref(href: string) {
+  if (href === "/admin") return COMMAND_CENTER_BASE_PATH;
+  if (href.startsWith("/admin/")) {
+    return `${COMMAND_CENTER_BASE_PATH}${href.slice("/admin".length)}`;
+  }
+  return href;
+}
+
 export function enrichCommandCenterNavigation(
   navigation: ResolvedCommandCenterNavigationItem[],
 ): CommandCenterExperienceItem[] {
@@ -86,6 +96,7 @@ export function enrichCommandCenterNavigation(
 
     return {
       ...item,
+      href: canonicalCommandCenterHref(item.href),
       group,
       groupLabel: GROUP_LABELS[group],
       description:
@@ -135,8 +146,8 @@ export function resolveActiveCommandCenterItem(
   return (
     navigation
       .filter((item) =>
-        item.href === "/admin"
-          ? pathname === "/admin"
+        item.href === COMMAND_CENTER_BASE_PATH
+          ? pathname === COMMAND_CENTER_BASE_PATH
           : pathname === item.href || pathname.startsWith(`${item.href}/`),
       )
       .sort((left, right) => right.href.length - left.href.length)[0] ?? null

@@ -41,6 +41,9 @@ describe("server-resolved Command Center navigation", () => {
       "/dashboard",
       "/admin?token=secret",
       "/admin#private",
+      "/admin/organizations//members",
+      "/admin/organizations/",
+      "/admin/organizations/%2fmembers",
     ]) {
       expect(
         parseResolvedCommandCenterNavigation([

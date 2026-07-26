@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireRateLimitedAdminClient } from "@/lib/admin/server-action-security";
 
 const EVENT_CODE_PATTERN = /^AUD-[A-F0-9]{12}$/;
 const REVIEW_STATUSES = new Set(["pending", "reviewed", "flagged"]);
@@ -33,13 +33,11 @@ export async function updateComplianceReviewAction(formData: FormData) {
     actionRedirect("invalid");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) redirect("/login?next=%2Fadmin");
+  const supabase = await requireRateLimitedAdminClient({
+    scope: "compliance",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?complianceAction=unavailable#admin-compliance",
+  });
 
   const { error } = await supabase.rpc("apply_admin_compliance_review", {
     p_event_code: eventCode,

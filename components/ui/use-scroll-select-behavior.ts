@@ -38,7 +38,9 @@ export function useScrollSelectBehavior({
   const touchYRef = useRef<number | null>(null);
   const scrollFrameRef = useRef<number | null>(null);
 
-  selectedValueRef.current = value;
+  useEffect(() => {
+    selectedValueRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") {

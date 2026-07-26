@@ -16,9 +16,7 @@ concurrency:
 jobs:
   codeql:
     name: CodeQL
-    if: >-
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      github.event.repository.private == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -77,6 +75,9 @@ jobs:
       - name: Enforce dependency audit policy
         run: npm run audit:ci
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
 
@@ -95,7 +96,6 @@ jobs:
       contents: read
     steps:
       - name: Review dependency changes
-        continue-on-error: true
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high

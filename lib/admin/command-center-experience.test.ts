@@ -15,7 +15,7 @@ const navigation: ResolvedCommandCenterNavigationItem[] = [
     navigationId: "global-overview",
     moduleKey: "global-overview",
     label: "Global Overview",
-    href: "/admin",
+    href: "/commandcenter",
     iconKey: "dashboard",
     order: 10,
   },
@@ -25,7 +25,7 @@ const navigation: ResolvedCommandCenterNavigationItem[] = [
     navigationId: "organizations",
     moduleKey: "organizations",
     label: "Organizations",
-    href: "/admin/organizations",
+    href: "/commandcenter/organizations",
     iconKey: "organizations",
     order: 30,
   },
@@ -35,7 +35,7 @@ const navigation: ResolvedCommandCenterNavigationItem[] = [
     navigationId: "future-module",
     moduleKey: "future-module",
     label: "Future Module",
-    href: "/admin/future-module",
+    href: "/commandcenter/future-module",
     iconKey: "grid",
     order: 650,
   },
@@ -86,13 +86,13 @@ describe("Command Center experience model", () => {
   it("resolves the most specific active route", () => {
     const items = enrichCommandCenterNavigation(navigation);
 
-    expect(resolveActiveCommandCenterItem(items, "/admin")?.moduleKey).toBe(
-      "global-overview",
-    );
+    expect(
+      resolveActiveCommandCenterItem(items, "/commandcenter")?.moduleKey,
+    ).toBe("global-overview");
     expect(
       resolveActiveCommandCenterItem(
         items,
-        "/admin/organizations/ORG-123456789ABC",
+        "/commandcenter/organizations/ORG-123456789ABC",
       )?.moduleKey,
     ).toBe("organizations");
   });

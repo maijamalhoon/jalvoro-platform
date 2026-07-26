@@ -19,11 +19,7 @@ export default async function AdminCommandCenterShell({
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return (
-      <AdminCommandCenterShellClient sections={[]}>
-        {children}
-      </AdminCommandCenterShellClient>
-    );
+    return <>{children}</>;
   }
 
   const { data, error } = await supabase.rpc("get_command_center_navigation", {
@@ -31,11 +27,7 @@ export default async function AdminCommandCenterShell({
   });
 
   if (error?.code === "42501") {
-    return (
-      <AdminCommandCenterShellClient sections={[]}>
-        {children}
-      </AdminCommandCenterShellClient>
-    );
+    return <>{children}</>;
   }
 
   if (error) {

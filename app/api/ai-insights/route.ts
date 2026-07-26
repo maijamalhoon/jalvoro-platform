@@ -1,3 +1,8 @@
+import {
+  callGeminiProvider,
+  describeGeminiProviderError,
+  GeminiProviderError,
+} from "@/lib/ai-insights/gemini-provider";
 import { APP_NAME } from "@/lib/brand";
 import { getAppMonthRange, getDaysInMonth, formatDateKey } from "@/lib/dates";
 import { getPayableStatus } from "@/lib/finance-options";
@@ -16,7 +21,6 @@ export const dynamic = "force-dynamic";
 const AI_UNAVAILABLE_MESSAGE =
   "AI insights are temporarily unavailable. Try again later.";
 const GEMINI_MODEL_FALLBACK = "gemini-2.5-flash";
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 type InsightType = "positive" | "warning" | "tip";
 type SummaryTone = "positive" | "warning" | "danger" | "info" | "neutral";
@@ -163,25 +167,40 @@ type CurrencyRequestContext = {
   live: boolean;
 };
 
-type GeminiGenerateContentResponse = {
-  candidates?: {
-    content?: {
-      parts?: { text?: string }[];
-    };
-  }[];
-  error?: {
-    code?: number;
-    message?: string;
-    status?: string;
-  };
-};
-
 function errorResponse(
   error: string,
   status: number,
   message = AI_UNAVAILABLE_MESSAGE,
+  retryable = false,
+  correlationId: string | null = null,
 ) {
-  return NextResponse.json({ error, message }, { status });
+  return NextResponse.json(
+    { error, message, retryable, correlationId },
+    {
+      status,
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
+  );
+}
+
+function providerFailureResponse(error: unknown) {
+  const failure = describeGeminiProviderError(error);
+  console.warn("AI provider request failed", {
+    code: failure.code,
+    providerStatus: failure.providerStatus,
+    correlationId: failure.correlationId,
+    retryable: failure.retryable,
+  });
+  return errorResponse(
+    failure.code,
+    failure.status,
+    AI_UNAVAILABLE_MESSAGE,
+    failure.retryable,
+    failure.correlationId,
+  );
 }
 
 function logSafeError(context: string, error: unknown) {
@@ -424,61 +443,6 @@ function parseChatResponse(text: string): Pick<ChatResponse, "answer" | "followU
     ),
     followUps,
   };
-}
-
-function extractGeminiText(response: GeminiGenerateContentResponse) {
-  return (
-    response.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? "")
-      .join("")
-      .trim() ?? ""
-  );
-}
-
-async function callGemini({
-  apiKey,
-  model,
-  prompt,
-}: {
-  apiKey: string;
-  model: string;
-  prompt: string;
-}) {
-  const response = await fetch(
-    `${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens: 1200,
-          responseMimeType: "application/json",
-        },
-      }),
-    },
-  );
-
-  const json = (await response.json()) as GeminiGenerateContentResponse;
-
-  if (!response.ok || json.error) {
-    const status = json.error?.status ?? response.statusText;
-    const code = json.error?.code ?? response.status;
-    throw new Error(`Gemini request failed: ${code} ${status}`);
-  }
-
-  const text = extractGeminiText(json);
-  if (!text) throw new Error("Gemini returned an empty response");
-
-  return text;
 }
 
 async function readSummaryRows<T>(
@@ -847,100 +811,6 @@ function buildSummaryCards(
   ];
 }
 
-function buildFallbackInsights(
-  summary: FinanceSummary,
-  context: CurrencyRequestContext,
-): GeneratedInsights {
-  const scoreFromSavings = Math.max(
-    0,
-    Math.min(45, 25 + summary.currentMonth.savingsRate),
-  );
-  const scoreFromGoals = Math.min(25, summary.goalsSummary.completionPct / 4);
-  const scoreFromPayables =
-    summary.payablesSummary.remaining > 0
-      ? Math.max(0, 20 - summary.payablesSummary.overdueCount * 8)
-      : 20;
-  const scoreFromInvestments =
-    summary.investmentSummary.currentValue > 0 ? 10 : 4;
-  const healthScore = Math.round(
-    Math.max(25, Math.min(95, scoreFromSavings + scoreFromGoals + scoreFromPayables + scoreFromInvestments)),
-  );
-  const topCategory = summary.categorySpendingTotals[0];
-  const insights: GeneratedInsight[] = [
-    {
-      type: summary.currentMonth.net >= 0 ? "positive" : "warning",
-      title: summary.currentMonth.net >= 0 ? "Positive monthly net" : "Monthly net needs attention",
-      message:
-        summary.currentMonth.net >= 0
-          ? `This month is ahead by ${formatDisplayMoney(summary.currentMonth.net, context)} after expenses.`
-          : `This month is short by ${formatDisplayMoney(Math.abs(summary.currentMonth.net), context)}; review flexible spending first.`,
-    },
-    {
-      type: topCategory ? "tip" : "warning",
-      title: topCategory ? `${topCategory.category} is the top category` : "No category spending yet",
-      message: topCategory
-        ? `${topCategory.category} has reached ${formatDisplayMoney(topCategory.amount, context)} this month.`
-        : "Add categorized expenses to get better spending guidance.",
-    },
-    {
-      type: summary.goalsSummary.count > 0 ? "positive" : "tip",
-      title: "Goal progress",
-      message:
-        summary.goalsSummary.count > 0
-          ? `Goals are ${summary.goalsSummary.completionPct}% funded across ${summary.goalsSummary.count} active target${summary.goalsSummary.count === 1 ? "" : "s"}.`
-          : "Create one savings goal to make monthly surplus easier to direct.",
-    },
-    {
-      type: summary.payablesSummary.overdueCount > 0 ? "warning" : "tip",
-      title: "Payables check",
-      message:
-        summary.payablesSummary.remaining > 0
-          ? `${formatDisplayMoney(summary.payablesSummary.remaining, context)} remains payable, with ${summary.payablesSummary.overdueCount} overdue record${summary.payablesSummary.overdueCount === 1 ? "" : "s"}.`
-          : "No outstanding payable balance is currently visible in the summary.",
-    },
-  ];
-
-  const suggestedActions: SuggestedAction[] = [
-    {
-      title: summary.currentMonth.net >= 0 ? "Allocate monthly surplus" : "Reduce the biggest category",
-      description:
-        summary.currentMonth.net >= 0
-          ? "Move a clear amount from this month's surplus into goals or investments."
-          : topCategory
-            ? `Start with ${topCategory.category}, the largest current expense category.`
-            : "Review recent expenses and pause non-essential spending.",
-      priority: summary.currentMonth.net >= 0 ? "medium" : "high",
-    },
-    {
-      title: "Review payable commitments",
-      description:
-        summary.payablesSummary.remaining > 0
-          ? "Prioritize overdue and high remaining payables before adding new obligations."
-          : "Keep payables clean by recording repayments as soon as they happen.",
-      priority: summary.payablesSummary.overdueCount > 0 ? "high" : "low",
-    },
-    {
-      title: "Keep trend tracking current",
-      description: "Refresh categories and account balances so Gemini can compare month-to-month movement.",
-      priority: "medium",
-    },
-  ];
-
-  return {
-    healthScore,
-    healthLabel:
-      healthScore >= 80
-        ? "Excellent"
-        : healthScore >= 65
-          ? "Good"
-          : healthScore >= 45
-            ? "Fair"
-            : "Needs Attention",
-    insights,
-    suggestedActions,
-  };
-}
-
 function buildInsightPrompt(
   summary: FinanceSummary,
   context: CurrencyRequestContext,
@@ -1004,8 +874,6 @@ export async function GET(request: NextRequest) {
     const displaySummary = withCurrencyContext(summary, currencyContext);
     const { apiKey, model } = getGeminiConfig();
     const summaryCards = buildSummaryCards(summary, currencyContext);
-    const fallback = buildFallbackInsights(summary, currencyContext);
-
     if (!hasFinanceData) {
       return NextResponse.json({
         empty: true,
@@ -1021,40 +889,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (!apiKey) {
-      console.error("AI insights unavailable: missing GEMINI_API_KEY");
-      return NextResponse.json({
-        ...fallback,
-        provider: "gemini",
-        model,
-        generatedAt: new Date().toISOString(),
-        summaryCards,
-        financeSummary: displaySummary,
-        aiAvailable: false,
-        message: AI_UNAVAILABLE_MESSAGE,
-      } satisfies AIInsightsResponse);
-    }
-
     try {
-      const text = await callGemini({
+      const provider = await callGeminiProvider({
         apiKey,
         model,
         prompt: buildInsightPrompt(displaySummary, currencyContext),
       });
-      const generated = parseGeneratedInsights(text);
+      const generated = parseGeneratedInsights(provider.text);
 
       if (!generated) {
-        console.error("AI insights provider returned invalid JSON shape");
-        return NextResponse.json({
-          ...fallback,
-          provider: "gemini",
-          model,
-          generatedAt: new Date().toISOString(),
-          summaryCards,
-          financeSummary: displaySummary,
-          aiAvailable: false,
-          message: AI_UNAVAILABLE_MESSAGE,
-        } satisfies AIInsightsResponse);
+        throw new GeminiProviderError("invalid_ai_response", {
+          httpStatus: 502,
+          retryable: false,
+          correlationId: provider.correlationId,
+        });
       }
 
       return NextResponse.json({
@@ -1067,18 +915,7 @@ export async function GET(request: NextRequest) {
         aiAvailable: true,
       } satisfies AIInsightsResponse);
     } catch (error) {
-      logSafeError("AI insights Gemini request failed", error);
-
-      return NextResponse.json({
-        ...fallback,
-        provider: "gemini",
-        model,
-        generatedAt: new Date().toISOString(),
-        summaryCards,
-        financeSummary: displaySummary,
-        aiAvailable: false,
-        message: AI_UNAVAILABLE_MESSAGE,
-      } satisfies AIInsightsResponse);
+      return providerFailureResponse(error);
     }
   } catch (error) {
     logSafeError("AI insights route failed", error);
@@ -1109,12 +946,7 @@ export async function POST(request: NextRequest) {
 
     const { apiKey, model } = getGeminiConfig();
 
-    if (!apiKey) {
-      console.error("AI chat unavailable: missing GEMINI_API_KEY");
-      return errorResponse("missing_ai_configuration", 503);
-    }
-
-    const text = await callGemini({
+    const provider = await callGeminiProvider({
       apiKey,
       model,
       prompt: buildChatPrompt(
@@ -1123,11 +955,16 @@ export async function POST(request: NextRequest) {
         currencyContext,
       ),
     });
-    const chat = parseChatResponse(text);
+    const chat = parseChatResponse(provider.text);
 
     if (!chat) {
-      console.error("AI chat provider returned invalid JSON shape");
-      return errorResponse("invalid_ai_response", 502);
+      return errorResponse(
+        "invalid_ai_response",
+        502,
+        AI_UNAVAILABLE_MESSAGE,
+        false,
+        provider.correlationId,
+      );
     }
 
     return NextResponse.json({
@@ -1136,7 +973,6 @@ export async function POST(request: NextRequest) {
       ...chat,
     } satisfies ChatResponse);
   } catch (error) {
-    logSafeError("AI chat Gemini request failed", error);
-    return errorResponse("ai_provider_unavailable", 503);
+    return providerFailureResponse(error);
   }
 }

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  callGeminiProvider,
+  describeGeminiProviderError,
+  GeminiProviderError,
+} from "@/lib/ai-insights/gemini-provider";
+
+import {
   BASE_CURRENCY,
   formatMoney,
   isSupportedCurrency,
@@ -31,7 +37,6 @@ import { GET as getTrustContext } from "../context/route";
 
 export const dynamic = "force-dynamic";
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_MODEL_FALLBACK = "gemini-2.5-flash";
 
 type InsightType = "positive" | "warning" | "tip";
@@ -112,18 +117,6 @@ type TrustContext = {
 type CurrencyContext = {
   currency: SupportedCurrency;
   rate: number;
-};
-
-type GeminiResponse = {
-  candidates?: {
-    content?: {
-      parts?: { text?: string }[];
-    };
-  }[];
-  error?: {
-    code?: number;
-    status?: string;
-  };
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -636,7 +629,28 @@ function parseTranslatedContent(
   if (!isRecord(value)) return null;
   const translatedInsights = value.insights;
   const translatedActions = value.actions;
-  if (!Array.isArray(translatedInsights) || !Array.isArray(translatedActions)) {
+  if (
+    !Array.isArray(translatedInsights) ||
+    !Array.isArray(translatedActions) ||
+    translatedInsights.length !== originalInsights.length ||
+    translatedActions.length !== originalActions.length ||
+    translatedInsights.some(
+      (entry) =>
+        !isRecord(entry) ||
+        typeof entry.title !== "string" ||
+        !entry.title.trim() ||
+        typeof entry.message !== "string" ||
+        !entry.message.trim(),
+    ) ||
+    translatedActions.some(
+      (entry) =>
+        !isRecord(entry) ||
+        typeof entry.title !== "string" ||
+        !entry.title.trim() ||
+        typeof entry.description !== "string" ||
+        !entry.description.trim(),
+    )
+  ) {
     return null;
   }
 
@@ -675,47 +689,36 @@ async function translateGeneratedContent({
   insights: LegacyInsight[];
   actions: LegacyAction[];
 }) {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return null;
   const model =
     process.env.GEMINI_MODEL?.trim().replace(/^models\//, "") ||
     GEMINI_MODEL_FALLBACK;
   const prompt = `${languageInstruction}\nTranslate the user-facing finance content below without changing any number, currency amount, factual claim, priority, or meaning. Do not add advice or new facts. Return only valid JSON with this exact shape: {"insights":[{"title":"","message":""}],"actions":[{"title":"","description":""}]}. Preserve array order and array length.\n\n${JSON.stringify({ insights, actions })}`;
-
+  const provider = await callGeminiProvider({
+    apiKey: process.env.GEMINI_API_KEY,
+    model,
+    prompt,
+    temperature: 0,
+    maxOutputTokens: 1400,
+  });
+  let parsed: unknown;
   try {
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 1400,
-            responseMimeType: "application/json",
-          },
-        }),
-        cache: "no-store",
-      },
-    );
-    const body = (await response.json()) as GeminiResponse;
-    if (!response.ok || body.error) return null;
-    const text =
-      body.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text ?? "")
-        .join("")
-        .trim() ?? "";
-    if (!text) return null;
-    const parsed = JSON.parse(text) as unknown;
-    return parseTranslatedContent(parsed, insights, actions);
-  } catch (error) {
-    console.error("AI Insights localization translation failed", {
-      name: error instanceof Error ? error.name : "UnknownError",
-      message: error instanceof Error ? error.message : undefined,
+    parsed = JSON.parse(provider.text) as unknown;
+  } catch {
+    throw new GeminiProviderError("invalid_ai_response", {
+      httpStatus: 502,
+      retryable: false,
+      correlationId: provider.correlationId,
     });
-    return null;
   }
+  const translated = parseTranslatedContent(parsed, insights, actions);
+  if (!translated) {
+    throw new GeminiProviderError("invalid_ai_response", {
+      httpStatus: 502,
+      retryable: false,
+      correlationId: provider.correlationId,
+    });
+  }
+  return translated;
 }
 
 function json(payload: UnknownRecord, status = 200) {
@@ -815,8 +818,8 @@ export async function GET(request: NextRequest) {
         insights: legacyInsights,
         actions: legacyActions,
       });
-      localizedInsights = translated?.insights ?? deterministicInsights;
-      localizedActions = translated?.actions ?? deterministicActions;
+      localizedInsights = translated.insights;
+      localizedActions = translated.actions;
     }
 
     return json({
@@ -840,14 +843,33 @@ export async function GET(request: NextRequest) {
       explainabilityVersion: "jalvoro-ai-actionable-v2",
     });
   } catch (error) {
+    const failure = describeGeminiProviderError(error);
+    if (error instanceof GeminiProviderError) {
+      console.warn("Localized AI provider request failed", {
+        code: failure.code,
+        providerStatus: failure.providerStatus,
+        correlationId: failure.correlationId,
+        retryable: failure.retryable,
+      });
+      return json(
+        {
+          error: failure.code,
+          message: copy.server.unavailable,
+          retryable: failure.retryable,
+          correlationId: failure.correlationId,
+        },
+        failure.status,
+      );
+    }
     console.error("Localized AI Insights route failed", {
       name: error instanceof Error ? error.name : "UnknownError",
-      message: error instanceof Error ? error.message : undefined,
     });
     return json(
       {
         error: "ai_insights_unavailable",
         message: copy.server.unavailable,
+        retryable: true,
+        correlationId: null,
       },
       503,
     );

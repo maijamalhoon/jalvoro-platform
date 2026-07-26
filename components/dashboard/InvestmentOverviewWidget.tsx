@@ -308,7 +308,6 @@ export default function InvestmentOverviewWidget({
   investments,
   totalPnLPct,
   availability,
-  unpricedCount: _unpricedCount,
 }: {
   investments: Investment[];
   totalPnLPct: number | null;

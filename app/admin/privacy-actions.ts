@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireRateLimitedAdminClient } from "@/lib/admin/server-action-security";
 
 const REQUEST_CODE_PATTERN = /^PRV-[A-F0-9]{12}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -58,15 +58,11 @@ export async function updatePrivacyRequestWorkflow(formData: FormData) {
     actionRedirect("invalid");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login?next=%2Fadmin");
-  }
+  const supabase = await requireRateLimitedAdminClient({
+    scope: "privacy",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?privacyAction=unavailable#privacy-queue",
+  });
 
   const { error } = await supabase.rpc("apply_privacy_request_workflow", {
     p_request_code: requestCode,

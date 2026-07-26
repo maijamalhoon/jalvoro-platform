@@ -18,7 +18,7 @@
 .field { display: grid; gap: .4rem; }
 .field span { color: #becadd; font-size: .8rem; font-weight: 650; }
 .field input, .field select { width: 100%; min-height: 2.85rem; border: 1px solid rgba(147,177,225,.24); border-radius: .8rem; color: #f7f9ff; background: #081425; padding: .68rem .78rem; font: inherit; }
-.field input:focus-visible, .field select:focus-visible, button:focus-visible { outline: 2px solid #75a6ff; outline-offset: 2px; }
+.field input:focus-visible, .field select:focus-visible, .root button:focus-visible { outline: 2px solid #75a6ff; outline-offset: 2px; }
 .form button { min-height: 2.8rem; border: 1px solid #4d84f4; border-radius: .8rem; background: #2f6ee8; color: white; display: inline-flex; justify-content: center; align-items: center; gap: .45rem; font: inherit; font-weight: 750; cursor: pointer; }
 .form button:disabled { opacity: .55; cursor: wait; }
 .notice, .error { border-radius: .82rem; padding: .8rem .9rem; line-height: 1.5; }
@@ -28,5 +28,5 @@
 .help code { display: block; margin-top: .45rem; overflow-wrap: anywhere; border-radius: .6rem; background: #06101f; color: #fef3c7; padding: .65rem; }
 .qr { justify-self: center; padding: .65rem; border-radius: 1rem; background: white; line-height: 0; }
 .code { text-align: center; letter-spacing: .35em; font-size: 1.2rem !important; }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion: reduce) { .root * { scroll-behavior: auto !important; } }
 @media (forced-colors: active) { .card, .field input, .field select { border: 1px solid CanvasText; } }

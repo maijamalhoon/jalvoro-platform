@@ -4,9 +4,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Landmark,
-  PiggyBank,
   ReceiptText,
-  TrendingDown,
   TrendingUp,
   WalletCards,
 } from "lucide-react";

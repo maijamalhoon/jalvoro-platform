@@ -18,6 +18,7 @@ import {
 } from "@/lib/currency";
 import type { AppLanguage, AppLanguageOption } from "@/lib/i18n/config";
 import { resolveRequestLanguage } from "@/lib/i18n/request-language";
+import { aiServiceFailure } from "@/lib/ai-insights/failure";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -50,11 +51,6 @@ type RawTransaction = {
 
 type RawAccount = {
   balance?: number | string | null;
-};
-
-type RpcRankedAmount = {
-  label?: unknown;
-  amount?: unknown;
 };
 
 type RpcHistory = {
@@ -935,15 +931,12 @@ export async function POST(request: NextRequest) {
       message: error instanceof Error ? error.message : undefined,
     });
 
-    return jsonResponse({
-      provider: "local-fallback",
-      model: "advanced-finance-safety-v1",
-      aiAvailable: true,
-      fallback: true,
-      deterministic: true,
-      language: language.code,
-      answer: COPY[language.code].dataUnavailable("Friend"),
-      followUps: COPY[language.code].nextAverage,
-    });
+    return jsonResponse(
+      aiServiceFailure(
+        "advanced_finance_unavailable",
+        COPY[language.code].dataUnavailable("Friend"),
+      ),
+      503,
+    );
   }
 }

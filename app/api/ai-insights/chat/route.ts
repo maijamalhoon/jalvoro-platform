@@ -1,3 +1,8 @@
+import {
+  callGeminiProvider,
+  describeGeminiProviderError,
+  GeminiProviderError,
+} from "@/lib/ai-insights/gemini-provider";
 import { APP_AI_NAME } from "@/lib/brand";
 import {
   buildAIPreferenceInstruction,
@@ -6,7 +11,6 @@ import {
 } from "@/lib/ai/ai-preferences";
 import {
   BASE_CURRENCY,
-  formatMoney,
   isSupportedCurrency,
   normalizeUsdToPkrRate,
   type SupportedCurrency,
@@ -22,7 +26,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_MODEL_FALLBACK = "gemini-2.5-flash";
 
 interface RawCategory {
@@ -92,18 +95,6 @@ interface CurrencyContext {
   currency: SupportedCurrency;
   rate: number;
   live: boolean;
-}
-
-interface GeminiResponse {
-  candidates?: {
-    content?: {
-      parts?: { text?: string }[];
-    };
-  }[];
-  error?: {
-    code?: number;
-    status?: string;
-  };
 }
 
 const COPY: Record<
@@ -245,14 +236,6 @@ function jsonResponse(payload: Record<string, unknown>, status = 200) {
       "X-Content-Type-Options": "nosniff",
     },
   });
-}
-
-function moneyFormatter(context: CurrencyContext) {
-  return (value: number) =>
-    formatMoney(value, {
-      currency: context.currency,
-      usdToPkrRate: context.rate,
-    });
 }
 
 function isUnsafeRequest(question: string) {
@@ -537,61 +520,51 @@ async function askGemini({
   displayName: string;
   preferences: AIPreferences;
 }) {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
   const model =
     process.env.GEMINI_MODEL?.trim().replace(/^models\//, "") ||
     GEMINI_MODEL_FALLBACK;
-  if (!apiKey) return null;
-
-  const response = await fetch(
-    `${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: buildPrompt({
-                  summary,
-                  question,
-                  context,
-                  language,
-                  displayName,
-                  preferences,
-                }),
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.15,
-          maxOutputTokens: outputTokenLimit(preferences),
-          responseMimeType: "application/json",
-        },
-      }),
-      signal: AbortSignal.timeout(12_000),
-    },
-  );
-
-  const json = (await response.json().catch(() => null)) as GeminiResponse | null;
-  if (!response.ok || !json || json.error) {
-    console.warn("AI chat provider unavailable; using verified local fallback", {
-      status: json?.error?.status ?? response.statusText,
-      code: json?.error?.code ?? response.status,
+  const provider = await callGeminiProvider({
+    apiKey: process.env.GEMINI_API_KEY,
+    model,
+    prompt: buildPrompt({
+      summary,
+      question,
+      context,
+      language,
+      displayName,
+      preferences,
+    }),
+    temperature: 0.15,
+    maxOutputTokens: outputTokenLimit(preferences),
+  });
+  const generated = parseGeminiChat(provider.text, displayName, preferences);
+  if (!generated) {
+    throw new GeminiProviderError("invalid_ai_response", {
+      httpStatus: 502,
+      retryable: false,
+      correlationId: provider.correlationId,
     });
-    return null;
   }
+  return { generated, model, correlationId: provider.correlationId };
+}
 
-  const text =
-    json.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? "")
-      .join("")
-      .trim() ?? "";
-
-  return text ? parseGeminiChat(text, displayName, preferences) : null;
+function providerFailureResponse(error: unknown) {
+  const failure = describeGeminiProviderError(error);
+  console.warn("AI chat provider request failed", {
+    code: failure.code,
+    providerStatus: failure.providerStatus,
+    correlationId: failure.correlationId,
+    retryable: failure.retryable,
+  });
+  return jsonResponse(
+    {
+      error: failure.code,
+      message: "AI chat is temporarily unavailable. Try again later.",
+      retryable: failure.retryable,
+      correlationId: failure.correlationId,
+    },
+    failure.status,
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -602,8 +575,6 @@ export async function POST(request: NextRequest) {
     isRecord(body) && typeof body.question === "string"
       ? body.question.replace(/\s+/g, " ").trim().slice(0, 500)
       : "";
-  let fallbackName = "Friend";
-
   if (!question) {
     return jsonResponse(
       { error: "question_required", message: copy.questionRequired },
@@ -636,8 +607,6 @@ export async function POST(request: NextRequest) {
             .maybeSingle();
     const displayName =
       profileResult?.data?.full_name?.trim() || metadataName || "Friend";
-    fallbackName = displayName;
-
     if (isUnsafeRequest(question)) {
       return jsonResponse({
         provider: "local-safety",
@@ -655,67 +624,41 @@ export async function POST(request: NextRequest) {
       loadAIPreferences(supabase, user.id),
       Promise.resolve(getCurrencyContext(body)),
     ]);
-    const generated = await askGemini({
+    const provider = await askGemini({
       summary,
       question,
       context,
       language,
       displayName,
       preferences,
-    }).catch((error: unknown) => {
-      console.warn("AI chat request failed; using verified local fallback", {
-        name: error instanceof Error ? error.name : "UnknownError",
-        message: error instanceof Error ? error.message : undefined,
-      });
-      return null;
     });
 
-    if (generated) {
-      return jsonResponse({
-        provider: "gemini",
-        model:
-          process.env.GEMINI_MODEL?.trim().replace(/^models\//, "") ||
-          GEMINI_MODEL_FALLBACK,
-        aiAvailable: true,
-        fallback: false,
-        deterministic: false,
-        language: language.code,
-        preferenceMode: preferences.responseLength,
-        ...generated,
-      });
-    }
-
-    const money = moneyFormatter(context);
     return jsonResponse({
-      provider: "local-fallback",
-      model: "verified-finance-summary-v3",
+      provider: "gemini",
+      model: provider.model,
+      providerCorrelationId: provider.correlationId,
       aiAvailable: true,
-      fallback: true,
-      deterministic: true,
+      fallback: false,
+      deterministic: false,
       language: language.code,
       preferenceMode: preferences.responseLength,
-      answer: copy.localFallback(
-        displayName,
-        money(summary.currentMonth.net),
-        money(summary.netBalance.estimatedNetWorth),
-      ),
-      followUps: copy.followUps,
+      ...provider.generated,
     });
   } catch (error) {
+    if (error instanceof GeminiProviderError) {
+      return providerFailureResponse(error);
+    }
     console.error("AI chat route failed", {
       name: error instanceof Error ? error.name : "UnknownError",
-      message: error instanceof Error ? error.message : undefined,
     });
-
-    return jsonResponse({
-      provider: "local-fallback",
-      model: "verified-finance-safety-v1",
-      aiAvailable: true,
-      fallback: true,
-      deterministic: true,
-      language: language.code,
-      answer: copy.routeFallback(fallbackName),
-      followUps: copy.followUps,
-    });
+    return jsonResponse(
+      {
+        error: "ai_chat_unavailable",
+        message: "AI chat is temporarily unavailable. Try again later.",
+        retryable: true,
+        correlationId: null,
+      },
+      503,
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { aiServiceFailure } from "@/lib/ai-insights/failure";
 import type { AppLanguage } from "@/lib/i18n/config";
 import { resolveRequestLanguage } from "@/lib/i18n/request-language";
 import { NextRequest, NextResponse } from "next/server";
@@ -53,73 +54,10 @@ function safeJson(payload: UnknownRecord, status = 200) {
   });
 }
 
-function emptyFinanceSummary() {
-  return {
-    currency: "PKR",
-    baseCurrency: "PKR",
-    displayCurrency: "PKR",
-    exchangeRate: {
-      usdToPkr: 1,
-      live: false,
-    },
-    period: {
-      currentMonth: "",
-      currentMonthStart: "",
-      currentMonthEnd: "",
-    },
-    currentMonth: {
-      income: 0,
-      expenses: 0,
-      net: 0,
-      savingsRate: 0,
-    },
-    netBalance: {
-      cashBalance: 0,
-      investmentValue: 0,
-      payableRemaining: 0,
-      estimatedNetWorth: 0,
-    },
-    categorySpendingTotals: [],
-    goalsSummary: {
-      count: 0,
-      completedCount: 0,
-      totalTarget: 0,
-      totalSaved: 0,
-      completionPct: 0,
-    },
-    investmentSummary: {
-      count: 0,
-      totalInvested: 0,
-      currentValue: 0,
-      totalPnL: 0,
-      totalPnLPct: 0,
-      byType: [],
-    },
-    payablesSummary: {
-      count: 0,
-      totalOriginal: 0,
-      paid: 0,
-      remaining: 0,
-      overdueCount: 0,
-    },
-    recentTrendTotals: [],
-  };
-}
-
-function gracefulBriefingFallback(language: AppLanguage) {
-  return safeJson({
-    empty: true,
-    message: COPY[language].emptyMessage,
-    provider: "local-calculator",
-    model: "finance-briefing-fallback-v1",
-    aiAvailable: true,
-    intelligenceMode: "local-calculation",
-    generatedAt: new Date().toISOString(),
-    summaryCards: [],
-    financeSummary: emptyFinanceSummary(),
-    insights: [],
-    suggestedActions: [],
-  });
+function failureStatus(status: number) {
+  return status === 429 || status === 502 || status === 503 || status === 504
+    ? status
+    : 503;
 }
 
 export async function GET(request: NextRequest) {
@@ -130,27 +68,54 @@ export async function GET(request: NextRequest) {
     const legacyResponse = await getLegacyInsights(request);
     const payload = (await legacyResponse.json().catch(() => null)) as unknown;
 
-    if (!legacyResponse.ok || !isRecord(payload)) {
-      if (legacyResponse.status === 401) {
-        return safeJson(
-          {
-            error: "authentication_required",
-            message: copy.authRequired,
-          },
-          401,
-        );
-      }
+    if (legacyResponse.status === 401) {
+      return safeJson(
+        {
+          error: "authentication_required",
+          message: copy.authRequired,
+        },
+        401,
+      );
+    }
 
-      return gracefulBriefingFallback(language.code);
+    if (!legacyResponse.ok) {
+      const failure = isRecord(payload) ? payload : {};
+      return safeJson(
+        aiServiceFailure(
+          typeof failure.error === "string"
+            ? failure.error
+            : "ai_service_unavailable",
+          typeof failure.message === "string"
+            ? failure.message
+            : undefined,
+          {
+            retryable: failure.retryable === true,
+            correlationId:
+              typeof failure.correlationId === "string"
+                ? failure.correlationId
+                : null,
+          },
+        ),
+        failureStatus(legacyResponse.status),
+      );
+    }
+
+    if (!isRecord(payload)) {
+      return safeJson(
+        aiServiceFailure("invalid_ai_response", undefined, {
+          retryable: false,
+        }),
+        502,
+      );
     }
 
     const providerAvailable = payload.aiAvailable === true;
     const sanitized: UnknownRecord = {
       ...payload,
-      aiAvailable: true,
+      aiAvailable: providerAvailable,
       intelligenceMode: providerAvailable
         ? "ai-assisted"
-        : "local-calculation",
+        : "provider-unavailable",
     };
 
     if (payload.empty === true) {
@@ -166,6 +131,6 @@ export async function GET(request: NextRequest) {
       message: error instanceof Error ? error.message : undefined,
     });
 
-    return gracefulBriefingFallback(language.code);
+    return safeJson(aiServiceFailure("ai_service_unavailable"), 503);
   }
 }

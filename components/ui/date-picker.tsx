@@ -239,7 +239,6 @@ function DateWheelField({
   minDate,
   maxDate,
   openCalendar,
-  calendarOpen,
   calendarId,
 }: {
   id?: string;
@@ -251,7 +250,6 @@ function DateWheelField({
   minDate?: string;
   maxDate?: string;
   openCalendar: () => void;
-  calendarOpen: boolean;
   calendarId: string;
 }) {
   const currentValue = isIsoDate(value) ? value : getTodayIso();
@@ -476,8 +474,6 @@ function DateWheelField({
       aria-valuetext={isoToDisplay(currentValue)}
       aria-describedby={ariaDescribedBy}
       aria-disabled={disabled || undefined}
-      aria-haspopup="dialog"
-      aria-expanded={calendarOpen}
       aria-controls={calendarId}
       tabIndex={disabled ? -1 : 0}
       className="field-input relative w-full cursor-ns-resize overflow-hidden p-0 touch-none select-none"
@@ -501,7 +497,7 @@ function DateWheelField({
             key={offset}
             className="flex h-full w-full items-center px-3 pr-11 text-text-primary"
           >
-            {isoToDisplay(addIsoDays(baseValueRef.current, offset))}
+            {isoToDisplay(addIsoDays(currentValue, offset))}
           </div>
         ))}
       </div>
@@ -892,7 +888,6 @@ export default function DatePicker({
             minDate={minDate}
             maxDate={maxDate}
             openCalendar={openCalendar}
-            calendarOpen={calendarOpen}
             calendarId={calendarId}
           />
         ) : (
@@ -901,6 +896,7 @@ export default function DatePicker({
               ref={textInputRef}
               id={id}
               type="text"
+              role="combobox"
               inputMode="numeric"
               value={displayValue}
               disabled={disabled}

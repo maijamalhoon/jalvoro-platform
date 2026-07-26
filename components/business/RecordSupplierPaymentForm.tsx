@@ -51,7 +51,7 @@ export default function RecordSupplierPaymentForm({
 }: RecordSupplierPaymentFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const today = useMemo(localDateString, []);
+  const today = useMemo(() => localDateString(), []);
   const firstBill = bills[0] ?? null;
   const idempotencyKey = useRef(requestKey());
 

@@ -1,10 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/vercel-command-center-validation.mjs",
   "git": {
     "deploymentEnabled": {
       "*": false,
       "main": true,
-      "release/global-command-center-freeze-20260725": true
+      "release/global-command-center-freeze-20260725": true,
+      "design/command-center-decision-first-overview": true
     }
   }
 }

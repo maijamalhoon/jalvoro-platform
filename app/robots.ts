@@ -1,24 +1,33 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://jamals-finance-sable.vercel.app";
+import { APP_URL } from "@/lib/brand";
+
+const PRIVATE_ROUTES = [
+  "/api/",
+  "/admin",
+  "/control",
+  "/dashboard",
+  "/accounts",
+  "/transactions",
+  "/goals",
+  "/investments",
+  "/liabilities",
+  "/settings",
+  "/business",
+  "/onboarding",
+  "/login",
+  "/reset-password",
+  "/auth",
+];
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: [
-        "/api/",
-        "/dashboard/",
-        "/accounts/",
-        "/transactions/",
-        "/goals/",
-        "/investments/",
-        "/liabilities/",
-        "/settings/",
-      ],
+      disallow: PRIVATE_ROUTES,
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${APP_URL}/sitemap.xml`,
+    host: APP_URL,
   };
 }

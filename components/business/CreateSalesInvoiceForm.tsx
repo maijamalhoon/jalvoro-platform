@@ -109,7 +109,7 @@ export default function CreateSalesInvoiceForm({
 }: CreateSalesInvoiceFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const today = useMemo(localDateString, []);
+  const today = useMemo(() => localDateString(), []);
   const firstCustomer = customers[0] ?? null;
   const defaultRevenueAccountId = revenueAccounts[0]?.id ?? "";
   const idempotencyKey = useRef(requestKey());

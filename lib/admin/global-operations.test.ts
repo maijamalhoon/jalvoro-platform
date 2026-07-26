@@ -242,7 +242,8 @@ describe("Command Center global operations", () => {
     expect(migration).not.toMatch(/'city'\s*,/i);
 
     expect(page).toContain('rpc("get_platform_admin_snapshot"');
-    expect(page).toContain("parseAdminGlobalOperationsSnapshot");
+    expect(page).toContain("parseAuditedAdminGlobalOperationsSnapshot");
+    expect(page).toContain("AdminGlobalOperationsDecisionPanel");
     expect(page).not.toContain("createBrowserClient");
   });
 });

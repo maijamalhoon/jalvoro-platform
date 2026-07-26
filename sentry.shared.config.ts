@@ -7,6 +7,26 @@ const SENSITIVE_STRING_PATTERNS = [
   /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
   /\b(?:Bearer|Basic)\s+[A-Z0-9._~+/-]+=*/gi,
 ];
+const ALLOWED_BREADCRUMB_CATEGORIES = new Set([
+  "navigation",
+  "sentry.transaction",
+  "ui.lifecycle",
+]);
+const ALLOWED_BREADCRUMB_MESSAGES = new Set([
+  "navigation",
+  "online",
+  "offline",
+  "route transition started",
+]);
+const EXPECTED_ERROR_CODES = new Set([
+  "authentication_required",
+  "session_expired",
+  "question_required",
+  "invalid_origin",
+  "cross_site_request_blocked",
+  "payload_too_large",
+  "unsupported_media_type",
+]);
 
 function scrubValue(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -34,8 +54,22 @@ function scrubValue(value: unknown): unknown {
 
 export const tracesSampleRate =
   process.env.NODE_ENV === "development" ? 1.0 : 0.1;
+export const sentryRelease =
+  process.env.NEXT_PUBLIC_SENTRY_RELEASE ??
+  process.env.SENTRY_RELEASE ??
+  process.env.VERCEL_GIT_COMMIT_SHA;
+export const sentryEnvironment =
+  process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
+  process.env.VERCEL_ENV ??
+  process.env.NODE_ENV;
 
 export function beforeSend(event: ErrorEvent): ErrorEvent | null {
+  const errorCode =
+    typeof event.tags?.["jalvoro.error_code"] === "string"
+      ? event.tags["jalvoro.error_code"]
+      : null;
+  if (errorCode && EXPECTED_ERROR_CODES.has(errorCode)) return null;
+
   delete event.user;
 
   if (event.request) {
@@ -49,11 +83,23 @@ export function beforeSend(event: ErrorEvent): ErrorEvent | null {
   event.contexts = scrubValue(event.contexts) as ErrorEvent["contexts"];
   delete event.extra;
   event.tags = scrubValue(event.tags) as ErrorEvent["tags"];
-  event.breadcrumbs = event.breadcrumbs?.map((breadcrumb) => ({
-    ...breadcrumb,
-    data: scrubValue(breadcrumb.data) as typeof breadcrumb.data,
-    message: breadcrumb.message ? "[Filtered]" : breadcrumb.message,
-  }));
+  event.breadcrumbs = event.breadcrumbs
+    ?.filter(
+      (breadcrumb) =>
+        typeof breadcrumb.category === "string" &&
+        ALLOWED_BREADCRUMB_CATEGORIES.has(breadcrumb.category),
+    )
+    .map((breadcrumb) => {
+      const normalizedMessage = breadcrumb.message?.trim().toLowerCase();
+      return {
+        ...breadcrumb,
+        data: scrubValue(breadcrumb.data) as typeof breadcrumb.data,
+        message:
+          normalizedMessage && ALLOWED_BREADCRUMB_MESSAGES.has(normalizedMessage)
+            ? normalizedMessage
+            : undefined,
+      };
+    });
 
   return event;
 }

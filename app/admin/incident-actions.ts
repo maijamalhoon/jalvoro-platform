@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireRateLimitedAdminClient } from "@/lib/admin/server-action-security";
 
 const INCIDENT_REFERENCE_PATTERN = /^INC-[A-F0-9]{12}$/;
 const SOURCE_REFERENCE_PATTERN = /^(PRV|ADM|AIN|USR)-[A-F0-9]{12}$/;
@@ -82,14 +82,11 @@ function actionRedirect(result: string): never {
 }
 
 async function requireSignedInClient() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) redirect("/login?next=%2Fadmin");
-  return supabase;
+  return requireRateLimitedAdminClient({
+    scope: "incident",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?incidentAction=unavailable#admin-incidents",
+  });
 }
 
 export async function createSecurityIncidentAction(formData: FormData) {
