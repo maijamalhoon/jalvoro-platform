@@ -6,6 +6,8 @@ Status: repository instrumentation prepared; live certification not passed.
 
 The candidate keeps default PII disabled, omits session replay, scrubs request/user/extra data, allowlists diagnostic breadcrumbs, drops expected session-expiry events, and derives release identity from the deployed Git SHA.
 
+Build-time source-map upload is enabled only when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and an exact release identifier (`SENTRY_RELEASE` or `VERCEL_GIT_COMMIT_SHA`) are present. Missing configuration fails closed to a normal build without attempting an upload; that build cannot pass monitoring certification.
+
 Live verification is blocked until read-only Sentry API access is configured outside chat. Required evidence:
 
 - event received from the candidate deployment;
