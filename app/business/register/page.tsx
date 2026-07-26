@@ -64,13 +64,10 @@ const products = [
 function registrationHref(product: ProductKey) {
   const next = `/business?setup=1&product=${product}`;
   const params = new URLSearchParams({
-    mode: "signup",
-    realm: "business",
-    registration: "organization",
     product,
     next,
   });
-  return `/login?${params.toString()}`;
+  return `/business/signup?${params.toString()}`;
 }
 
 export default function BusinessRegisterPage() {
