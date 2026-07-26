@@ -1,0 +1,45 @@
+name: Agent audit checkout
+
+on:
+  push:
+    branches:
+      - agent/final-production-audit-20260726
+    paths:
+      - ".github/workflows/agent-audit-checkout.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-audit-checkout-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Create source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=.next \
+            --exclude=coverage \
+            -czf "${RUNNER_TEMP}/jalvoro-platform-source.tgz" .
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: jalvoro-platform-source
+          path: ${{ runner.temp }}/jalvoro-platform-source.tgz
+          if-no-files-found: error
+          retention-days: 1
