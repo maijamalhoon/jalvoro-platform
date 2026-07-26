@@ -88,6 +88,19 @@ function callbackDestination(next: string) {
   return `/auth/callback?next=${encodeURIComponent(next)}`;
 }
 
+function isBusinessInvitationAcceptance(next: string) {
+  try {
+    const parsed = new URL(next, "https://jalvoro.invalid");
+    return (
+      parsed.origin === "https://jalvoro.invalid" &&
+      parsed.pathname === "/business/invitations/accept" &&
+      /^[0-9a-f]{64}$/i.test(parsed.searchParams.get("token") ?? "")
+    );
+  } catch {
+    return false;
+  }
+}
+
 function normalizeAuthError(message: string | undefined, mode: AuthMode) {
   const value = message?.toLowerCase() ?? "";
   if (value.includes("rate") || value.includes("too many")) {
@@ -178,7 +191,10 @@ export default function ProductRealmAuth({
       return;
     }
 
-    if (isBusiness && !(await verifyBusinessMembership(userId))) {
+    const acceptingInvitation =
+      isBusiness && isBusinessInvitationAcceptance(safeNext);
+
+    if (isBusiness && !acceptingInvitation && !(await verifyBusinessMembership(userId))) {
       await supabase.auth.signOut({ scope: "local" });
       setError(
         "This account has no active Business organization access. Ask an administrator to invite or reactivate you.",
