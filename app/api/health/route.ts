@@ -6,7 +6,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return NextResponse.json(
-    { version: getReleaseVersion() },
+    {
+      status: "ok",
+      version: getReleaseVersion(),
+    },
     {
       headers: {
         "Cache-Control": "no-store, max-age=0",
