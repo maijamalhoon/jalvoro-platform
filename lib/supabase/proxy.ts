@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { validateMutationRequest } from "@/lib/security/request-guard";
 import {
   classifyAuthFailure,
   collectSupabaseSessionCookieNames,
@@ -40,10 +41,6 @@ const PUBLIC_API_ROUTES = [
 ];
 const BLOCKED_PRODUCTION_API_ROUTES = ["/api/sentry-example-api"];
 const CACHE_HEADER_NAMES = ["cache-control", "expires", "pragma", "vary"];
-const JSON_PROTECTED_API_PREFIXES = ["/api/ai-insights"];
-const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const MAX_PROTECTED_JSON_BYTES = 64 * 1024;
-
 const EXPENSIVE_API_LIMITS = [
   {
     prefix: "/api/ai-insights/chat",
@@ -152,31 +149,20 @@ function protectedApiResponse(
   );
 }
 
-function validateProtectedJsonRequest(request: NextRequest, pathname: string) {
-  if (!STATE_CHANGING_METHODS.has(request.method)) return null;
-  if (!matchesPrefix(pathname, JSON_PROTECTED_API_PREFIXES)) return null;
+function validateStateChangingRequest(request: NextRequest, pathname: string) {
+  const violation = validateMutationRequest({
+    method: request.method,
+    pathname,
+    origin: request.headers.get("origin"),
+    expectedOrigin: request.nextUrl.origin,
+    fetchSite: request.headers.get("sec-fetch-site"),
+    contentType: request.headers.get("content-type"),
+    contentLength: request.headers.get("content-length"),
+  });
 
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
-    return safeApiResponse(403, "Request origin is not allowed", "invalid_origin");
-  }
-
-  const fetchSite = request.headers.get("sec-fetch-site");
-  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
-    return safeApiResponse(403, "Cross-site request blocked", "cross_site_request_blocked");
-  }
-
-  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
-  if (!contentType.startsWith("application/json")) {
-    return safeApiResponse(415, "JSON content is required", "unsupported_media_type");
-  }
-
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_PROTECTED_JSON_BYTES) {
-    return safeApiResponse(413, "Request is too large", "payload_too_large");
-  }
-
-  return null;
+  return violation
+    ? safeApiResponse(violation.status, violation.error, violation.code)
+    : null;
 }
 
 function jsonNotFound() {
@@ -207,8 +193,8 @@ export async function updateSession(request: NextRequest) {
 
   if (isPublicApiRoute || isPublicAssetRoute) return NextResponse.next();
 
-  const invalidProtectedRequest = validateProtectedJsonRequest(request, pathname);
-  if (invalidProtectedRequest) return invalidProtectedRequest;
+  const invalidMutationRequest = validateStateChangingRequest(request, pathname);
+  if (invalidMutationRequest) return invalidMutationRequest;
 
   // PKCE exchanges need their code-verifier cookie intact until the callback or
   // recovery page consumes the one-time authorization code.
