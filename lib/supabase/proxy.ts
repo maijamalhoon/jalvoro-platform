@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { validateMutationRequest } from "@/lib/security/request-guard";
+import {
+  STATE_CHANGING_METHODS,
+  validateMutationRequest,
+} from "@/lib/security/request-guard";
 import {
   classifyAuthFailure,
   collectSupabaseSessionCookieNames,
@@ -41,7 +44,7 @@ const PUBLIC_API_ROUTES = [
 ];
 const BLOCKED_PRODUCTION_API_ROUTES = ["/api/sentry-example-api"];
 const CACHE_HEADER_NAMES = ["cache-control", "expires", "pragma", "vary"];
-const EXPENSIVE_API_LIMITS = [
+const MUTATION_API_LIMITS = [
   {
     prefix: "/api/ai-insights/chat",
     scope: "api:ai-insights:chat",
@@ -52,6 +55,36 @@ const EXPENSIVE_API_LIMITS = [
     prefix: "/api/ai-insights",
     scope: "api:ai-insights",
     limit: 30,
+    windowSeconds: 60,
+  },
+  {
+    prefix: "/api/native/ai-insights",
+    scope: "api:native-ai-insights",
+    limit: 20,
+    windowSeconds: 60,
+  },
+  {
+    prefix: "/api/business/team/invite",
+    scope: "api:business-team-invite",
+    limit: 10,
+    windowSeconds: 3600,
+  },
+  {
+    prefix: "/api/categories",
+    scope: "api:categories",
+    limit: 60,
+    windowSeconds: 60,
+  },
+  {
+    prefix: "/api/profile/avatar",
+    scope: "api:profile-avatar",
+    limit: 6,
+    windowSeconds: 300,
+  },
+  {
+    prefix: "/api/telemetry",
+    scope: "api:telemetry",
+    limit: 120,
     windowSeconds: 60,
   },
 ] as const;
@@ -257,10 +290,10 @@ export async function updateSession(request: NextRequest) {
       return copySupabaseResponseState(supabaseResponse, NextResponse.redirect(url));
     }
 
-    const rateLimit = EXPENSIVE_API_LIMITS.find(({ prefix }) =>
+    const rateLimit = MUTATION_API_LIMITS.find(({ prefix }) =>
       pathname.startsWith(prefix),
     );
-    if (rateLimit && request.method === "POST") {
+    if (rateLimit && STATE_CHANGING_METHODS.has(request.method.toUpperCase())) {
       const { data: allowed, error: rateLimitError } = await supabase.rpc(
         "consume_api_rate_limit",
         {

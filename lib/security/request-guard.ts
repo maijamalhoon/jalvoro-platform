@@ -3,6 +3,8 @@ export const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]
 export const MAX_PROTECTED_JSON_BYTES = 64 * 1024;
 
 export const MUTATION_ROUTE_CONTRACTS = [
+  { prefix: "/api/ai-insights/preferences", format: "json", maxBytes: 16 * 1024 },
+  { prefix: "/api/ai-insights/saved", format: "json", maxBytes: 16 * 1024 },
   { prefix: "/api/ai-insights", format: "json", maxBytes: MAX_PROTECTED_JSON_BYTES },
   { prefix: "/api/business/team/invite", format: "json", maxBytes: MAX_PROTECTED_JSON_BYTES },
   { prefix: "/api/categories", format: "json", maxBytes: MAX_PROTECTED_JSON_BYTES },
