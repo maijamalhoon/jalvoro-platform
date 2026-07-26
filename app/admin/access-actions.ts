@@ -5,7 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireRateLimitedAdminClient } from "@/lib/admin/server-action-security";
 
 const ADMIN_REFERENCE_PATTERN = /^ADM-[A-F0-9]{12}$/;
 const INVITATION_REFERENCE_PATTERN = /^AIN-[A-F0-9]{12}$/;
@@ -69,12 +69,11 @@ export async function createAdminInvitationAction(
     return { ...emptyInvitationState, status: "invalid" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) redirect("/login?next=%2Fadmin");
+  const supabase = await requireRateLimitedAdminClient({
+    scope: "access",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?accessAction=unavailable#admin-access",
+  });
 
   const accessCode = `JAV-${randomBytes(20).toString("hex").toUpperCase()}`;
   const { data, error } = await supabase.rpc("create_platform_admin_invitation", {
@@ -141,12 +140,11 @@ export async function updateAdminMemberAction(formData: FormData) {
     actionRedirect("invalid");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) redirect("/login?next=%2Fadmin");
+  const supabase = await requireRateLimitedAdminClient({
+    scope: "access",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?accessAction=unavailable#admin-access",
+  });
 
   const { error } = await supabase.rpc("apply_platform_admin_member_action", {
     p_admin_reference: adminReference,
@@ -171,12 +169,11 @@ export async function revokeAdminInvitationAction(formData: FormData) {
     actionRedirect("invalid");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) redirect("/login?next=%2Fadmin");
+  const supabase = await requireRateLimitedAdminClient({
+    scope: "access",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?accessAction=unavailable#admin-access",
+  });
 
   const { error } = await supabase.rpc("revoke_platform_admin_invitation", {
     p_invitation_code: invitationCode,
@@ -197,12 +194,13 @@ export async function acceptAdminInvitationAction(formData: FormData) {
     redirect("/admin/claim?result=invalid");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) redirect("/login?next=%2Fadmin%2Fclaim");
+  const supabase = await requireRateLimitedAdminClient({
+    scope: "access-claim",
+    loginPath: "/login?next=%2Fadmin%2Fclaim",
+    failurePath: "/admin/claim?result=unavailable",
+    limit: 10,
+    windowSeconds: 300,
+  });
 
   const { error } = await supabase.rpc("accept_platform_admin_invitation", {
     p_token_sha256: sha256(accessCode),

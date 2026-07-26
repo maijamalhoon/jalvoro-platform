@@ -7,7 +7,7 @@ import {
   ORGANIZATION_MEMBER_ROLES,
   ORGANIZATION_PERMISSIONS,
 } from "@/lib/admin/organization-operations";
-import { createClient } from "@/lib/supabase/server";
+import { requireRateLimitedAdminClient } from "@/lib/admin/server-action-security";
 
 const ORGANIZATION_CODE_PATTERN = /^ORG-[A-F0-9]{12}$/;
 const MEMBERSHIP_CODE_PATTERN = /^MBR-[A-F0-9]{12}$/;
@@ -99,17 +99,11 @@ function mapErrorCode(code: string | undefined): ActionResult {
 }
 
 async function authenticatedClient() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/login?next=%2Fadmin%2Forganizations");
-  }
-
-  return supabase;
+  return requireRateLimitedAdminClient({
+    scope: "organizations",
+    loginPath: "/login?next=%2Fadmin%2Forganizations",
+    failurePath: "/admin/organizations?result=unavailable",
+  });
 }
 
 function readRpcRecord(value: unknown) {

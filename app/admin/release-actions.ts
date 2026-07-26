@@ -15,7 +15,7 @@ import {
 } from "@/lib/admin/release-readiness";
 import { deriveAdminSecurityPosture } from "@/lib/admin/security-posture";
 import { parseAdminUserOperationsSnapshot } from "@/lib/admin/user-operations";
-import { createClient } from "@/lib/supabase/server";
+import { requireRateLimitedAdminClient } from "@/lib/admin/server-action-security";
 
 const RELEASE_CODE_PATTERN = /^REL-[A-F0-9]{12}$/;
 
@@ -24,14 +24,13 @@ function releaseRedirect(result: string): never {
 }
 
 async function requireSignedInClient() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) redirect("/login?next=%2Fadmin");
-  return supabase;
+  return requireRateLimitedAdminClient({
+    scope: "release",
+    loginPath: "/login?next=%2Fadmin",
+    failurePath: "/admin?releaseAction=unavailable#admin-release-readiness",
+    limit: 10,
+    windowSeconds: 300,
+  });
 }
 
 export async function approveCurrentAdminReleaseAction() {
