@@ -1,3 +1,4 @@
+import { accountRealmAllows, loadAccountRealm } from "@/lib/account-realm/server";
 import { brand } from "@/lib/brand";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -48,7 +49,6 @@ function firstRelation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-
 type BusinessWorkspacesPageProps = {
   searchParams: Promise<{ product?: string }>;
 };
@@ -81,7 +81,11 @@ export default async function BusinessWorkspacesPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login?next=/business");
+  if (!user) redirect("/business/login?next=%2Fbusiness");
+
+  const realm = await loadAccountRealm(supabase);
+  if (!realm) redirect("/start?mode=login&error=realm_unavailable");
+  if (!accountRealmAllows(realm, "business")) redirect("/dashboard");
 
   const membershipResult = await supabase
     .from("business_members")

@@ -26,6 +26,7 @@ import {
   PASSWORD_MIN_LENGTH,
   validatePasswordPolicy,
 } from "@/lib/auth/password-policy";
+import { getBusinessInvitationTokenFromPath } from "@/lib/business/invitations";
 import { createClient } from "@/lib/supabase/client";
 import { sanitizeInternalRedirect } from "@/lib/supabase/session";
 
@@ -46,6 +47,7 @@ type ProductRealmAuthProps = {
 };
 
 type LoadingAction = "password" | "google" | null;
+type BusinessMembershipState = "active" | "inactive" | "none";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === "true";
@@ -88,19 +90,6 @@ function callbackDestination(next: string) {
   return `/auth/callback?next=${encodeURIComponent(next)}`;
 }
 
-function isBusinessInvitationAcceptance(next: string) {
-  try {
-    const parsed = new URL(next, "https://jalvoro.invalid");
-    return (
-      parsed.origin === "https://jalvoro.invalid" &&
-      parsed.pathname === "/business/invitations/accept" &&
-      /^[0-9a-f]{64}$/i.test(parsed.searchParams.get("token") ?? "")
-    );
-  } catch {
-    return false;
-  }
-}
-
 function normalizeAuthError(message: string | undefined, mode: AuthMode) {
   const value = message?.toLowerCase() ?? "";
   if (value.includes("rate") || value.includes("too many")) {
@@ -136,31 +125,65 @@ export default function ProductRealmAuth({
   const [error, setError] = useState(
     initialError === "no_access"
       ? "This account has no active Business organization access. Ask an administrator to invite or reactivate you."
-      : "",
+      : initialError === "wrong_realm"
+        ? `This identity belongs to the ${realm === "business" ? "Individual" : "Business"} product. Use the correct sign-in page.`
+        : initialError === "invalid_invitation"
+          ? "This Business invitation link is invalid or incomplete."
+          : "",
   );
   const [checkEmail, setCheckEmail] = useState(false);
 
   const isSignup = mode === "signup";
   const isBusiness = realm === "business";
   const isBusy = loading !== null;
+  const invitationToken = isBusiness
+    ? getBusinessInvitationTokenFromPath(safeNext)
+    : null;
+  const acceptingInvitation = invitationToken !== null;
+  const businessLoginHref = acceptingInvitation
+    ? `/business/login?next=${encodeURIComponent(safeNext)}`
+    : "/business/login";
+  const invitationSignupHref = invitationToken
+    ? `/business/invitations/register?token=${encodeURIComponent(invitationToken)}`
+    : null;
 
-  async function verifyBusinessMembership(userId: string) {
+  async function verifyBusinessMembership(
+    userId: string,
+  ): Promise<BusinessMembershipState> {
     const { data, error: membershipError } = await supabase
       .from("business_members")
-      .select("business_id")
+      .select("business_id, status")
       .eq("user_id", userId)
-      .eq("status", "active")
-      .limit(1)
-      .maybeSingle();
+      .limit(100);
 
     if (membershipError) {
       throw new Error("membership_unavailable");
     }
 
-    return Boolean(data?.business_id);
+    const memberships = data ?? [];
+    if (memberships.some((membership) => membership.status === "active")) {
+      return "active";
+    }
+    return memberships.length > 0 ? "inactive" : "none";
   }
 
-  async function prepareSelectedRealm(userId: string) {
+  async function loadAuthoritativeRealm() {
+    const { data, error: realmError } = await supabase.rpc("get_my_account_realm");
+    if (realmError) throw new Error("realm_unavailable");
+    return data === "individual" || data === "business" || data === "legacy_dual"
+      ? data
+      : null;
+  }
+
+  async function claimSelectedRealm() {
+    const { data, error: realmError } = await supabase.rpc("claim_account_realm", {
+      p_realm: realm,
+    });
+    if (realmError) throw new Error("realm_conflict");
+    return data;
+  }
+
+  async function prepareWorkspacePreference(userId: string) {
     const choice = isBusiness ? "business" : "personal";
     const { error: preferenceError } = await supabase
       .from("business_workspace_preferences")
@@ -172,14 +195,19 @@ export default function ProductRealmAuth({
         updated_at: new Date().toISOString(),
       });
 
-    if (preferenceError) {
-      throw new Error("realm_setup_failed");
-    }
+    if (preferenceError) throw new Error("realm_setup_failed");
   }
 
   async function finishAuthenticated(userId: string) {
+    if (acceptingInvitation) {
+      router.replace(safeNext);
+      router.refresh();
+      return;
+    }
+
     if (isSignup) {
-      await prepareSelectedRealm(userId);
+      await claimSelectedRealm();
+      await prepareWorkspacePreference(userId);
       if (isBusiness) {
         const params = new URLSearchParams({ setup: "1" });
         if (product) params.set("product", product);
@@ -191,15 +219,30 @@ export default function ProductRealmAuth({
       return;
     }
 
-    const acceptingInvitation =
-      isBusiness && isBusinessInvitationAcceptance(safeNext);
-
-    if (isBusiness && !acceptingInvitation && !(await verifyBusinessMembership(userId))) {
+    const currentRealm = await loadAuthoritativeRealm();
+    const realmAllowed = currentRealm === realm || currentRealm === "legacy_dual";
+    if (!realmAllowed) {
       await supabase.auth.signOut({ scope: "local" });
       setError(
-        "This account has no active Business organization access. Ask an administrator to invite or reactivate you.",
+        `This identity belongs to the ${realm === "business" ? "Individual" : "Business"} product. Use the correct sign-in page.`,
       );
       return;
+    }
+
+    if (isBusiness) {
+      const membershipState = await verifyBusinessMembership(userId);
+      if (membershipState === "inactive") {
+        await supabase.auth.signOut({ scope: "local" });
+        setError(
+          "This account has no active Business organization access. Ask an administrator to reactivate it.",
+        );
+        return;
+      }
+      if (membershipState === "none") {
+        router.replace("/business?setup=1");
+        router.refresh();
+        return;
+      }
     }
 
     router.replace(safeNext);
@@ -224,7 +267,7 @@ export default function ProductRealmAuth({
       return;
     }
 
-    if (isSignup && isBusiness && !product) {
+    if (isSignup && isBusiness && !product && !acceptingInvitation) {
       setError("Choose a Business product before registering the organization.");
       return;
     }
@@ -247,6 +290,11 @@ export default function ProductRealmAuth({
           return;
         }
 
+        const { data: existingSession } = await supabase.auth.getSession();
+        if (existingSession.session) {
+          await supabase.auth.signOut({ scope: "local" });
+        }
+
         const setup = setupDestination({ realm, mode, product, next: safeNext });
         const { data, error: signupError } = await supabase.auth.signUp({
           email: normalizedEmail,
@@ -254,8 +302,6 @@ export default function ProductRealmAuth({
           options: {
             data: {
               full_name: normalizedName,
-              requested_account_realm: realm,
-              requested_business_product: product,
             },
             emailRedirectTo: `${window.location.origin}${callbackDestination(setup)}`,
           },
@@ -291,7 +337,11 @@ export default function ProductRealmAuth({
       setError(
         code === "membership_unavailable"
           ? "Business access could not be verified right now. Try again."
-          : "Account setup could not be completed. Check your connection and try again.",
+          : code === "realm_conflict"
+            ? `This identity already belongs to the ${realm === "business" ? "Individual" : "Business"} product.`
+            : code === "realm_unavailable"
+              ? "Account type could not be verified right now. Try again."
+              : "Account setup could not be completed. Check your connection and try again.",
       );
     } finally {
       setLoading(null);
@@ -303,9 +353,7 @@ export default function ProductRealmAuth({
     setError("");
     setLoading("google");
 
-    const destination = isSignup
-      ? setupDestination({ realm, mode, product, next: safeNext })
-      : safeNext;
+    const destination = setupDestination({ realm, mode, product, next: safeNext });
 
     try {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -341,7 +389,7 @@ export default function ProductRealmAuth({
             inbox and spam folder.
           </AuthFeedback>
           <Link
-            href={isBusiness ? "/business/login" : "/individual/login"}
+            href={isBusiness ? businessLoginHref : "/individual/login"}
             className="finance-focus inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-button)] bg-primary px-4 text-sm font-black text-primary-foreground"
           >
             Return to sign in <ArrowRight className="size-4" aria-hidden="true" />
@@ -352,17 +400,21 @@ export default function ProductRealmAuth({
   }
 
   const title = isSignup
-    ? isBusiness
-      ? `Register ${productLabel}`
-      : "Create your Individual account"
+    ? acceptingInvitation
+      ? "Create your invited team account"
+      : isBusiness
+        ? `Register ${productLabel}`
+        : "Create your Individual account"
     : isBusiness
       ? "Business sign in"
       : "Individual sign in";
 
   const description = isSignup
-    ? isBusiness
-      ? "This identity becomes Organization Owner. Staff are invited from inside the organization."
-      : "Create a private personal-finance account."
+    ? acceptingInvitation
+      ? "Create a separate Business identity for the invited email. The invitation is validated before access is granted."
+      : isBusiness
+        ? "This identity becomes Organization Owner. Staff are invited from inside the organization."
+        : "Create a private personal-finance account."
     : isBusiness
       ? "Use an account already connected to a Business organization or accepted invitation."
       : "Continue to your personal finance workspace.";
@@ -462,9 +514,16 @@ export default function ProductRealmAuth({
         {isBusiness ? (
           isSignup ? (
             <>
-              Already connected to an organization?{" "}
-              <Link href="/business/login" className="finance-focus font-black text-primary">
+              Already have the invited Business account?{" "}
+              <Link href={businessLoginHref} className="finance-focus font-black text-primary">
                 Business sign in
+              </Link>
+            </>
+          ) : acceptingInvitation && invitationSignupHref ? (
+            <>
+              No Business identity for the invited email?{" "}
+              <Link href={invitationSignupHref} className="finance-focus font-black text-primary">
+                Create invited account
               </Link>
             </>
           ) : (

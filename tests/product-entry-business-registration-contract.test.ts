@@ -8,6 +8,7 @@ const landing = read("../components/landing/PremiumLandingPage.tsx");
 const startPage = read("../app/start/page.tsx");
 const businessRegistration = read("../app/business/register/page.tsx");
 const productAuth = read("../components/auth/ProductRealmAuth.tsx");
+const invitationHelpers = read("../lib/business/invitations.ts");
 const realmSetup = read("../app/auth/realm-setup/page.tsx");
 const proxy = read("../proxy.ts");
 const businessForm = read("../components/business/CreateBusinessWorkspaceForm.tsx");
@@ -45,25 +46,26 @@ describe("product entry and Business registration contract", () => {
   it("keeps Business employee login organization-controlled", () => {
     expect(productAuth).toContain('type ProductRealm = "individual" | "business"');
     expect(productAuth).toContain('.from("business_members")');
-    expect(productAuth).toContain('.eq("status", "active")');
+    expect(productAuth).toContain('.select("business_id, status")');
     expect(productAuth).toContain(
       "This account has no active Business organization access.",
     );
     expect(productAuth).toContain("Staff are invited from inside the organization.");
     expect(productAuth).toContain('href="/business/register"');
-    expect(productAuth).toContain(
-      'parsed.pathname === "/business/invitations/accept"',
+    expect(invitationHelpers).toContain(
+      'parsed.pathname !== "/business/invitations/accept"',
     );
-    expect(productAuth).toContain('/^[0-9a-f]{64}$/i.test');
-    expect(productAuth).toContain(
-      "!acceptingInvitation && !(await verifyBusinessMembership(userId))",
-    );
+    expect(invitationHelpers).toContain("BUSINESS_INVITATION_TOKEN_PATTERN");
+    expect(productAuth).toContain("if (acceptingInvitation)");
+    expect(productAuth).toContain('membershipState === "inactive"');
+    expect(productAuth).toContain('membershipState === "none"');
+    expect(productAuth).toContain('router.replace("/business?setup=1")');
   });
 
   it("seeds the selected realm before existing onboarding can show a workspace chooser", () => {
     expect(productAuth).toContain('.from("business_workspace_preferences")');
-    expect(productAuth).toContain("default_workspace: choice");
-    expect(productAuth).toContain("onboarding_choice: choice");
+    expect(productAuth).toContain('default_workspace: choice');
+    expect(productAuth).toContain('onboarding_choice: choice');
     expect(realmSetup).toContain('.from("business_workspace_preferences")');
     expect(realmSetup).toContain('router.replace(`/onboarding?next=');
     expect(realmSetup).toContain('router.replace(`/business?');
