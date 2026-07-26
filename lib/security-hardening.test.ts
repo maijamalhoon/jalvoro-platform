@@ -53,7 +53,8 @@ describe("security hardening contracts", () => {
 
     expect(mutationSecurity).toContain('request.headers.get("origin")');
     expect(mutationSecurity).toContain('request.headers.get("sec-fetch-site")');
-    expect(mutationSecurity).toContain('startsWith("application/json")');
+    expect(requestGuard).toContain('"application/json"');
+    expect(requestGuard).toContain("startsWith(requiredContentType)");
     expect(mutationSecurity).toContain("MAX_PROTECTED_JSON_BYTES");
     expect(requestGuard).toContain("MUTATION_ROUTE_CONTRACTS");
     expect(proxy).toContain('"consume_api_rate_limit"');
