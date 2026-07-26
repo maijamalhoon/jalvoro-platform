@@ -51,12 +51,19 @@ describe("product entry and Business registration contract", () => {
     );
     expect(productAuth).toContain("Staff are invited from inside the organization.");
     expect(productAuth).toContain('href="/business/register"');
+    expect(productAuth).toContain(
+      'parsed.pathname === "/business/invitations/accept"',
+    );
+    expect(productAuth).toContain('/^[0-9a-f]{64}$/i.test');
+    expect(productAuth).toContain(
+      "!acceptingInvitation && !(await verifyBusinessMembership(userId))",
+    );
   });
 
   it("seeds the selected realm before existing onboarding can show a workspace chooser", () => {
     expect(productAuth).toContain('.from("business_workspace_preferences")');
-    expect(productAuth).toContain('default_workspace: choice');
-    expect(productAuth).toContain('onboarding_choice: choice');
+    expect(productAuth).toContain("default_workspace: choice");
+    expect(productAuth).toContain("onboarding_choice: choice");
     expect(realmSetup).toContain('.from("business_workspace_preferences")');
     expect(realmSetup).toContain('router.replace(`/onboarding?next=');
     expect(realmSetup).toContain('router.replace(`/business?');
