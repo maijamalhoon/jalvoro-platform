@@ -109,7 +109,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login?next=%2Fadmin");
+    redirect("/login?next=%2Fcommandcenter");
   }
 
   const { data, error } = await supabase.rpc("get_platform_admin_snapshot");
@@ -230,8 +230,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const rawAuditDomain = resolvedSearchParams.auditDomain;
   const auditDomain =
-    typeof rawAuditDomain === "string" &&
-    AUDIT_DOMAINS.has(rawAuditDomain as ComplianceAuditDomain)
+    typeof rawAuditDomain === "string" && AUDIT_DOMAINS.has(rawAuditDomain as ComplianceAuditDomain)
       ? (rawAuditDomain as ComplianceAuditDomain)
       : "all";
 
@@ -242,8 +241,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       ? (rawAuditStatus as ComplianceReviewStatus)
       : "all";
 
+  const auditSearch =
+    typeof resolvedSearchParams.auditSearch === "string"
+      ? resolvedSearchParams.auditSearch
+      : "";
+
   return (
-    <>
+    <main className="mx-auto w-full max-w-[1720px] space-y-8 px-4 py-6 sm:px-6 lg:px-8">
       <AdminDecisionOverview
         snapshot={snapshot}
         posture={securityPosture}
@@ -251,63 +255,60 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         access={accessOperations}
         billing={billingOperations}
       />
+
       <section id="admin-security" className="scroll-mt-24">
         <AdminSecurityPosturePanel posture={securityPosture} />
       </section>
+
       <section id="admin-release" className="scroll-mt-24">
         <AdminReleaseReadinessPanel
           readiness={releaseReadiness}
-          release={releaseSnapshot}
           actionResult={releaseActionResult}
         />
       </section>
-      <section
-        id="admin-billing"
-        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
-      >
-        <BillingPlanOperations
-          billing={billingOperations}
-          actionResult={billingActionResult}
-        />
-      </section>
+
       <section id="admin-incidents" className="scroll-mt-24">
         <AdminIncidentOperationsPanel
-          incidents={incidentOperations}
+          operations={incidentOperations}
           actionResult={incidentActionResult}
         />
       </section>
+
       <section id="admin-compliance" className="scroll-mt-24">
         <AdminComplianceAuditPanel
-          audit={complianceAudit}
+          snapshot={complianceAudit}
+          selectedDomain={auditDomain}
+          selectedStatus={auditStatus}
+          search={auditSearch}
           actionResult={complianceActionResult}
-          domainFilter={auditDomain}
-          statusFilter={auditStatus}
         />
       </section>
-      <section
-        id="admin-access"
-        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
-      >
+
+      <section id="admin-access" className="scroll-mt-24">
         <AdminTeamAccessPanel
-          access={accessOperations}
+          snapshot={accessOperations}
           actionResult={accessActionResult}
         />
       </section>
-      <section
-        id="admin-users"
-        className="mx-auto w-full max-w-[1500px] scroll-mt-24 pb-12"
-      >
-        <AdminUserOperationsPanel operations={userOperations} />
+
+      <section id="admin-users" className="scroll-mt-24">
+        <AdminUserOperationsPanel snapshot={userOperations} />
       </section>
+
+      <section id="admin-billing" className="scroll-mt-24">
+        <BillingPlanOperations
+          snapshot={billingOperations}
+          actionResult={billingActionResult}
+        />
+      </section>
+
       <section id="admin-privacy" className="scroll-mt-24">
         <PrivacyGovernancePanel privacy={snapshot.privacy} />
-        <div className="mx-auto w-full max-w-[1500px] pb-12">
-          <PrivacyRequestOperations
-            privacy={snapshot.privacy}
-            actionResult={privacyActionResult}
-          />
-        </div>
+        <PrivacyRequestOperations
+          privacy={snapshot.privacy}
+          actionResult={privacyActionResult}
+        />
       </section>
-    </>
+    </main>
   );
 }
