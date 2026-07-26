@@ -1,12 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  isAdminControlPlanePath,
-  isControlPlaneOnlyPath,
-} from "@/lib/control-plane/config";
-import {
-  mergeControlPlaneResponseState,
-  updateControlPlaneSession,
-} from "@/lib/control-plane/proxy";
+
 import { updateSession } from "@/lib/supabase/proxy";
 
 const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
@@ -20,30 +13,47 @@ function getAIRewritePath(request: NextRequest) {
   return null;
 }
 
+function commandCenterDestination(request: NextRequest, pathname = "/commandcenter") {
+  const destination = request.nextUrl.clone();
+  destination.pathname = pathname;
+  return destination;
+}
+
+function canonicalCommandCenterPath(pathname: string) {
+  if (pathname === "/admin") return "/commandcenter";
+  if (pathname.startsWith("/admin/")) {
+    return `/commandcenter${pathname.slice("/admin".length)}`;
+  }
+  return null;
+}
+
+function isCommandCenterPath(pathname: string) {
+  return pathname === "/commandcenter" || pathname.startsWith("/commandcenter/");
+}
+
+function isRetiredControlPlanePath(pathname: string) {
+  return (
+    pathname === "/control" ||
+    pathname.startsWith("/control/") ||
+    pathname === "/control-login" ||
+    pathname === "/control-invite"
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/control-invite") {
-    const response = NextResponse.next();
-    response.headers.set("Cache-Control", "private, no-store, max-age=0");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-    response.headers.set("Referrer-Policy", "no-referrer");
-    return response;
+  const canonicalPath = canonicalCommandCenterPath(pathname);
+  if (canonicalPath) {
+    return NextResponse.redirect(commandCenterDestination(request, canonicalPath));
   }
 
-  if (isControlPlaneOnlyPath(pathname)) {
-    return updateControlPlaneSession(request);
+  if (isRetiredControlPlanePath(pathname)) {
+    return NextResponse.redirect(commandCenterDestination(request));
   }
 
-  if (isAdminControlPlanePath(pathname)) {
-    const controlResponse = await updateControlPlaneSession(request);
-    if (controlResponse.headers.get("x-middleware-next") !== "1") {
-      return controlResponse;
-    }
-
-    const applicationResponse = await updateSession(request);
-    return mergeControlPlaneResponseState(controlResponse, applicationResponse);
+  if (isCommandCenterPath(pathname)) {
+    return updateSession(request);
   }
 
   if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(pathname)) {
