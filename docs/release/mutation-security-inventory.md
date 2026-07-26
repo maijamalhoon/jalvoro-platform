@@ -19,7 +19,7 @@ The global middleware runs the origin, fetch-site, content-length, and declared 
 
 ## Server Actions
 
-Next.js compares each Server Action Origin against Host or X-Forwarded-Host. No additional origins are allowlisted. The configured body limit is 128 KiB. Every action below validates bounded fields, resolves the current user server-side, and delegates authorization and durable audit behavior to a security-definer RPC with explicit grants.
+Next.js compares each Server Action Origin against Host or X-Forwarded-Host. No additional origins are allowlisted. The configured body limit is 128 KiB. Every active action below validates bounded fields, resolves the current user server-side, consumes a per-user database rate-limit bucket through `requireRateLimitedAdminClient`, and delegates authorization and durable audit behavior to a security-definer RPC with explicit grants. The disabled billing action performs no mutation.
 
 | File | Mutations |
 | --- | --- |
