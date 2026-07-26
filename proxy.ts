@@ -19,6 +19,7 @@ function commandCenterDestination(
 ) {
   const destination = request.nextUrl.clone();
   destination.pathname = pathname;
+  destination.search = "";
   return destination;
 }
 
@@ -80,13 +81,20 @@ export async function proxy(request: NextRequest) {
   if (isCommandCenterPath(pathname)) {
     const sessionResponse = await updateSession(request);
 
-    // `/commandcenter` is the one canonical sign-in entry. The page renders its
-    // own email/password form when no normal JALVORO session exists. Nested
-    // Command Center routes remain protected and still redirect to sign-in.
-    if (pathname === "/commandcenter" && isLoginRedirect(sessionResponse)) {
+    if (isLoginRedirect(sessionResponse)) {
+      // `/commandcenter` is the only Command Center sign-in screen. An expired
+      // session on any nested module returns here instead of opening the normal
+      // website login or the retired Control Plane flow.
+      if (pathname === "/commandcenter") {
+        return copyResponseState(
+          sessionResponse,
+          NextResponse.next({ request }),
+        );
+      }
+
       return copyResponseState(
         sessionResponse,
-        NextResponse.next({ request }),
+        NextResponse.redirect(commandCenterDestination(request)),
       );
     }
 
