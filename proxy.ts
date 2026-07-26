@@ -13,7 +13,10 @@ function getAIRewritePath(request: NextRequest) {
   return null;
 }
 
-function commandCenterDestination(request: NextRequest, pathname = "/commandcenter") {
+function commandCenterDestination(
+  request: NextRequest,
+  pathname = "/commandcenter",
+) {
   const destination = request.nextUrl.clone();
   destination.pathname = pathname;
   return destination;
@@ -40,6 +43,28 @@ function isRetiredControlPlanePath(pathname: string) {
   );
 }
 
+function copyResponseState(source: NextResponse, target: NextResponse) {
+  for (const cookie of source.cookies.getAll()) {
+    target.cookies.set(cookie);
+  }
+  for (const headerName of ["cache-control", "expires", "pragma", "vary"]) {
+    const value = source.headers.get(headerName);
+    if (value !== null) target.headers.set(headerName, value);
+  }
+  return target;
+}
+
+function isLoginRedirect(response: NextResponse) {
+  if (response.status < 300 || response.status >= 400) return false;
+  const location = response.headers.get("location");
+  if (!location) return false;
+  try {
+    return new URL(location).pathname === "/login";
+  } catch {
+    return location.startsWith("/login");
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -53,7 +78,19 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isCommandCenterPath(pathname)) {
-    return updateSession(request);
+    const sessionResponse = await updateSession(request);
+
+    // `/commandcenter` is the one canonical sign-in entry. The page renders its
+    // own email/password form when no normal JALVORO session exists. Nested
+    // Command Center routes remain protected and still redirect to sign-in.
+    if (pathname === "/commandcenter" && isLoginRedirect(sessionResponse)) {
+      return copyResponseState(
+        sessionResponse,
+        NextResponse.next({ request }),
+      );
+    }
+
+    return sessionResponse;
   }
 
   if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(pathname)) {
@@ -72,15 +109,7 @@ export async function proxy(request: NextRequest) {
   destination.pathname = rewritePath;
 
   const rewriteResponse = NextResponse.rewrite(destination);
-
-  for (const cookie of sessionResponse.cookies.getAll()) {
-    rewriteResponse.cookies.set(cookie);
-  }
-
-  for (const headerName of ["cache-control", "expires", "pragma", "vary"]) {
-    const value = sessionResponse.headers.get(headerName);
-    if (value !== null) rewriteResponse.headers.set(headerName, value);
-  }
+  copyResponseState(sessionResponse, rewriteResponse);
 
   return rewriteResponse;
 }
