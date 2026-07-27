@@ -2,6 +2,7 @@ package com.jamalsfinance.nativeapp.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -65,13 +66,6 @@ private data class JalvoroWebsiteNavigationItem(
     val onClick: () -> Unit,
 )
 
-/**
- * Shared native counterpart of the website's compact dashboard shell.
- *
- * The website keeps navigation in a floating menu and a left drawer rather
- * than reserving permanent top and bottom bars. Screens render inside the
- * supplied content padding and keep their repository/mutation logic isolated.
- */
 @Composable
 internal fun JalvoroWebsiteWorkspaceShell(
     email: String,
@@ -114,17 +108,23 @@ internal fun JalvoroWebsiteWorkspaceShell(
         },
         modifier = modifier,
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
             content(
                 PaddingValues(
-                    top = 80.dp,
+                    top = 88.dp,
                     bottom = 24.dp,
                 ),
             )
             JalvoroWebsiteFloatingHeader(
                 onMenu = { scope.launch { drawerState.open() } },
                 onSettings = onSettings,
-                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
             )
         }
     }
@@ -191,8 +191,12 @@ private fun JalvoroWebsiteDrawer(
     )
 
     ModalDrawerSheet(
-        modifier = Modifier.fillMaxHeight().widthIn(max = 320.dp),
-        drawerShape = RoundedCornerShape(topEnd = 26.dp, bottomEnd = 26.dp),
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(0.9f)
+            .widthIn(max = 360.dp)
+            .navigationBarsPadding(),
+        drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         drawerTonalElevation = 0.dp,
     ) {
@@ -202,7 +206,7 @@ private fun JalvoroWebsiteDrawer(
                     .fillMaxWidth()
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 JalvoroWebsiteBrandLockup(
@@ -211,77 +215,63 @@ private fun JalvoroWebsiteDrawer(
                 )
                 Surface(
                     onClick = onClose,
-                    modifier = Modifier.size(40.dp).semantics {
-                        contentDescription = "Close navigation menu"
-                    },
-                    shape = RoundedCornerShape(13.dp),
-                    color = Color.Transparent,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .semantics { contentDescription = "Close navigation menu" },
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+                    ),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = JalvoroIcons.Close,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+            )
+
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 item { JalvoroWebsiteDrawerGroupLabel("Workspace") }
-                workspaceItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
-                    item(key = "workspace-$rowIndex") {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            rowItems.forEach { item ->
-                                JalvoroWebsiteDrawerItem(
-                                    item = item,
-                                    selected = selected == item.destination,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            if (rowItems.size == 1) Spacer(Modifier.weight(1f))
-                        }
+                workspaceItems.forEach { item ->
+                    item(key = item.destination.name) {
+                        JalvoroWebsiteDrawerItem(
+                            item = item,
+                            selected = selected == item.destination,
+                        )
                     }
                 }
                 item {
                     Spacer(Modifier.size(8.dp))
                     JalvoroWebsiteDrawerGroupLabel("Account")
                 }
-                accountItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
-                    item(key = "account-$rowIndex") {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            rowItems.forEach { item ->
-                                JalvoroWebsiteDrawerItem(
-                                    item = item,
-                                    selected = selected == item.destination,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            if (rowItems.size == 1) Spacer(Modifier.weight(1f))
-                        }
+                accountItems.forEach { item ->
+                    item(key = item.destination.name) {
+                        JalvoroWebsiteDrawerItem(
+                            item = item,
+                            selected = selected == item.destination,
+                        )
                     }
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
-            Text(
-                text = email,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
             )
+            JalvoroWebsiteAccountSummary(email = email)
         }
     }
 }
@@ -289,22 +279,24 @@ private fun JalvoroWebsiteDrawer(
 @Composable
 private fun JalvoroWebsiteDrawerGroupLabel(label: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             text = label.uppercase(Locale.US),
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 9.sp,
-                letterSpacing = 1.4.sp,
+                fontSize = 10.sp,
+                letterSpacing = 1.25.sp,
             ),
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         HorizontalDivider(
             modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f),
         )
     }
 }
@@ -327,30 +319,91 @@ private fun JalvoroWebsiteDrawerItem(
         },
         icon = {
             Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = if (selected) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainer,
-                contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                shape = RoundedCornerShape(12.dp),
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+                contentColor = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
             ) {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = null,
-                    modifier = Modifier.padding(8.dp).size(17.dp),
+                    modifier = Modifier.padding(9.dp).size(19.dp),
                 )
             }
         },
         selected = selected,
         onClick = item.onClick,
-        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = NavigationDrawerItemDefaults.colors(
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedIconColor = Color.White,
-            selectedTextColor = Color.White,
-            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.78f),
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedIconColor = MaterialTheme.colorScheme.primary,
+            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f),
             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     )
+}
+
+@Composable
+private fun JalvoroWebsiteAccountSummary(email: String) {
+    val initial = email.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "J"
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(14.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Signed in",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -359,24 +412,29 @@ private fun JalvoroWebsiteFloatingHeader(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    Box(
+        modifier = modifier
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .heightIn(min = 52.dp),
     ) {
         Surface(
             onClick = onMenu,
-            modifier = Modifier.size(44.dp).semantics {
-                contentDescription = "Open navigation menu"
-            },
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f),
+            modifier = Modifier
+                .size(48.dp)
+                .align(Alignment.CenterStart)
+                .semantics { contentDescription = "Open navigation menu" },
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f),
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            shadowElevation = 8.dp,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
+            ),
+            shadowElevation = 4.dp,
         ) {
             val lineColor = MaterialTheme.colorScheme.onSurface
-            Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+            Canvas(modifier = Modifier.fillMaxSize().padding(13.dp)) {
                 val stroke = 2.2.dp.toPx()
                 drawLine(
                     color = lineColor,
@@ -388,28 +446,40 @@ private fun JalvoroWebsiteFloatingHeader(
                 drawLine(
                     color = lineColor,
                     start = Offset(0f, size.height * 0.68f),
-                    end = Offset(size.width * 0.62f, size.height * 0.68f),
+                    end = Offset(size.width * 0.64f, size.height * 0.68f),
                     strokeWidth = stroke,
                     cap = StrokeCap.Round,
                 )
             }
         }
+
+        JalvoroWebsiteBrandLockup(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .widthIn(max = 182.dp),
+            compact = true,
+        )
+
         Surface(
             onClick = onSettings,
-            modifier = Modifier.size(44.dp).semantics {
-                contentDescription = "Open profile and settings"
-            },
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f),
+            modifier = Modifier
+                .size(48.dp)
+                .align(Alignment.CenterEnd)
+                .semantics { contentDescription = "Open profile and settings" },
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f),
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            shadowElevation = 8.dp,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
+            ),
+            shadowElevation = 4.dp,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = JalvoroIcons.User,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
         }
