@@ -138,11 +138,25 @@ if (( ${#SQL_TESTS[@]} == 0 )); then
   exit 1
 fi
 
+# Several rollback-only regression fixtures create temporary state tables as
+# the authenticated role, then switch to service_role solely to seed private
+# role templates. These default privileges exist only inside this disposable
+# database and never become migration or hosted-project grants.
+psql "$LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+alter default privileges for role authenticated
+  grant select,insert,update,delete on tables to service_role;
+SQL
+
 echo "Running ${#SQL_TESTS[@]} SQL regression files against the disposable database..."
 for test_file in "${SQL_TESTS[@]}"; do
   echo "--- ${test_file}"
   psql "$LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f "$test_file"
 done
+
+psql "$LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+alter default privileges for role authenticated
+  revoke select,insert,update,delete on tables from service_role;
+SQL
 
 echo "Running post-rehearsal schema integrity probes..."
 psql "$LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
