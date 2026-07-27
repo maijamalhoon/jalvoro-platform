@@ -26,6 +26,11 @@ select public.create_business_organization(
 select set_config('request.jwt.claim.sub','52222222-2222-4222-8222-222222222222',true);
 select set_config('request.jwt.claims','{"sub":"52222222-2222-4222-8222-222222222222","role":"authenticated","email":"recovery-member@example.invalid","aal":"aal1"}',true);
 select public.claim_account_realm('business');
+
+-- Fixture setup may call private role-template helpers only through the
+-- service-role boundary. Authorization assertions below immediately return to
+-- the authenticated member/owner roles used by the application.
+set local role service_role;
 insert into public.business_members(
   business_id,user_id,role,status,permissions,invited_by,joined_at
 )
@@ -33,6 +38,7 @@ select business_id,'52222222-2222-4222-8222-222222222222','employee','active',
        private.business_team_role_template('employee','advanced_company'),
        '51111111-1111-4111-8111-111111111111',now()
 from recovery_test_state;
+set local role authenticated;
 
 do $$
 declare target_business uuid;
