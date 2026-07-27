@@ -42,10 +42,8 @@ jobs:
 
           path = Path("components/business/BusinessPosSecurityManager.tsx")
           source = path.read_text()
-          old = '''  const activeSessions = snapshot.sessions.filter(
-            (session) => !session.revoked_at && new Date(session.expires_at).getTime() > Date.now(),
-          );'''
-          new = '''  const activeSessions = snapshot.sessions.filter((session) => !session.revoked_at);'''
+          old = "  const activeSessions = snapshot.sessions.filter(\n    (session) => !session.revoked_at && new Date(session.expires_at).getTime() > Date.now(),\n  );"
+          new = "  const activeSessions = snapshot.sessions.filter((session) => !session.revoked_at);"
           if source.count(old) != 1:
               raise SystemExit("Expected exactly one POS active-session render expression")
           updated = source.replace(old, new)
