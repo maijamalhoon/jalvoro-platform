@@ -30,6 +30,7 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Renamed the withdrawal-function migration from duplicate version `20260721023000` to unique ordered version `20260721023100` without changing its SQL bytes.
 - Assigned unique, dependency-aware versions to every remaining duplicate migration timestamp; migration SQL bytes were not changed.
 - Moved the complete Business contacts and sales-invoicing migration before purchase accounting, because supplier bills require the shared contacts table.
+- Moved the complete inventory foundation after purchase accounting and before return operations, because returns require warehouse, product, balance, and stock-movement tables.
 
 ## Hard boundary
 
