@@ -760,17 +760,18 @@ private fun OverviewFloatingMenuButton(onClick: () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 8.dp,
     ) {
+        val lineColor = MaterialTheme.colorScheme.onSurface
         Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
             val stroke = 2.2.dp.toPx()
             drawLine(
-                color = MaterialTheme.colorScheme.onSurface,
+                color = lineColor,
                 start = Offset(0f, size.height * 0.34f),
                 end = Offset(size.width, size.height * 0.34f),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
             drawLine(
-                color = MaterialTheme.colorScheme.onSurface,
+                color = lineColor,
                 start = Offset(0f, size.height * 0.68f),
                 end = Offset(size.width * 0.62f, size.height * 0.68f),
                 strokeWidth = stroke,

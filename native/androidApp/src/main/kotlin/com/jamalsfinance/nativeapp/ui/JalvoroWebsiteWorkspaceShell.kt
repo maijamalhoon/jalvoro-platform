@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -101,6 +102,7 @@ internal fun JalvoroWebsiteWorkspaceShell(
             JalvoroWebsiteDrawer(
                 email = email,
                 selected = selected,
+                onClose = { scope.launch { drawerState.close() } },
                 onOverview = { select(onOverview) },
                 onMoney = { select(onMoney) },
                 onPlanning = { select(onPlanning) },
@@ -132,6 +134,7 @@ internal fun JalvoroWebsiteWorkspaceShell(
 private fun JalvoroWebsiteDrawer(
     email: String,
     selected: JalvoroWebsiteDestination,
+    onClose: () -> Unit,
     onOverview: () -> Unit,
     onMoney: () -> Unit,
     onPlanning: () -> Unit,
@@ -194,13 +197,36 @@ private fun JalvoroWebsiteDrawer(
         drawerTonalElevation = 0.dp,
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            JalvoroWebsiteBrandLockup(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                compact = true,
-            )
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                JalvoroWebsiteBrandLockup(
+                    modifier = Modifier.weight(1f),
+                    compact = true,
+                )
+                Surface(
+                    onClick = onClose,
+                    modifier = Modifier.size(40.dp).semantics {
+                        contentDescription = "Close navigation menu"
+                    },
+                    shape = RoundedCornerShape(13.dp),
+                    color = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = JalvoroIcons.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -208,24 +234,42 @@ private fun JalvoroWebsiteDrawer(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 item { JalvoroWebsiteDrawerGroupLabel("Workspace") }
-                workspaceItems.forEach { item ->
-                    item(key = item.destination.name) {
-                        JalvoroWebsiteDrawerItem(
-                            item = item,
-                            selected = selected == item.destination,
-                        )
+                workspaceItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
+                    item(key = "workspace-$rowIndex") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowItems.forEach { item ->
+                                JalvoroWebsiteDrawerItem(
+                                    item = item,
+                                    selected = selected == item.destination,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (rowItems.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
                 item {
                     Spacer(Modifier.size(8.dp))
                     JalvoroWebsiteDrawerGroupLabel("Account")
                 }
-                accountItems.forEach { item ->
-                    item(key = item.destination.name) {
-                        JalvoroWebsiteDrawerItem(
-                            item = item,
-                            selected = selected == item.destination,
-                        )
+                accountItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
+                    item(key = "account-$rowIndex") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowItems.forEach { item ->
+                                JalvoroWebsiteDrawerItem(
+                                    item = item,
+                                    selected = selected == item.destination,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (rowItems.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -269,13 +313,22 @@ private fun JalvoroWebsiteDrawerGroupLabel(label: String) {
 private fun JalvoroWebsiteDrawerItem(
     item: JalvoroWebsiteNavigationItem,
     selected: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     NavigationDrawerItem(
-        label = { Text(item.label, fontWeight = FontWeight.Bold) },
+        label = {
+            Text(
+                text = item.label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
         icon = {
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = if (selected) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surface,
+                color = if (selected) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
             ) {
                 Icon(
@@ -287,13 +340,13 @@ private fun JalvoroWebsiteDrawerItem(
         },
         selected = selected,
         onClick = item.onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
         shape = RoundedCornerShape(14.dp),
         colors = NavigationDrawerItemDefaults.colors(
             selectedContainerColor = MaterialTheme.colorScheme.primary,
             selectedIconColor = Color.White,
             selectedTextColor = Color.White,
-            unselectedContainerColor = Color.Transparent,
+            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.78f),
             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
@@ -322,17 +375,18 @@ private fun JalvoroWebsiteFloatingHeader(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             shadowElevation = 8.dp,
         ) {
+            val lineColor = MaterialTheme.colorScheme.onSurface
             Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
                 val stroke = 2.2.dp.toPx()
                 drawLine(
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = lineColor,
                     start = Offset(0f, size.height * 0.34f),
                     end = Offset(size.width, size.height * 0.34f),
                     strokeWidth = stroke,
                     cap = StrokeCap.Round,
                 )
                 drawLine(
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = lineColor,
                     start = Offset(0f, size.height * 0.68f),
                     end = Offset(size.width * 0.62f, size.height * 0.68f),
                     strokeWidth = stroke,
