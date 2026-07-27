@@ -55,7 +55,7 @@ export default async function BusinessPosSecurityPage({
 
   if (!membershipResult.data || membershipResult.data.status !== "active") notFound();
   const role = membershipResult.data.role;
-  const permissions = membershipResult.data.permissions ?? [];
+  const permissions = (membershipResult.data.permissions ?? []) as string[];
   const canView =
     business.owner_user_id === user.id ||
     permissions.includes("*") ||
