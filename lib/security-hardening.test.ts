@@ -148,7 +148,6 @@ describe("security hardening contracts", () => {
     expect(edgeFunction).not.toContain("unit_price:");
     expect(edgeFunction).not.toContain("warehouse_id:");
     expect(migration).toContain("private.get_business_pos_session_internal");
-    expect(migration).toContain("public.end_business_pos_session");
     expect(migration).toContain("private.normalize_business_pos_sale_lines");
     expect(migration).toContain("target_product.sales_price");
     expect(migration).toContain("unique (business_id, request_key)");
@@ -173,6 +172,7 @@ describe("security hardening contracts", () => {
     expect(edgeFunction).toContain('"post_operation"');
     expect(edgeFunction).toContain('serviceClient.rpc("post_business_pos_operation"');
     expect(migration).toContain("private.get_business_pos_session_internal");
+    expect(migration).toContain("public.end_business_pos_session");
     expect(migration).toContain("public.consume_business_pos_approval(");
     expect(migration).toContain("private.create_business_simple_shop_purchase_internal(");
     expect(migration).toContain("private.create_business_simple_shop_expense_internal(");
