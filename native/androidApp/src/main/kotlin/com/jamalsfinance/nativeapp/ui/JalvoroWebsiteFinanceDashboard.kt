@@ -318,7 +318,6 @@ private fun WebsiteMoneyHeader(
     val tabs = listOf(
         WebsiteMoneyTab(WebsiteMoneySection.Accounts, "Accounts", JalvoroIcons.Accounts),
         WebsiteMoneyTab(WebsiteMoneySection.Transactions, "Transactions", JalvoroIcons.Transactions),
-        WebsiteMoneyTab(WebsiteMoneySection.Profile, "Profile", JalvoroIcons.User),
     )
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
