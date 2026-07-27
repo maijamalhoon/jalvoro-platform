@@ -29,20 +29,22 @@ internal fun PlanningFormDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.fillMaxWidth().widthIn(max = 560.dp),
-            shape = RoundedCornerShape(26.dp),
+            shape = RoundedCornerShape(22.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 0.dp,
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth()
-                    .heightIn(max = 720.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 620.dp)
+                    .imePadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlanningIconTile(icon)
@@ -143,11 +145,12 @@ internal fun PlanningProgress() {
 }
 
 internal fun formatPkr(value: Number): String {
-    val amount = value.toDouble()
-    return NumberFormat.getCurrencyInstance(Locale("en", "PK")).apply {
-        currency = java.util.Currency.getInstance("PKR")
+    val amount = value.toDouble().takeIf(Double::isFinite) ?: 0.0
+    val formatted = NumberFormat.getNumberInstance(Locale.US).apply {
+        minimumFractionDigits = 2
         maximumFractionDigits = 2
-    }.format(if (amount.isFinite()) amount else 0.0)
+    }.format(amount)
+    return "Rs $formatted"
 }
 
 internal fun Number.editable(): String {
