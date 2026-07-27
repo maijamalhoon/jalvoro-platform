@@ -1,0 +1,64 @@
+name: Apply exact POS render purity fix
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-pos-purity-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >-
+      github.event.pull_request.draft == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'agent/pos-workforce-security-20260727' &&
+      github.event.pull_request.base.ref == 'agent/business-identity-recovery-20260726'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact POS head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+          show-progress: false
+
+      - name: Replace one impure render expression and self-remove
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("components/business/BusinessPosSecurityManager.tsx")
+          source = path.read_text()
+          old = '''  const activeSessions = snapshot.sessions.filter(
+            (session) => !session.revoked_at && new Date(session.expires_at).getTime() > Date.now(),
+          );'''
+          new = '''  const activeSessions = snapshot.sessions.filter((session) => !session.revoked_at);'''
+          if source.count(old) != 1:
+              raise SystemExit("Expected exactly one POS active-session render expression")
+          updated = source.replace(old, new)
+          if "Date.now()" in updated:
+              raise SystemExit("Date.now remained in the POS manager render path")
+          path.write_text(updated)
+          PY
+
+          rm -f .github/workflows/agent-fix-pos-purity.yml
+          git add -- components/business/BusinessPosSecurityManager.tsx .github/workflows/agent-fix-pos-purity.yml
+          test -n "$(git status --porcelain)"
+          git diff --cached --check
+          git config user.name "jalvoro-agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Fix POS session render purity"
+          git push origin "HEAD:$HEAD_BRANCH"
