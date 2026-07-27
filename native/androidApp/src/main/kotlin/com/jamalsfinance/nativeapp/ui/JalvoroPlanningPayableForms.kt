@@ -38,9 +38,30 @@ internal fun PayableDialog(
         onDismiss,
     ) {
         PlanningMoneyFields(amount, { amount = it }, currency, { currency = it }, rate, { rate = it })
-        OutlinedTextField(person, { person = it }, Modifier.fillMaxWidth(), label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-        OutlinedTextField(reason, { reason = it }, Modifier.fillMaxWidth(), label = { Text("Purpose") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-        OutlinedTextField(item, { item = it }, Modifier.fillMaxWidth(), label = { Text("Item (optional)") }, singleLine = true, shape = RoundedCornerShape(14.dp))
+        OutlinedTextField(
+            value = person,
+            onValueChange = { person = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Name") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+        )
+        OutlinedTextField(
+            value = reason,
+            onValueChange = { reason = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Purpose") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+        )
+        OutlinedTextField(
+            value = item,
+            onValueChange = { item = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Item (optional)") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+        )
         PlanningSelectionField(
             "Account",
             accountId,
@@ -48,8 +69,24 @@ internal fun PayableDialog(
             "Select account",
             onSelect = { accountId = it },
         )
-        OutlinedTextField(dueDate, { dueDate = it }, Modifier.fillMaxWidth(), label = { Text("Due date YYYY-MM-DD (optional)") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-        OutlinedTextField(notes, { notes = it }, Modifier.fillMaxWidth(), label = { Text("Notes (optional)") }, minLines = 2, shape = RoundedCornerShape(14.dp))
+        OutlinedTextField(
+            value = dueDate,
+            onValueChange = { dueDate = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Due date (optional)") },
+            placeholder = { Text("YYYY-MM-DD") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+        )
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Notes (optional)") },
+            minLines = 2,
+            maxLines = 4,
+            shape = RoundedCornerShape(14.dp),
+        )
         existing?.let {
             JalvoroFeedbackCard(
                 message = "Already paid: ${formatPkr(it.row.paidAmount)}",
@@ -124,8 +161,24 @@ internal fun LiabilityPaymentDialog(
             "Select account",
             onSelect = { accountId = it },
         )
-        OutlinedTextField(date, { date = it }, Modifier.fillMaxWidth(), label = { Text("Payment date YYYY-MM-DD") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-        OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth(), label = { Text("Note (optional)") }, minLines = 2, shape = RoundedCornerShape(14.dp))
+        OutlinedTextField(
+            value = date,
+            onValueChange = { date = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Payment date") },
+            placeholder = { Text("YYYY-MM-DD") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+        )
+        OutlinedTextField(
+            value = note,
+            onValueChange = { note = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Note (optional)") },
+            minLines = 2,
+            maxLines = 4,
+            shape = RoundedCornerShape(14.dp),
+        )
         error?.let { JalvoroFeedbackCard(it, JalvoroFeedbackTone.Danger) }
         Button(
             onClick = {
