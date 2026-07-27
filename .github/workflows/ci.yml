@@ -69,7 +69,10 @@ jobs:
             supabase/functions/business-identity-recovery/index.ts
 
       - name: Run security contract tests
-        run: npx vitest run lib/security-hardening.test.ts
+        run: |
+          npx vitest run \
+            lib/security-hardening.test.ts \
+            tests/business-identity-recovery-wrapper-contract.test.ts
 
       - name: Run complete application suite
         run: npm test
