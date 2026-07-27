@@ -548,10 +548,11 @@ internal fun JalvoroAdvisorSafetyBoundary(
     model: String,
     generatedAt: String?,
 ) {
+    val providerReady = provider.isNotBlank() && model.isNotBlank()
     JalvoroSurfaceCard {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -563,22 +564,21 @@ internal fun JalvoroAdvisorSafetyBoundary(
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "Advisor safety boundary",
+                    text = "Privacy and guidance",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
             }
-            JalvoroAdvisorKeyValue("Authentication", "Supabase access token")
-            JalvoroAdvisorKeyValue("Data isolation", "PostgreSQL Row Level Security")
-            JalvoroAdvisorKeyValue("Provider mode", if (aiAvailable) "Server AI" else "Deterministic fallback")
-            JalvoroAdvisorKeyValue("Provider", provider.ifBlank { "Unavailable" })
-            JalvoroAdvisorKeyValue("Model", model.ifBlank { "Unavailable" })
+            JalvoroAdvisorKeyValue("Data used", "Your authenticated finance summary only")
+            JalvoroAdvisorKeyValue(
+                "Guidance mode",
+                if (aiAvailable && providerReady) "Secure server guidance" else "Private deterministic fallback",
+            )
             generatedAt?.takeIf(String::isNotBlank)?.let {
-                JalvoroAdvisorKeyValue("Generated", it)
+                JalvoroAdvisorKeyValue("Last updated", it)
             }
-            JalvoroAdvisorKeyValue("Mobile secrets", "No service-role or AI-provider key")
             Text(
-                text = "Advisor responses are informational and should be verified before major financial, tax, legal or investment decisions.",
+                text = "Your saved records are not changed by the advisor. Verify guidance before major financial, tax, legal or investment decisions.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
