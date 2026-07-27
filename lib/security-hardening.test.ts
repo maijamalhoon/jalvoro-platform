@@ -86,7 +86,7 @@ describe("security hardening contracts", () => {
     expect(config).toContain('"Vercel-CDN-Cache-Control"');
   });
 
-  it("keeps Business MFA recovery owner-authorized, audited, and server-only", () => {
+  it("keeps Business MFA recovery owner-authorized, pre-audited, and server-only", () => {
     const edgeFunction = read(
       "supabase/functions/business-identity-recovery/index.ts",
     );
@@ -100,9 +100,12 @@ describe("security hardening contracts", () => {
     expect(edgeFunction).toContain("auth.admin.mfa.deleteFactor");
     expect(edgeFunction).not.toContain("auth.sessions");
     expect(edgeFunction).not.toContain("mfa_factors");
+    expect(edgeFunction).toContain('p_outcome: "started"');
+    expect(edgeFunction).toContain("identity_recovery_audit_unavailable");
     expect(migration).toContain("Primary owner access required.");
     expect(migration).toContain("Owner MFA verification is required.");
     expect(migration).toContain("auth.jwt()->>'aal'");
+    expect(migration).toContain("mfa_recovery_started");
     expect(migration).toContain("mfa_recovery_completed");
     expect(panel).toContain("supabase.functions.invoke(");
     expect(panel).toContain('"business-identity-recovery"');

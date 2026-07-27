@@ -36,12 +36,15 @@ describe("Business identity recovery contract", () => {
   });
 
   it("records inspection, success, and failure without secrets", () => {
+    expect(migration).toContain("mfa_recovery_started");
     expect(migration).toContain("mfa_recovery_inspected");
     expect(migration).toContain("mfa_recovery_completed");
     expect(migration).toContain("mfa_recovery_failed");
     expect(migration).toContain("verified_factor_count");
     expect(migration).toContain("deleted_factor_count");
     expect(migration).not.toContain("factor_id");
+    expect(edgeFunction).toContain('p_outcome: "started"');
+    expect(edgeFunction).toContain("identity_recovery_audit_unavailable");
     expect(edgeFunction).toContain("record_business_identity_recovery_result");
   });
 

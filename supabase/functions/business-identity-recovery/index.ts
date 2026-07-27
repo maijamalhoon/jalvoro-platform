@@ -104,10 +104,29 @@ Deno.serve(async (request: Request) => {
     const code = contextResult.error?.code;
     return json(
       { error: code === "MFA02" ? "owner_aal2_required" : "identity_recovery_not_allowed" },
-      403,
+      code === "MFA02" ? 403 : 403,
     );
   }
   const context = contextResult.data as RecoveryContext;
+
+  if (action === "reset_mfa") {
+    const preAuditResult = await userClient.rpc(
+      "record_business_identity_recovery_result",
+      {
+        p_business_id: businessId,
+        p_target_user_id: targetUserId,
+        p_action: action,
+        p_outcome: "started",
+        p_factor_count: 0,
+        p_verified_factor_count: 0,
+        p_deleted_factor_count: 0,
+        p_error_code: null,
+      },
+    );
+    if (preAuditResult.error) {
+      return json({ error: "identity_recovery_audit_unavailable" }, 503);
+    }
+  }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },

@@ -9,7 +9,7 @@ alter table public.business_team_audit_log
     'invitation_created','invitation_sent','invitation_failed','invitation_resent',
     'invitation_cancelled','invitation_accepted','member_updated','member_suspended',
     'member_reactivated','member_revoked','ownership_transferred',
-    'mfa_recovery_inspected','mfa_recovery_completed','mfa_recovery_failed'
+    'mfa_recovery_started','mfa_recovery_inspected','mfa_recovery_completed','mfa_recovery_failed'
   ));
 
 create or replace function private.get_business_identity_recovery_context_internal(
@@ -147,7 +147,7 @@ begin
     raise exception 'Team member not found.' using errcode='P0002';
   end if;
   if normalized_action not in ('inspect_mfa','reset_mfa')
-     or normalized_outcome not in ('success','failed') then
+     or normalized_outcome not in ('started','success','failed') then
     raise exception 'Invalid identity recovery result.' using errcode='22023';
   end if;
   if least(
@@ -158,6 +158,8 @@ begin
   end if;
 
   audit_action := case
+    when normalized_action='reset_mfa' and normalized_outcome='started'
+      then 'mfa_recovery_started'
     when normalized_action='inspect_mfa' and normalized_outcome='success'
       then 'mfa_recovery_inspected'
     when normalized_action='reset_mfa' and normalized_outcome='success'
