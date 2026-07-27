@@ -1,0 +1,163 @@
+name: Apply native mobile UI polish tranche
+
+on:
+  push:
+    branches: [agent/native-website-parity-shell]
+    paths:
+      - ".github/workflows/apply-native-ui-polish-tranche.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-native-ui-polish-tranche
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+    steps:
+      - name: Check out native branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/native-website-parity-shell
+          fetch-depth: 1
+          clean: false
+
+      - name: Apply screenshot-driven UI polish
+        shell: pwsh
+        run: |
+          @'
+          import fs from "node:fs";
+          import path from "node:path";
+
+          const root = process.env.GITHUB_WORKSPACE;
+          if (!root) throw new Error("GITHUB_WORKSPACE is required");
+
+          const ui = (...parts) => path.join(
+            root,
+            "native", "androidApp", "src", "main", "kotlin",
+            "com", "jamalsfinance", "nativeapp", "ui",
+            ...parts,
+          );
+
+          function replaceOnce(file, before, after, label) {
+            const source = fs.readFileSync(file, "utf8");
+            const first = source.indexOf(before);
+            const last = source.lastIndexOf(before);
+            if (first < 0) throw new Error(`Missing ${label} in ${file}`);
+            if (first !== last) throw new Error(`Ambiguous ${label} in ${file}`);
+            fs.writeFileSync(file, source.slice(0, first) + after + source.slice(first + before.length));
+          }
+
+          function replaceExpected(file, before, after, expected, label) {
+            const source = fs.readFileSync(file, "utf8");
+            const count = source.split(before).length - 1;
+            if (count !== expected) {
+              throw new Error(`Expected ${expected} ${label} replacements in ${file}, found ${count}`);
+            }
+            fs.writeFileSync(file, source.split(before).join(after));
+          }
+
+          const shell = ui("JalvoroWebsiteWorkspaceShell.kt");
+          replaceOnce(shell, "                    top = 88.dp,", "                    top = 76.dp,", "workspace top inset");
+          replaceOnce(
+            shell,
+            ".padding(horizontal = 16.dp, vertical = 10.dp)\n            .heightIn(min = 52.dp)",
+            ".padding(horizontal = 14.dp, vertical = 6.dp)\n            .heightIn(min = 48.dp)",
+            "floating header density",
+          );
+          replaceOnce(shell, ".widthIn(max = 182.dp)", ".widthIn(max = 154.dp)", "compact brand width");
+          replaceExpected(shell, "shadowElevation = 4.dp", "shadowElevation = 1.dp", 2, "header elevation");
+          replaceOnce(
+            shell,
+            ".padding(horizontal = 16.dp, vertical = 14.dp),\n                horizontalArrangement = Arrangement.spacedBy(12.dp)",
+            ".padding(horizontal = 16.dp, vertical = 10.dp),\n                horizontalArrangement = Arrangement.spacedBy(12.dp)",
+            "drawer header density",
+          );
+
+          const money = ui("JalvoroWebsiteFinanceDashboard.kt");
+          replaceOnce(
+            money,
+            "        WebsiteMoneyTab(WebsiteMoneySection.Transactions, \"Transactions\", JalvoroIcons.Transactions),\n        WebsiteMoneyTab(WebsiteMoneySection.Profile, \"Profile\", JalvoroIcons.User),",
+            "        WebsiteMoneyTab(WebsiteMoneySection.Transactions, \"Transactions\", JalvoroIcons.Transactions),",
+            "Money primary tabs",
+          );
+          replaceOnce(
+            money,
+            "modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),\n        verticalArrangement = Arrangement.spacedBy(10.dp),",
+            "modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),\n        verticalArrangement = Arrangement.spacedBy(8.dp),",
+            "Money header density",
+          );
+          replaceOnce(
+            money,
+            "text = \"Money\",\n                    style = MaterialTheme.typography.headlineMedium,",
+            "text = \"Money\",\n                    style = MaterialTheme.typography.headlineSmall,",
+            "Money title scale",
+          );
+
+          const overview = ui("JalvoroOverviewDashboard.kt");
+          replaceOnce(overview, "                    top = 88.dp,", "                    top = 76.dp,", "Overview top inset");
+          replaceOnce(
+            overview,
+            "modifier = modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)",
+            "modifier = modifier.statusBarsPadding().padding(horizontal = 14.dp, vertical = 6.dp)",
+            "Overview control density",
+          );
+          replaceExpected(overview, "Modifier.size(44.dp)", "Modifier.size(48.dp)", 3, "Overview touch target");
+          replaceExpected(overview, "shadowElevation = 8.dp", "shadowElevation = 2.dp", 2, "Overview floating elevation");
+          replaceOnce(
+            overview,
+            "modifier = modifier.height(136.dp),\n        shape = RoundedCornerShape(18.dp),\n        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),\n        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),",
+            "modifier = modifier.height(128.dp),\n        shape = RoundedCornerShape(16.dp),\n        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),\n        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),",
+            "Overview metric card density",
+          );
+          replaceOnce(
+            overview,
+            "modifier = Modifier.fillMaxSize().padding(16.dp),\n            verticalArrangement = Arrangement.SpaceBetween,",
+            "modifier = Modifier.fillMaxSize().padding(14.dp),\n            verticalArrangement = Arrangement.SpaceBetween,",
+            "Overview metric padding",
+          );
+
+          const rootShell = ui("JalvoroWebsiteModuleRoot.kt");
+          replaceOnce(
+            rootShell,
+            `    Card(\n        onClick = item.onClick,\n        modifier = modifier.semantics(mergeDescendants = true) {\n            contentDescription = "\${item.title}. \${item.description}"\n        },\n        shape = RoundedCornerShape(18.dp),\n        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),\n        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),\n        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)),\n    ) {\n        Column(\n            modifier = Modifier.fillMaxWidth().padding(18.dp),\n            verticalArrangement = Arrangement.spacedBy(10.dp),\n        ) {\n            Surface(shape = CircleShape, color = item.tone, contentColor = Color.White) {\n                Icon(item.icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(21.dp))\n            }\n            Text(\n                text = item.title,\n                style = MaterialTheme.typography.titleMedium,\n                fontWeight = FontWeight.Bold,\n                maxLines = 1,\n                overflow = TextOverflow.Ellipsis,\n            )\n            Text(\n                text = item.description,\n                style = MaterialTheme.typography.bodySmall,\n                color = MaterialTheme.colorScheme.onSurfaceVariant,\n            )\n            Row(verticalAlignment = Alignment.CenterVertically) {\n                Text(\n                    text = "Open",\n                    color = MaterialTheme.colorScheme.primary,\n                    style = MaterialTheme.typography.labelLarge,\n                    fontWeight = FontWeight.Bold,\n                )\n                Spacer(Modifier.size(6.dp))\n                Icon(\n                    imageVector = JalvoroIcons.ArrowRight,\n                    contentDescription = null,\n                    modifier = Modifier.size(16.dp),\n                    tint = MaterialTheme.colorScheme.primary,\n                )\n            }\n        }\n    }`,
+            `    Card(\n        onClick = item.onClick,\n        modifier = modifier.semantics(mergeDescendants = true) {\n            contentDescription = "\${item.title}. \${item.description}"\n        },\n        shape = RoundedCornerShape(16.dp),\n        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),\n        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),\n        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)),\n    ) {\n        Row(\n            modifier = Modifier.fillMaxWidth().padding(16.dp),\n            horizontalArrangement = Arrangement.spacedBy(14.dp),\n            verticalAlignment = Alignment.CenterVertically,\n        ) {\n            Surface(shape = CircleShape, color = item.tone, contentColor = Color.White) {\n                Icon(item.icon, contentDescription = null, modifier = Modifier.padding(9.dp).size(20.dp))\n            }\n            Column(\n                modifier = Modifier.weight(1f),\n                verticalArrangement = Arrangement.spacedBy(3.dp),\n            ) {\n                Text(\n                    text = item.title,\n                    style = MaterialTheme.typography.titleMedium,\n                    fontWeight = FontWeight.Bold,\n                    maxLines = 1,\n                    overflow = TextOverflow.Ellipsis,\n                )\n                Text(\n                    text = item.description,\n                    style = MaterialTheme.typography.bodySmall,\n                    color = MaterialTheme.colorScheme.onSurfaceVariant,\n                    maxLines = 2,\n                    overflow = TextOverflow.Ellipsis,\n                )\n            }\n            Icon(\n                imageVector = JalvoroIcons.ArrowRight,\n                contentDescription = null,\n                modifier = Modifier.size(18.dp),\n                tint = MaterialTheme.colorScheme.primary,\n            )\n        }\n    }`,
+            "compact More module rows",
+          );
+
+          console.log("Applied screenshot-driven native UI polish tranche.");
+          '@ | Set-Content -Encoding UTF8 "$env:RUNNER_TEMP\apply-native-ui-polish.mjs"
+
+          & "C:\Program Files\nodejs\node.exe" "$env:RUNNER_TEMP\apply-native-ui-polish.mjs"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify source diff
+        shell: pwsh
+        run: |
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $changed = git status --porcelain -- `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt
+          if (-not $changed) { throw "Expected native UI source changes were not produced." }
+
+      - name: Commit direct source changes
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/apply-native-ui-polish-tranche.yml
+          git add -- `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt `
+            native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt
+          git commit -m "Polish native mobile hierarchy and navigation"
+          git push origin HEAD:agent/native-website-parity-shell
