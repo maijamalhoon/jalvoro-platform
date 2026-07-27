@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.DEBUG) enableDebugStrictMode()
 
         val nativePreferences = AndroidNativePreferences(applicationContext)
+        if (BuildConfig.DEBUG && nativePreferences.state.value.blockScreenshots) {
+            nativePreferences.setBlockScreenshots(false)
+        }
         val networkMonitor = AndroidNetworkMonitor(applicationContext).also {
             activeNetworkMonitor = it
         }
