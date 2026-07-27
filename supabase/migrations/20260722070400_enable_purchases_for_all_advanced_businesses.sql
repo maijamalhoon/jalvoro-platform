@@ -26,7 +26,7 @@ declare
   clean_name text := btrim(coalesce(p_name, ''));
   normalized_type text := lower(btrim(coalesce(p_business_type, '')));
   normalized_country text := nullif(upper(btrim(coalesce(p_country_code, ''))), '');
-  normalized_currency text := upper(btrim(coalesce(p_base_currency, 'PKR'));
+  normalized_currency text := upper(btrim(coalesce(p_base_currency, 'PKR')));
   normalized_timezone text := btrim(coalesce(p_timezone, 'UTC'));
   base_slug text;
   generated_slug text;
