@@ -148,6 +148,7 @@ describe("security hardening contracts", () => {
     expect(edgeFunction).not.toContain("unit_price:");
     expect(edgeFunction).not.toContain("warehouse_id:");
     expect(migration).toContain("private.get_business_pos_session_internal");
+    expect(migration).toContain("public.end_business_pos_session");
     expect(migration).toContain("private.normalize_business_pos_sale_lines");
     expect(migration).toContain("target_product.sales_price");
     expect(migration).toContain("unique (business_id, request_key)");
@@ -155,6 +156,32 @@ describe("security hardening contracts", () => {
     expect(migration).toContain("private.create_business_simple_shop_sale_internal(");
     expect(migration).toContain("set_config('request.jwt.claim.sub',target_session.user_id::text,true)");
     expect(migration).not.toContain("auth.sessions");
+  });
+
+  it("keeps POS terminal operations session-bound, approval-gated, and server-only", () => {
+    const edgeFunction = read(
+      "supabase/functions/business-pos-security/index.ts",
+    );
+    const migration = read(
+      "supabase/migrations/20260727070000_pos_operations_transaction_bridge.sql",
+    );
+    const terminal = read("components/business/BusinessPosTerminal.tsx");
+    const proxy = read("lib/supabase/proxy.ts");
+
+    expect(edgeFunction).toContain('"end_session"');
+    expect(edgeFunction).toContain('"terminal_snapshot"');
+    expect(edgeFunction).toContain('"post_operation"');
+    expect(edgeFunction).toContain('serviceClient.rpc("post_business_pos_operation"');
+    expect(migration).toContain("private.get_business_pos_session_internal");
+    expect(migration).toContain("public.consume_business_pos_approval(");
+    expect(migration).toContain("private.create_business_simple_shop_purchase_internal(");
+    expect(migration).toContain("private.create_business_simple_shop_expense_internal(");
+    expect(migration).toContain("private.create_business_sales_return_internal(");
+    expect(migration).not.toContain("auth.sessions");
+    expect(proxy).toContain('"/pos"');
+    expect(terminal).toContain("sessionStorage.setItem(storageKey, token)");
+    expect(terminal).not.toContain("localStorage");
+    expect(terminal).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
   });
 
   it("does not place administrative Supabase secrets in application source", () => {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
 
 import BusinessPosSecurityManager from "@/components/business/BusinessPosSecurityManager";
 import { createClient } from "@/lib/supabase/server";
@@ -81,9 +81,17 @@ export default async function BusinessPosSecurityPage({
           >
             <ArrowLeft className="size-4" aria-hidden="true" /> Team and permissions
           </Link>
-          <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3 py-1.5 text-xs font-black text-success">
-            <ShieldCheck className="size-4" aria-hidden="true" /> Device, PIN, session, and approval isolation
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/pos/${business.slug}`}
+              className="finance-focus inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-button)] bg-primary px-3 text-sm font-black text-primary-foreground"
+            >
+              Open POS terminal <ExternalLink className="size-4" aria-hidden="true" />
+            </Link>
+            <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3 py-1.5 text-xs font-black text-success">
+              <ShieldCheck className="size-4" aria-hidden="true" /> Device, PIN, session, and approval isolation
+            </span>
+          </div>
         </div>
 
         <header className="mt-7">

@@ -10,7 +10,14 @@ type ManagementAction =
   | "revoke_credential"
   | "revoke_session"
   | "decide_approval";
-type KioskAction = "start_session" | "change_pin" | "request_approval" | "post_sale";
+type KioskAction =
+  | "start_session"
+  | "change_pin"
+  | "end_session"
+  | "terminal_snapshot"
+  | "request_approval"
+  | "post_sale"
+  | "post_operation";
 type Action = ManagementAction | KioskAction;
 
 const MANAGEMENT_ACTIONS = new Set<ManagementAction>([
@@ -25,8 +32,11 @@ const MANAGEMENT_ACTIONS = new Set<ManagementAction>([
 const KIOSK_ACTIONS = new Set<KioskAction>([
   "start_session",
   "change_pin",
+  "end_session",
+  "terminal_snapshot",
   "request_approval",
   "post_sale",
+  "post_operation",
 ]);
 const PIN_REJECT_LIST = new Set([
   "000000",
@@ -46,6 +56,7 @@ const PIN_REJECT_LIST = new Set([
   "123123",
 ]);
 const DEVICE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_REQUEST_BYTES = 128 * 1024;
 
 function cleanAction(value: unknown): Action | null {
   if (typeof value !== "string") return null;
@@ -114,6 +125,170 @@ function saleLines(value: unknown): PosSaleLine[] | null {
     });
   }
   return normalized;
+}
+
+
+type PosOperationType = "purchase" | "expense" | "refund" | "void" | "cash_adjustment";
+
+type PosPurchaseLine = {
+  product_id: string;
+  quantity: number;
+  discount_percent: number;
+  tax_rate: number;
+};
+
+type PosRefundLine = {
+  invoice_line_id: string;
+  quantity: number;
+};
+
+function cleanOperationType(value: unknown): PosOperationType | null {
+  return value === "purchase" || value === "expense" || value === "refund" ||
+      value === "void" || value === "cash_adjustment"
+    ? value
+    : null;
+}
+
+function optionalUuid(value: unknown): string | null | undefined {
+  if (value == null || value === "") return null;
+  return uuid(value) ?? undefined;
+}
+
+function optionalText(value: unknown, max: number): string | null | undefined {
+  if (value == null || value === "") return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  return text(value, max) ?? undefined;
+}
+
+function purchaseLines(value: unknown): PosPurchaseLine[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 100) return null;
+  const seen = new Set<string>();
+  const normalized: PosPurchaseLine[] = [];
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+    const line = candidate as Record<string, unknown>;
+    const productId = uuid(line.productId ?? line.product_id);
+    const quantity = numeric(line.quantity);
+    const discountPercent = numeric(line.discountPercent ?? line.discount_percent) ?? 0;
+    const taxRate = numeric(line.taxRate ?? line.tax_rate) ?? 0;
+    if (
+      !productId || seen.has(productId) || !quantity || quantity <= 0 || quantity > 1_000_000 ||
+      discountPercent < 0 || discountPercent > 100 || taxRate < 0 || taxRate > 100
+    ) return null;
+    seen.add(productId);
+    normalized.push({
+      product_id: productId,
+      quantity,
+      discount_percent: discountPercent,
+      tax_rate: taxRate,
+    });
+  }
+  return normalized;
+}
+
+function refundLines(value: unknown): PosRefundLine[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 100) return null;
+  const seen = new Set<string>();
+  const normalized: PosRefundLine[] = [];
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+    const line = candidate as Record<string, unknown>;
+    const invoiceLineId = uuid(line.invoiceLineId ?? line.invoice_line_id);
+    const quantity = numeric(line.quantity);
+    if (!invoiceLineId || seen.has(invoiceLineId) || !quantity || quantity <= 0 || quantity > 1_000_000) {
+      return null;
+    }
+    seen.add(invoiceLineId);
+    normalized.push({ invoice_line_id: invoiceLineId, quantity });
+  }
+  return normalized;
+}
+
+function operationPayload(
+  operationType: PosOperationType,
+  value: unknown,
+): JsonRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const payload = value as Record<string, unknown>;
+
+  if (operationType === "purchase") {
+    const purchaseDate = dateValue(payload.purchaseDate ?? payload.purchase_date);
+    const supplierId = optionalUuid(payload.supplierId ?? payload.supplier_id);
+    const supplierDocumentNumber = optionalText(
+      payload.supplierDocumentNumber ?? payload.supplier_document_number,
+      120,
+    );
+    const notes = optionalText(payload.notes, 300);
+    const lines = purchaseLines(payload.lines);
+    const paidNow = payload.paidNow ?? payload.paid_now;
+    if (
+      !purchaseDate || supplierId === undefined || supplierDocumentNumber === undefined ||
+      notes === undefined || !lines || (paidNow != null && typeof paidNow !== "boolean")
+    ) return null;
+    return {
+      purchase_date: purchaseDate,
+      supplier_id: supplierId,
+      supplier_document_number: supplierDocumentNumber,
+      paid_now: paidNow !== false,
+      notes,
+      lines,
+    };
+  }
+
+  if (operationType === "expense") {
+    const expenseDate = dateValue(payload.expenseDate ?? payload.expense_date);
+    const description = text(payload.description, 300);
+    const amount = numeric(payload.amount);
+    const reference = optionalText(payload.reference, 120);
+    if (
+      !expenseDate || !description || description.length < 2 || !amount || amount <= 0 ||
+      amount > 1_000_000_000_000 || reference === undefined
+    ) {
+      return null;
+    }
+    return { expense_date: expenseDate, description, amount, reference };
+  }
+
+  if (operationType === "refund") {
+    const returnDate = dateValue(payload.returnDate ?? payload.return_date);
+    const invoiceId = uuid(payload.invoiceId ?? payload.invoice_id);
+    const notes = optionalText(payload.notes, 300);
+    const lines = refundLines(payload.lines);
+    const refundCash = payload.refundCash ?? payload.refund_cash;
+    if (
+      !returnDate || !invoiceId || notes === undefined || !lines ||
+      (refundCash != null && typeof refundCash !== "boolean")
+    ) return null;
+    return {
+      return_date: returnDate,
+      invoice_id: invoiceId,
+      notes,
+      refund_cash: refundCash !== false,
+      lines,
+    };
+  }
+
+  if (operationType === "void") {
+    const voidDate = dateValue(payload.voidDate ?? payload.void_date);
+    const invoiceId = uuid(payload.invoiceId ?? payload.invoice_id);
+    const reason = text(payload.reason, 300);
+    if (!voidDate || !invoiceId || !reason || reason.length < 5) return null;
+    return { void_date: voidDate, invoice_id: invoiceId, reason };
+  }
+
+  const adjustmentDate = dateValue(payload.adjustmentDate ?? payload.adjustment_date);
+  const direction = payload.direction === "increase" || payload.direction === "decrease"
+    ? payload.direction
+    : null;
+  const amount = numeric(payload.amount);
+  const reason = text(payload.reason, 300);
+  if (
+    !adjustmentDate || !direction || !amount || amount <= 0 ||
+    amount > 1_000_000_000_000 || !reason || reason.length < 5
+  ) {
+    return null;
+  }
+  return { adjustment_date: adjustmentDate, direction, amount, reason };
 }
 
 function randomBytes(length: number): Uint8Array {
@@ -211,6 +386,14 @@ Deno.serve(async (request: Request) => {
   }
   if (request.method !== "POST") {
     return response(origin, { error: "method_not_allowed" }, 405);
+  }
+  const contentLength = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+    return response(origin, { error: "payload_too_large" }, 413);
+  }
+  const contentType = request.headers.get("Content-Type")?.toLowerCase() ?? "";
+  if (!contentType.startsWith("application/json")) {
+    return response(origin, { error: "json_content_required" }, 415);
   }
 
   const authorization = request.headers.get("Authorization");
@@ -426,6 +609,15 @@ Deno.serve(async (request: Request) => {
   if (!sessionToken) return response(origin, { error: "pos_session_unavailable" }, 401);
   const sessionHash = await sha256(sessionToken);
 
+  if (action === "end_session") {
+    const result = await serviceClient.rpc("end_business_pos_session", {
+      p_session_token_hash: sessionHash,
+    });
+    return result.error
+      ? response(origin, { error: rpcFailure(result.error) }, 403)
+      : response(origin, { ok: true });
+  }
+
   if (action === "change_pin") {
     const currentPin = typeof body.currentPin === "string" ? body.currentPin : null;
     const newPin = typeof body.newPin === "string" ? body.newPin : null;
@@ -440,6 +632,57 @@ Deno.serve(async (request: Request) => {
     return result.error
       ? response(origin, { error: rpcFailure(result.error) }, 403)
       : response(origin, { ok: true });
+  }
+
+  if (action === "terminal_snapshot") {
+    const result = await serviceClient.rpc("get_business_pos_terminal_snapshot", {
+      p_session_token_hash: sessionHash,
+    });
+    return result.error
+      ? response(origin, { error: rpcFailure(result.error) }, 403)
+      : response(origin, { ok: true, snapshot: result.data });
+  }
+
+  if (action === "post_operation") {
+    const operationType = cleanOperationType(body.operationType ?? body.operation_type);
+    const requestKey = uuid(body.requestKey ?? body.request_key);
+    const approvalIdValue = body.approvalId ?? body.approval_id;
+    const approvalId = approvalIdValue == null || approvalIdValue === "" ? null : uuid(approvalIdValue);
+    const payload = operationType ? operationPayload(operationType, body.payload) : null;
+    if (
+      !operationType || !requestKey || !payload ||
+      (approvalIdValue != null && approvalIdValue !== "" && !approvalId)
+    ) {
+      return response(origin, { error: "invalid_pos_operation_request" }, 400);
+    }
+
+    const result = await serviceClient.rpc("post_business_pos_operation", {
+      p_session_token_hash: sessionHash,
+      p_operation_type: operationType,
+      p_payload: payload,
+      p_request_key: requestKey,
+      p_approval_id: approvalId,
+    });
+    if (result.error) {
+      return response(origin, { error: rpcFailure(result.error) }, 403);
+    }
+    const operation = result.data as JsonRecord | null;
+    if (operation?.approval_required === true) {
+      return response(origin, {
+        ok: false,
+        approvalRequired: true,
+        operationType: operation.operation_type,
+        payloadHash: operation.payload_hash,
+        requestId: operation.request_id,
+        amount: operation.amount,
+      }, 409);
+    }
+    if (operation?.ok !== true) {
+      return response(origin, {
+        error: typeof operation?.error === "string" ? operation.error : "pos_operation_rejected",
+      }, 422);
+    }
+    return response(origin, { ok: true, operation });
   }
 
   if (action === "post_sale") {
