@@ -87,104 +87,113 @@ jobs:
           type native-ci.log
           exit /b %GRADLE_EXIT%
 
-      - name: Prepare physical-device test APK
+      - name: Rebuild and prepare native artifacts
         env:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $ErrorActionPreference = "Stop"
           $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
-          $buildRoot = Join-Path $nativeRoot "androidApp\build"
+          $gradle = "C:\Gradle\gradle-9.3.1\bin\gradle.bat"
+          $artifactLog = Join-Path $nativeRoot "native-artifact-build.log"
+          $pathLog = Join-Path $nativeRoot "native-artifact-paths.log"
 
-          function Find-DebugApk {
-            Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Where-Object {
-                $_.Extension -ieq ".apk" -and
-                ($_.FullName -match "[\\/]apk[\\/]debug[\\/]" -or $_.Name -match "(?i)debug.*\.apk$")
-              } |
-              Sort-Object LastWriteTimeUtc -Descending |
-              Select-Object -First 1
+          if (-not (Test-Path -LiteralPath $nativeRoot -PathType Container)) {
+            throw "Native workspace was not found: $nativeRoot"
+          }
+          if (-not (Test-Path -LiteralPath $gradle -PathType Leaf)) {
+            throw "Gradle executable was not found: $gradle"
           }
 
-          $source = Find-DebugApk
-          if ($null -eq $source) {
-            Write-Host "Debug APK missing after the main build; rebuilding assembleDebug without task reuse."
-            Push-Location $nativeRoot
-            try {
-              & gradle.bat :androidApp:assembleDebug --rerun-tasks --stacktrace
-              if ($LASTEXITCODE -ne 0) { throw "assembleDebug fallback failed with exit code $LASTEXITCODE." }
-            } finally {
-              Pop-Location
-            }
-            $source = Find-DebugApk
+          $artifactBuildStartedUtc = [DateTime]::UtcNow
+          Push-Location $nativeRoot
+          try {
+            & $gradle :androidApp:assembleDebug :androidApp:bundleRelease --rerun-tasks --no-build-cache --stacktrace *> $artifactLog
+            $artifactExit = $LASTEXITCODE
+          } finally {
+            Pop-Location
           }
 
-          if ($null -eq $source) {
-            $available = Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Select-Object -ExpandProperty FullName
-            throw "Debug APK was not found under $buildRoot. Available build files:`n$($available -join "`n")"
+          Get-Content -LiteralPath $artifactLog
+          if ($artifactExit -ne 0) {
+            throw "Fresh APK/AAB build failed with exit code $artifactExit."
+          }
+
+          $allCandidates = @(Get-ChildItem -LiteralPath $nativeRoot -File -Recurse -Force -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.FullName -match "[\\/]androidApp[\\/]build[\\/]" -and
+              ($_.Extension -ieq ".apk" -or $_.Extension -ieq ".aab")
+            } |
+            Sort-Object LastWriteTimeUtc -Descending)
+
+          $allCandidates |
+            ForEach-Object {
+              "{0}`t{1}`t{2}" -f $_.LastWriteTimeUtc.ToString("o"), $_.Length, $_.FullName
+            } |
+            Set-Content -LiteralPath $pathLog -Encoding utf8
+
+          if ($allCandidates.Count -eq 0) {
+            throw "No APK or AAB files were found under $nativeRoot after a successful fresh build."
+          }
+
+          $freshCutoffUtc = $artifactBuildStartedUtc.AddMinutes(-2)
+          $apk = $allCandidates |
+            Where-Object {
+              $_.Extension -ieq ".apk" -and
+              $_.Length -gt 0 -and
+              $_.LastWriteTimeUtc -ge $freshCutoffUtc -and
+              ($_.FullName -match "[\\/]outputs[\\/]apk[\\/]debug[\\/]" -or $_.Name -match "(?i)debug.*\.apk$")
+            } |
+            Select-Object -First 1
+
+          $aab = $allCandidates |
+            Where-Object {
+              $_.Extension -ieq ".aab" -and
+              $_.Length -gt 0 -and
+              $_.LastWriteTimeUtc -ge $freshCutoffUtc -and
+              ($_.FullName -match "[\\/]outputs[\\/]bundle[\\/]release[\\/]" -or $_.Name -match "(?i)release.*\.aab$")
+            } |
+            Select-Object -First 1
+
+          if ($null -eq $apk) {
+            throw "Fresh debug APK was not found. Candidate paths are recorded in $pathLog."
+          }
+          if ($null -eq $aab) {
+            throw "Fresh release AAB was not found. Candidate paths are recorded in $pathLog."
           }
 
           $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
           if ([string]::IsNullOrWhiteSpace($shaValue)) { $shaValue = "unknown" }
           $shortSha = $shaValue.Substring(0, [Math]::Min(12, $shaValue.Length))
+
           $deviceBuild = Join-Path $nativeRoot "device-build"
-          New-Item -ItemType Directory -Force -Path $deviceBuild | Out-Null
-          $target = Join-Path $deviceBuild "jalvoro-personal-device-test-$shortSha.apk"
-          Write-Host "Using APK: $($source.FullName)"
-          Copy-Item -LiteralPath $source.FullName -Destination $target -Force
-          $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -LiteralPath (Join-Path $deviceBuild "SHA256SUMS.txt") -Encoding ascii
-          if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
-            throw "APK checksum verification failed."
-          }
-
-      - name: Prepare release bundle
-        env:
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          $ErrorActionPreference = "Stop"
-          $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
-          $buildRoot = Join-Path $nativeRoot "androidApp\build"
-
-          function Find-ReleaseBundle {
-            Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Where-Object {
-                $_.Extension -ieq ".aab" -and
-                ($_.FullName -match "[\\/]bundle[\\/]release[\\/]" -or $_.Name -match "(?i)release.*\.aab$")
-              } |
-              Sort-Object LastWriteTimeUtc -Descending |
-              Select-Object -First 1
-          }
-
-          $source = Find-ReleaseBundle
-          if ($null -eq $source) {
-            Write-Host "Release AAB missing after the main build; rebuilding bundleRelease without task reuse."
-            Push-Location $nativeRoot
-            try {
-              & gradle.bat :androidApp:bundleRelease --rerun-tasks --stacktrace
-              if ($LASTEXITCODE -ne 0) { throw "bundleRelease fallback failed with exit code $LASTEXITCODE." }
-            } finally {
-              Pop-Location
-            }
-            $source = Find-ReleaseBundle
-          }
-
-          if ($null -eq $source) {
-            $available = Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Select-Object -ExpandProperty FullName
-            throw "Release AAB was not found under $buildRoot. Available build files:`n$($available -join "`n")"
-          }
-
-          $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
-          if ([string]::IsNullOrWhiteSpace($shaValue)) { $shaValue = "unknown" }
-          $shortSha = $shaValue.Substring(0, [Math]::Min(12, $shaValue.Length))
           $releaseBuild = Join-Path $nativeRoot "release-build"
-          New-Item -ItemType Directory -Force -Path $releaseBuild | Out-Null
-          $target = Join-Path $releaseBuild "jalvoro-personal-release-$shortSha.aab"
-          Write-Host "Using AAB: $($source.FullName)"
-          Copy-Item -LiteralPath $source.FullName -Destination $target -Force
-          $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -LiteralPath (Join-Path $releaseBuild "SHA256SUMS.txt") -Encoding ascii
+          Remove-Item -LiteralPath $deviceBuild, $releaseBuild -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $deviceBuild, $releaseBuild | Out-Null
+
+          $apkTarget = Join-Path $deviceBuild "jalvoro-personal-device-test-$shortSha.apk"
+          $aabTarget = Join-Path $releaseBuild "jalvoro-personal-release-$shortSha.aab"
+
+          Copy-Item -LiteralPath $apk.FullName -Destination $apkTarget -Force
+          Copy-Item -LiteralPath $aab.FullName -Destination $aabTarget -Force
+
+          foreach ($target in @($apkTarget, $aabTarget)) {
+            if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
+              throw "Prepared artifact is missing: $target"
+            }
+            if ((Get-Item -LiteralPath $target).Length -le 0) {
+              throw "Prepared artifact is empty: $target"
+            }
+          }
+
+          $apkHash = (Get-FileHash -LiteralPath $apkTarget -Algorithm SHA256).Hash.ToLowerInvariant()
+          $aabHash = (Get-FileHash -LiteralPath $aabTarget -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$apkHash *$([IO.Path]::GetFileName($apkTarget))" |
+            Set-Content -LiteralPath (Join-Path $deviceBuild "SHA256SUMS.txt") -Encoding ascii
+          "$aabHash *$([IO.Path]::GetFileName($aabTarget))" |
+            Set-Content -LiteralPath (Join-Path $releaseBuild "SHA256SUMS.txt") -Encoding ascii
+
+          Write-Host "Prepared APK: $apkTarget"
+          Write-Host "Prepared AAB: $aabTarget"
 
       - name: Upload physical-device test APK
         uses: actions/upload-artifact@v4
@@ -210,6 +219,8 @@ jobs:
           path: |
             native/native-fixer.log
             native/native-ci.log
+            native/native-artifact-build.log
+            native/native-artifact-paths.log
             native/android-sdk-setup.log
             native/gradle-setup.log
           if-no-files-found: ignore
