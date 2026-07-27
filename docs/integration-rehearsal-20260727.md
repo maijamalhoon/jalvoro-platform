@@ -28,6 +28,7 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Added a schema-only baseline for the legacy personal-finance tables and the original auth-profile trigger that predated timestamped repository migrations.
 - Restored the missing `archive_transaction(uuid)` migration before the security grant migration that depends on it.
 - Renamed the withdrawal-function migration from duplicate version `20260721023000` to unique ordered version `20260721023100` without changing its SQL bytes.
+- Assigned unique, dependency-aware versions to every remaining duplicate migration timestamp; migration SQL bytes were not changed.
 
 ## Hard boundary
 
