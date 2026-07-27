@@ -92,22 +92,46 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $ErrorActionPreference = "Stop"
-          $outputRoot = "androidApp\build\outputs\apk\debug"
-          $source = Get-ChildItem -Path $outputRoot -Filter "*.apk" -File -Recurse -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTimeUtc -Descending |
-            Select-Object -First 1
+          $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
+          $outputRoot = Join-Path $nativeRoot "androidApp\build\outputs"
+
+          function Find-DebugApk {
+            Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.Extension -ieq ".apk" -and $_.FullName -match "[\\/]apk[\\/]debug[\\/]" } |
+              Sort-Object LastWriteTimeUtc -Descending |
+              Select-Object -First 1
+          }
+
+          $source = Find-DebugApk
           if ($null -eq $source) {
-            $available = Get-ChildItem -Path "androidApp\build\outputs" -File -Recurse -ErrorAction SilentlyContinue |
+            Write-Host "Debug APK missing after the main build; rebuilding assembleDebug without task reuse."
+            Push-Location $nativeRoot
+            try {
+              & gradle.bat :androidApp:assembleDebug --rerun-tasks --stacktrace
+              if ($LASTEXITCODE -ne 0) { throw "assembleDebug fallback failed with exit code $LASTEXITCODE." }
+            } finally {
+              Pop-Location
+            }
+            $source = Find-DebugApk
+          }
+
+          if ($null -eq $source) {
+            $available = Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
               Select-Object -ExpandProperty FullName
             throw "Debug APK was not found under $outputRoot. Available outputs:`n$($available -join "`n")"
           }
-          New-Item -ItemType Directory -Force -Path device-build | Out-Null
-          $shortSha = $env:PR_HEAD_SHA.Substring(0, [Math]::Min(12, $env:PR_HEAD_SHA.Length))
-          $target = "device-build\jalvoro-personal-device-test-$shortSha.apk"
-          Copy-Item $source.FullName $target -Force
-          $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -Path device-build\SHA256SUMS.txt -Encoding ascii
-          if ((Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
+
+          $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
+          if ([string]::IsNullOrWhiteSpace($shaValue)) { $shaValue = "unknown" }
+          $shortSha = $shaValue.Substring(0, [Math]::Min(12, $shaValue.Length))
+          $deviceBuild = Join-Path $nativeRoot "device-build"
+          New-Item -ItemType Directory -Force -Path $deviceBuild | Out-Null
+          $target = Join-Path $deviceBuild "jalvoro-personal-device-test-$shortSha.apk"
+          Write-Host "Using APK: $($source.FullName)"
+          Copy-Item -LiteralPath $source.FullName -Destination $target -Force
+          $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -LiteralPath (Join-Path $deviceBuild "SHA256SUMS.txt") -Encoding ascii
+          if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
             throw "APK checksum verification failed."
           }
 
@@ -116,21 +140,45 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $ErrorActionPreference = "Stop"
-          $outputRoot = "androidApp\build\outputs\bundle\release"
-          $source = Get-ChildItem -Path $outputRoot -Filter "*.aab" -File -Recurse -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTimeUtc -Descending |
-            Select-Object -First 1
+          $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
+          $outputRoot = Join-Path $nativeRoot "androidApp\build\outputs"
+
+          function Find-ReleaseBundle {
+            Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.Extension -ieq ".aab" -and $_.FullName -match "[\\/]bundle[\\/]release[\\/]" } |
+              Sort-Object LastWriteTimeUtc -Descending |
+              Select-Object -First 1
+          }
+
+          $source = Find-ReleaseBundle
           if ($null -eq $source) {
-            $available = Get-ChildItem -Path "androidApp\build\outputs" -File -Recurse -ErrorAction SilentlyContinue |
+            Write-Host "Release AAB missing after the main build; rebuilding bundleRelease without task reuse."
+            Push-Location $nativeRoot
+            try {
+              & gradle.bat :androidApp:bundleRelease --rerun-tasks --stacktrace
+              if ($LASTEXITCODE -ne 0) { throw "bundleRelease fallback failed with exit code $LASTEXITCODE." }
+            } finally {
+              Pop-Location
+            }
+            $source = Find-ReleaseBundle
+          }
+
+          if ($null -eq $source) {
+            $available = Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
               Select-Object -ExpandProperty FullName
             throw "Release AAB was not found under $outputRoot. Available outputs:`n$($available -join "`n")"
           }
-          New-Item -ItemType Directory -Force -Path release-build | Out-Null
-          $shortSha = $env:PR_HEAD_SHA.Substring(0, [Math]::Min(12, $env:PR_HEAD_SHA.Length))
-          $target = "release-build\jalvoro-personal-release-$shortSha.aab"
-          Copy-Item $source.FullName $target -Force
-          $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -Path release-build\SHA256SUMS.txt -Encoding ascii
+
+          $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
+          if ([string]::IsNullOrWhiteSpace($shaValue)) { $shaValue = "unknown" }
+          $shortSha = $shaValue.Substring(0, [Math]::Min(12, $shaValue.Length))
+          $releaseBuild = Join-Path $nativeRoot "release-build"
+          New-Item -ItemType Directory -Force -Path $releaseBuild | Out-Null
+          $target = Join-Path $releaseBuild "jalvoro-personal-release-$shortSha.aab"
+          Write-Host "Using AAB: $($source.FullName)"
+          Copy-Item -LiteralPath $source.FullName -Destination $target -Force
+          $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -LiteralPath (Join-Path $releaseBuild "SHA256SUMS.txt") -Encoding ascii
 
       - name: Upload physical-device test APK
         uses: actions/upload-artifact@v4
