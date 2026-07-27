@@ -270,9 +270,7 @@ export default function BusinessPosSecurityManager({
     );
   }
 
-  const activeSessions = snapshot.sessions.filter(
-    (session) => !session.revoked_at && new Date(session.expires_at).getTime() > Date.now(),
-  );
+  const activeSessions = snapshot.sessions.filter((session) => !session.revoked_at);
   const pendingApprovals = snapshot.approvals.filter((approval) => approval.status === "pending");
 
   return (
