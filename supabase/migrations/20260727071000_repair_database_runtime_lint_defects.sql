@@ -186,8 +186,11 @@ begin
     'public.post_business_pos_operation(text,text,jsonb,uuid,uuid)'::regprocedure
   ) into definition;
   patched:=definition;
-  patched:=replace(patched,'secondary_source_id uuid;','created_secondary_source_id uuid;');
-  patched:=replace(patched,'source_id uuid;','created_source_id uuid;');
+  patched:=replace(
+    patched,
+    E'source_id uuid;\n  secondary_source_id uuid;',
+    E'created_source_id uuid;\n  created_secondary_source_id uuid;'
+  );
   patched:=replace(patched,'secondary_source_id:=nullif(operation_result->>''payment_id'','''')::uuid;',
     'created_secondary_source_id:=nullif(operation_result->>''payment_id'','''')::uuid;');
   patched:=replace(patched,'source_id:=(operation_result->>''bill_id'')::uuid;',
