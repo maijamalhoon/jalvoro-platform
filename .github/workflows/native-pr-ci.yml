@@ -9,6 +9,7 @@ on:
       - ".github/scripts/setup-android-sdk.cmd"
       - ".github/scripts/setup-gradle.cmd"
       - ".github/scripts/apply-native-parity-fixes.mjs"
+      - ".github/scripts/prepare-native-artifacts.mjs"
 
 permissions:
   contents: write
@@ -24,7 +25,7 @@ jobs:
     timeout-minutes: 90
     defaults:
       run:
-        shell: powershell
+        shell: cmd
         working-directory: native
 
     steps:
@@ -88,89 +89,11 @@ jobs:
           exit /b %GRADLE_EXIT%
 
       - name: Prepare deterministic native artifacts
+        shell: cmd
         env:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          $ErrorActionPreference = "Stop"
-          $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
-          $gradle = "C:\Gradle\gradle-9.3.1\bin\gradle.bat"
-          $artifactLog = Join-Path $nativeRoot "native-artifact-build.log"
-          $pathLog = Join-Path $nativeRoot "native-artifact-paths.log"
-
-          if (-not (Test-Path -LiteralPath $nativeRoot -PathType Container)) {
-            throw "Native workspace was not found: $nativeRoot"
-          }
-          if (-not (Test-Path -LiteralPath $gradle -PathType Leaf)) {
-            throw "Gradle executable was not found: $gradle"
-          }
-
-          Push-Location $nativeRoot
-          try {
-            & $gradle :androidApp:prepareDebugApkForCi :androidApp:prepareReleaseBundleForCi --rerun-tasks --no-build-cache --stacktrace *> $artifactLog
-            $artifactExit = $LASTEXITCODE
-          } finally {
-            Pop-Location
-          }
-
-          Get-Content -LiteralPath $artifactLog
-          if ($artifactExit -ne 0) {
-            throw "Deterministic APK/AAB preparation failed with exit code $artifactExit."
-          }
-
-          $apkSourceRoot = Join-Path $nativeRoot "androidApp\build\ci-artifacts\debug"
-          $aabSourceRoot = Join-Path $nativeRoot "androidApp\build\ci-artifacts\release"
-          $apkCandidates = @(Get-ChildItem -LiteralPath $apkSourceRoot -Filter "*.apk" -File -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Length -gt 0 } |
-            Sort-Object LastWriteTimeUtc -Descending)
-          $aabCandidates = @(Get-ChildItem -LiteralPath $aabSourceRoot -Filter "*.aab" -File -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Length -gt 0 } |
-            Sort-Object LastWriteTimeUtc -Descending)
-
-          @($apkCandidates + $aabCandidates) |
-            ForEach-Object {
-              "{0}`t{1}`t{2}" -f $_.LastWriteTimeUtc.ToString("o"), $_.Length, $_.FullName
-            } |
-            Set-Content -LiteralPath $pathLog -Encoding utf8
-
-          if ($apkCandidates.Count -ne 1) {
-            throw "Expected exactly one debug APK under $apkSourceRoot but found $($apkCandidates.Count)."
-          }
-          if ($aabCandidates.Count -ne 1) {
-            throw "Expected exactly one release AAB under $aabSourceRoot but found $($aabCandidates.Count)."
-          }
-
-          $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
-          if ([string]::IsNullOrWhiteSpace($shaValue)) { $shaValue = "unknown" }
-          $shortSha = $shaValue.Substring(0, [Math]::Min(12, $shaValue.Length))
-
-          $deviceBuild = Join-Path $nativeRoot "device-build"
-          $releaseBuild = Join-Path $nativeRoot "release-build"
-          Remove-Item -LiteralPath $deviceBuild, $releaseBuild -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Force -Path $deviceBuild, $releaseBuild | Out-Null
-
-          $apkTarget = Join-Path $deviceBuild "jalvoro-personal-device-test-$shortSha.apk"
-          $aabTarget = Join-Path $releaseBuild "jalvoro-personal-release-$shortSha.aab"
-          Copy-Item -LiteralPath $apkCandidates[0].FullName -Destination $apkTarget -Force
-          Copy-Item -LiteralPath $aabCandidates[0].FullName -Destination $aabTarget -Force
-
-          foreach ($target in @($apkTarget, $aabTarget)) {
-            if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
-              throw "Prepared artifact is missing: $target"
-            }
-            if ((Get-Item -LiteralPath $target).Length -le 0) {
-              throw "Prepared artifact is empty: $target"
-            }
-          }
-
-          $apkHash = (Get-FileHash -LiteralPath $apkTarget -Algorithm SHA256).Hash.ToLowerInvariant()
-          $aabHash = (Get-FileHash -LiteralPath $aabTarget -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$apkHash *$([IO.Path]::GetFileName($apkTarget))" |
-            Set-Content -LiteralPath (Join-Path $deviceBuild "SHA256SUMS.txt") -Encoding ascii
-          "$aabHash *$([IO.Path]::GetFileName($aabTarget))" |
-            Set-Content -LiteralPath (Join-Path $releaseBuild "SHA256SUMS.txt") -Encoding ascii
-
-          Write-Host "Prepared APK: $apkTarget"
-          Write-Host "Prepared AAB: $aabTarget"
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\prepare-native-artifacts.mjs"
 
       - name: Upload physical-device test APK
         uses: actions/upload-artifact@v4
