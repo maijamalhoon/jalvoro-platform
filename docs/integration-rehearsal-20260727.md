@@ -29,6 +29,7 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Restored the missing `archive_transaction(uuid)` migration before the security grant migration that depends on it.
 - Renamed the withdrawal-function migration from duplicate version `20260721023000` to unique ordered version `20260721023100` without changing its SQL bytes.
 - Assigned unique, dependency-aware versions to every remaining duplicate migration timestamp; migration SQL bytes were not changed.
+- Moved the complete Business contacts and sales-invoicing migration before purchase accounting, because supplier bills require the shared contacts table.
 
 ## Hard boundary
 
