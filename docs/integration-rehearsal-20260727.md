@@ -35,6 +35,7 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Canonicalized legacy Simple Shop permission patch targets without changing permissions.
 - Made the Business report date-filter correction idempotent when the source function is already fixed.
 - Moved the AI preferences foundation before its RLS optimizer.
+- Moved the sealed finance-backup registry and base import/export functions before category-mapping and same-account recovery patches that depend on them.
 
 ## Hard boundary
 
