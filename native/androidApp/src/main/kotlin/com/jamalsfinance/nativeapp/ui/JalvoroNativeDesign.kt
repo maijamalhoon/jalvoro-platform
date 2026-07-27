@@ -3,6 +3,7 @@ package com.jamalsfinance.nativeapp.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,7 +47,6 @@ const val JALVORO_NAME = "JALVORO"
 const val JALVORO_PERSONAL = "PERSONAL WORKSPACE"
 const val JALVORO_TAGLINE = "Everything you run. One place."
 
-/** Website-matched blue CircleDollarSign brand mark. */
 @Composable
 fun JalvoroBrandMark(
     modifier: Modifier = Modifier,
@@ -54,10 +56,10 @@ fun JalvoroBrandMark(
         modifier = modifier.semantics {
             if (contentDescription != null) this.contentDescription = contentDescription
         },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.primary,
         contentColor = Color.White,
-        shadowElevation = 6.dp,
+        shadowElevation = 4.dp,
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(9.dp)) {
             val stroke = 1.9.dp.toPx()
@@ -122,7 +124,7 @@ fun JalvoroBrandLockup(
         horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp),
     ) {
         JalvoroBrandMark(
-            modifier = Modifier.size(if (compact) 40.dp else 46.dp),
+            modifier = Modifier.size(if (compact) 40.dp else 48.dp),
             contentDescription = "JALVORO logo",
         )
         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -130,7 +132,7 @@ fun JalvoroBrandLockup(
                 text = JALVORO_NAME,
                 style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
-                letterSpacing = (-0.25).sp,
+                letterSpacing = (-0.2).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -138,7 +140,7 @@ fun JalvoroBrandLockup(
                 text = subtitle.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontSize = if (compact) 9.sp else 10.sp,
-                    letterSpacing = if (compact) 1.35.sp else 1.5.sp,
+                    letterSpacing = if (compact) 1.25.sp else 1.4.sp,
                 ),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -156,11 +158,15 @@ fun JalvoroSurfaceCard(
 ) {
     Card(
         modifier = modifier.jalvoroAnimateContentSize(),
-        shape = RoundedCornerShape(18.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         content()
     }
@@ -176,7 +182,9 @@ fun JalvoroIconAction(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.semantics { contentDescription = label },
+        modifier = modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .semantics { contentDescription = label },
         enabled = enabled,
     ) {
         Icon(
@@ -200,23 +208,26 @@ fun JalvoroFeedbackCard(
     tone: JalvoroFeedbackTone,
     modifier: Modifier = Modifier,
 ) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val container = when (tone) {
         JalvoroFeedbackTone.Info -> MaterialTheme.colorScheme.primaryContainer
         JalvoroFeedbackTone.Success -> MaterialTheme.colorScheme.tertiaryContainer
-        JalvoroFeedbackTone.Warning -> Color(0xFFFBF1DA)
+        JalvoroFeedbackTone.Warning -> if (dark) Color(0xFF3B2D13) else Color(0xFFFFF3D6)
         JalvoroFeedbackTone.Danger -> MaterialTheme.colorScheme.errorContainer
     }
     val contentColor = when (tone) {
         JalvoroFeedbackTone.Info -> MaterialTheme.colorScheme.onPrimaryContainer
         JalvoroFeedbackTone.Success -> MaterialTheme.colorScheme.onTertiaryContainer
-        JalvoroFeedbackTone.Warning -> Color(0xFF6F4707)
+        JalvoroFeedbackTone.Warning -> if (dark) Color(0xFFFFDEA1) else Color(0xFF6B4705)
         JalvoroFeedbackTone.Danger -> MaterialTheme.colorScheme.onErrorContainer
     }
+
     Surface(
         modifier = modifier.fillMaxWidth().jalvoroAnimateContentSize(),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.small,
         color = container,
         contentColor = contentColor,
+        border = BorderStroke(1.dp, contentColor.copy(alpha = 0.16f)),
     ) {
         JalvoroAnimatedSwap(
             targetState = message,
@@ -224,7 +235,7 @@ fun JalvoroFeedbackCard(
         ) { currentMessage ->
             Text(
                 text = currentMessage,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -247,7 +258,7 @@ fun JalvoroNavigationBar(
     NavigationBar(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 0.dp,
+        tonalElevation = 3.dp,
     ) {
         destinations.forEach { destination ->
             val iconScale by animateFloatAsState(
