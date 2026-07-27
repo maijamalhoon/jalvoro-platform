@@ -93,11 +93,14 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
-          $outputRoot = Join-Path $nativeRoot "androidApp\build\outputs"
+          $buildRoot = Join-Path $nativeRoot "androidApp\build"
 
           function Find-DebugApk {
-            Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Where-Object { $_.Extension -ieq ".apk" -and $_.FullName -match "[\\/]apk[\\/]debug[\\/]" } |
+            Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object {
+                $_.Extension -ieq ".apk" -and
+                ($_.FullName -match "[\\/]apk[\\/]debug[\\/]" -or $_.Name -match "(?i)debug.*\.apk$")
+              } |
               Sort-Object LastWriteTimeUtc -Descending |
               Select-Object -First 1
           }
@@ -116,9 +119,9 @@ jobs:
           }
 
           if ($null -eq $source) {
-            $available = Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
+            $available = Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
               Select-Object -ExpandProperty FullName
-            throw "Debug APK was not found under $outputRoot. Available outputs:`n$($available -join "`n")"
+            throw "Debug APK was not found under $buildRoot. Available build files:`n$($available -join "`n")"
           }
 
           $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
@@ -141,11 +144,14 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $nativeRoot = Join-Path $env:GITHUB_WORKSPACE "native"
-          $outputRoot = Join-Path $nativeRoot "androidApp\build\outputs"
+          $buildRoot = Join-Path $nativeRoot "androidApp\build"
 
           function Find-ReleaseBundle {
-            Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Where-Object { $_.Extension -ieq ".aab" -and $_.FullName -match "[\\/]bundle[\\/]release[\\/]" } |
+            Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object {
+                $_.Extension -ieq ".aab" -and
+                ($_.FullName -match "[\\/]bundle[\\/]release[\\/]" -or $_.Name -match "(?i)release.*\.aab$")
+              } |
               Sort-Object LastWriteTimeUtc -Descending |
               Select-Object -First 1
           }
@@ -164,9 +170,9 @@ jobs:
           }
 
           if ($null -eq $source) {
-            $available = Get-ChildItem -LiteralPath $outputRoot -File -Recurse -ErrorAction SilentlyContinue |
+            $available = Get-ChildItem -LiteralPath $buildRoot -File -Recurse -ErrorAction SilentlyContinue |
               Select-Object -ExpandProperty FullName
-            throw "Release AAB was not found under $outputRoot. Available outputs:`n$($available -join "`n")"
+            throw "Release AAB was not found under $buildRoot. Available build files:`n$($available -join "`n")"
           }
 
           $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
