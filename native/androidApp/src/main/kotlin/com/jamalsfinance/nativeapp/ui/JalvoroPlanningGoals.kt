@@ -2,32 +2,31 @@ package com.jamalsfinance.nativeapp.ui
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jamalsfinance.shared.finance.SupportedFinanceCurrencies
-import com.jamalsfinance.shared.goals.*
-import java.text.NumberFormat
+import com.jamalsfinance.shared.goals.GoalContribution
+import com.jamalsfinance.shared.goals.GoalsPayablesSnapshot
+import com.jamalsfinance.shared.goals.ModuleAccount
+import com.jamalsfinance.shared.goals.NativeGoal
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.launch
+import java.util.TimeZone
+
+private data class GoalDeadlinePresentation(
+    val label: String,
+    val urgent: Boolean,
+)
 
 @Composable
 internal fun GoalsScreen(
@@ -37,36 +36,48 @@ internal fun GoalsScreen(
     onDelete: (NativeGoal) -> Unit,
     onDeleteContribution: (GoalContribution) -> Unit,
 ) {
+    val today = remember { todayIso() }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item {
-            JalvoroEntrance(index = 0, key = "goals-hero") {
-                PlanningHeroCard(
-                    icon = JalvoroIcons.Target,
-                    eyebrow = "Savings progress",
-                    primary = formatPkr(snapshot.totalGoalSaved),
-                    secondary = "Saved of ${formatPkr(snapshot.totalGoalTarget)}",
-                    detail = "${snapshot.completedGoals} of ${snapshot.goals.size} goals completed",
-                    progress = if (snapshot.totalGoalTarget > 0) snapshot.totalGoalSaved / snapshot.totalGoalTarget else 0.0,
-                )
+        if (snapshot.goals.isNotEmpty()) {
+            item {
+                JalvoroEntrance(index = 0, key = "goals-summary") {
+                    PlanningHeroCard(
+                        icon = JalvoroIcons.Target,
+                        eyebrow = "Savings progress",
+                        primary = formatPkr(snapshot.totalGoalSaved),
+                        secondary = "Saved of ${formatPkr(snapshot.totalGoalTarget)}",
+                        detail = "${snapshot.completedGoals} of ${snapshot.goals.size} goals completed",
+                        progress = if (snapshot.totalGoalTarget > 0) {
+                            snapshot.totalGoalSaved / snapshot.totalGoalTarget
+                        } else {
+                            0.0
+                        },
+                    )
+                }
             }
         }
+
         if (snapshot.goals.isEmpty()) {
             item {
-                JalvoroEntrance(index = 1, key = "goals-empty") {
+                JalvoroEntrance(index = 0, key = "goals-empty") {
                     PlanningEmpty(
                         icon = JalvoroIcons.Target,
                         title = "No goals yet",
-                        body = "Create a savings target and track every real contribution.",
+                        body = "Create your first goal to see savings progress and deadlines here.",
                     )
                 }
             }
         } else {
-            items(snapshot.goals.size, key = { index -> snapshot.goals[index].row.id }) { index ->
-                val goal = snapshot.goals[index]
+            items(
+                items = snapshot.goals,
+                key = { goal -> goal.row.id },
+            ) { goal ->
+                val index = snapshot.goals.indexOf(goal)
                 JalvoroEntrance(
                     index = (index + 1).coerceAtMost(12),
                     key = goal.row.id,
@@ -75,6 +86,7 @@ internal fun GoalsScreen(
                     GoalCard(
                         goal = goal,
                         accounts = snapshot.accounts,
+                        today = today,
                         onEdit = onEdit,
                         onContribute = onContribute,
                         onDelete = onDelete,
@@ -90,16 +102,25 @@ internal fun GoalsScreen(
 internal fun GoalCard(
     goal: NativeGoal,
     accounts: List<ModuleAccount>,
+    today: String,
     onEdit: (NativeGoal) -> Unit,
     onContribute: (NativeGoal) -> Unit,
     onDelete: (NativeGoal) -> Unit,
     onDeleteContribution: (GoalContribution) -> Unit,
 ) {
     var historyVisible by remember(goal.row.id) { mutableStateOf(false) }
+    val deadline = remember(goal.row.deadline, goal.completed, today) {
+        goalDeadlinePresentation(
+            deadline = goal.row.deadline,
+            completed = goal.completed,
+            today = today,
+        )
+    }
     val animatedProgress = rememberJalvoroAnimatedProgress(
         target = goal.progress.toFloat(),
         label = "goal-${goal.row.id}-progress",
     )
+
     JalvoroSurfaceCard {
         Column(
             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -121,13 +142,13 @@ internal fun GoalCard(
                         modifier = Modifier.semantics { heading() },
                     )
                     Text(
-                        text = when {
-                            goal.completed -> "Completed"
-                            goal.row.deadline.isNullOrBlank() -> "No deadline"
-                            else -> "Due ${goal.row.deadline}"
-                        },
+                        text = deadline.label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (deadline.urgent) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 }
                 PlanningStatusPill(
@@ -150,13 +171,14 @@ internal fun GoalCard(
             }
 
             Text(
-                text = "Target ${formatPkr(goal.row.targetAmount)}",
+                text = "of ${formatPkr(goal.row.targetAmount)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            goal.linkedAccount?.let {
+
+            goal.linkedAccount?.let { account ->
                 Text(
-                    text = "Linked account: ${it.name}",
+                    text = "Linked to ${account.name}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -166,14 +188,15 @@ internal fun GoalCard(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(
-                    onClick = { onContribute(goal) },
-                    enabled = !goal.completed,
-                    shape = RoundedCornerShape(13.dp),
-                ) {
-                    Icon(JalvoroIcons.Plus, null, Modifier.size(17.dp))
-                    Spacer(Modifier.size(7.dp))
-                    Text("Contribute")
+                if (!goal.completed) {
+                    Button(
+                        onClick = { onContribute(goal) },
+                        shape = RoundedCornerShape(13.dp),
+                    ) {
+                        Icon(JalvoroIcons.Plus, null, Modifier.size(17.dp))
+                        Spacer(Modifier.size(7.dp))
+                        Text("Add contribution")
+                    }
                 }
                 OutlinedButton(
                     onClick = { onEdit(goal) },
@@ -198,7 +221,13 @@ internal fun GoalCard(
                 ) {
                     Icon(JalvoroIcons.Transactions, null, Modifier.size(17.dp))
                     Spacer(Modifier.size(7.dp))
-                    Text(if (historyVisible) "Hide contribution history" else "Contribution history (${goal.contributions.size})")
+                    Text(
+                        if (historyVisible) {
+                            "Hide history"
+                        } else {
+                            "History (${goal.contributions.size})"
+                        },
+                    )
                 }
                 JalvoroAnimatedReveal(visible = historyVisible) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -209,7 +238,10 @@ internal fun GoalCard(
                             PlanningHistoryRow(
                                 icon = JalvoroIcons.Income,
                                 amount = formatPkr(contribution.amount),
-                                metadata = listOfNotNull(contribution.contributedAt, accountName).joinToString(" • "),
+                                metadata = listOfNotNull(
+                                    formatPlanningDate(contribution.contributedAt),
+                                    accountName,
+                                ).joinToString(" • "),
                                 note = contribution.note,
                                 removable = true,
                                 onRemove = { onDeleteContribution(contribution) },
@@ -220,4 +252,53 @@ internal fun GoalCard(
             }
         }
     }
+}
+
+private fun goalDeadlinePresentation(
+    deadline: String?,
+    completed: Boolean,
+    today: String,
+): GoalDeadlinePresentation {
+    if (completed) {
+        return GoalDeadlinePresentation(label = "Goal reached", urgent = false)
+    }
+    if (deadline.isNullOrBlank()) {
+        return GoalDeadlinePresentation(label = "No deadline", urgent = false)
+    }
+
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        isLenient = false
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    val dueDate = runCatching { formatter.parse(deadline) }.getOrNull()
+    val todayDate = runCatching { formatter.parse(today) }.getOrNull()
+    if (dueDate == null || todayDate == null) {
+        return GoalDeadlinePresentation(label = "Due $deadline", urgent = false)
+    }
+
+    val daysLeft = ((dueDate.time - todayDate.time) / 86_400_000L).toInt()
+    return when {
+        daysLeft > 0 -> GoalDeadlinePresentation(
+            label = "$daysLeft ${if (daysLeft == 1) "day" else "days"} left",
+            urgent = daysLeft < 30,
+        )
+        daysLeft == 0 -> GoalDeadlinePresentation(label = "Due today", urgent = true)
+        else -> GoalDeadlinePresentation(label = "Overdue", urgent = true)
+    }
+}
+
+private fun formatPlanningDate(value: String?): String? {
+    val raw = value?.take(10)?.takeIf { it.matches(Regex("""\d{4}-\d{2}-\d{2}""")) }
+        ?: return value?.takeIf { it.isNotBlank() }
+    val input = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        isLenient = false
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    val output = SimpleDateFormat("MMM d, yyyy", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    return runCatching { input.parse(raw) }
+        .getOrNull()
+        ?.let(output::format)
+        ?: value
 }
