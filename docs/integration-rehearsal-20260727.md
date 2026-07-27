@@ -31,6 +31,10 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Assigned unique, dependency-aware versions to every remaining duplicate migration timestamp; migration SQL bytes were not changed.
 - Moved the complete Business contacts and sales-invoicing migration before purchase accounting, because supplier bills require the shared contacts table.
 - Moved the complete inventory foundation after purchase accounting and before return operations, because returns require warehouse, product, balance, and stock-movement tables.
+- Fixed malformed Business workspace currency normalization syntax.
+- Canonicalized legacy Simple Shop permission patch targets without changing permissions.
+- Made the Business report date-filter correction idempotent when the source function is already fixed.
+- Moved the AI preferences foundation before its RLS optimizer.
 
 ## Hard boundary
 
