@@ -326,7 +326,7 @@ fun JalvoroOverviewDashboard(
                 contentPadding = PaddingValues(
                     start = horizontalPadding,
                     end = horizontalPadding,
-                    top = 88.dp,
+                    top = 76.dp,
                     bottom = 36.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -726,7 +726,7 @@ private fun OverviewFloatingControls(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = modifier.statusBarsPadding().padding(horizontal = 14.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -751,14 +751,14 @@ private fun OverviewFloatingControls(
 private fun OverviewFloatingMenuButton(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(44.dp).semantics {
+        modifier = Modifier.size(48.dp).semantics {
             contentDescription = "Open navigation menu"
         },
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f),
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 8.dp,
+        shadowElevation = 2.dp,
     ) {
         val lineColor = MaterialTheme.colorScheme.onSurface
         Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
@@ -791,12 +791,12 @@ private fun OverviewFloatingIconButton(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(44.dp).semantics { contentDescription = label },
+        modifier = Modifier.size(48.dp).semantics { contentDescription = label },
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f),
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 8.dp,
+        shadowElevation = 2.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -909,7 +909,7 @@ private fun OverviewQuickActionButton(action: OverviewQuickAction) {
     ) {
         Surface(
             onClick = action.onClick,
-            modifier = Modifier.size(44.dp).semantics {
+            modifier = Modifier.size(48.dp).semantics {
                 contentDescription = action.description
             },
             shape = CircleShape,
@@ -941,14 +941,14 @@ private fun OverviewMetricCard(
 ) {
     val direction = overviewTrendDirection(metric.amount, metric.previousAmount)
     Card(
-        modifier = modifier.height(136.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = modifier.height(128.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.78f)),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(

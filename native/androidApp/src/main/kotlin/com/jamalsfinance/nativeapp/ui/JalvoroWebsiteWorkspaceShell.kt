@@ -115,7 +115,7 @@ internal fun JalvoroWebsiteWorkspaceShell(
         ) {
             content(
                 PaddingValues(
-                    top = 88.dp,
+                    top = 76.dp,
                     bottom = 24.dp,
                 ),
             )
@@ -205,7 +205,7 @@ private fun JalvoroWebsiteDrawer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -415,8 +415,8 @@ private fun JalvoroWebsiteFloatingHeader(
     Box(
         modifier = modifier
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .heightIn(min = 52.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .heightIn(min = 48.dp),
     ) {
         Surface(
             onClick = onMenu,
@@ -431,7 +431,7 @@ private fun JalvoroWebsiteFloatingHeader(
                 1.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
             ),
-            shadowElevation = 4.dp,
+            shadowElevation = 1.dp,
         ) {
             val lineColor = MaterialTheme.colorScheme.onSurface
             Canvas(modifier = Modifier.fillMaxSize().padding(13.dp)) {
@@ -456,7 +456,7 @@ private fun JalvoroWebsiteFloatingHeader(
         JalvoroWebsiteBrandLockup(
             modifier = Modifier
                 .align(Alignment.Center)
-                .widthIn(max = 182.dp),
+                .widthIn(max = 154.dp),
             compact = true,
         )
 
@@ -473,7 +473,7 @@ private fun JalvoroWebsiteFloatingHeader(
                 1.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
             ),
-            shadowElevation = 4.dp,
+            shadowElevation = 1.dp,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
