@@ -54,7 +54,7 @@ for _ in $(seq 1 30); do
 done
 pg_isready -d "$LOCAL_DB_URL"
 
-LATEST_EXPECTED_MIGRATION="20260727071000"
+LATEST_EXPECTED_MIGRATION="20260727071100"
 MIGRATION_COUNT="$(psql "$LOCAL_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c \
   "select count(*) from supabase_migrations.schema_migrations;")"
 LATEST_APPLIED_MIGRATION="$(psql "$LOCAL_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c \
