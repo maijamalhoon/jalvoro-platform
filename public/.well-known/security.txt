@@ -1,5 +1,5 @@
-Contact: https://github.com/maijamalhoon/Jamals-finance/security/policy
+Contact: https://jalvoro-app.vercel.app/support#security
 Expires: 2027-07-23T00:00:00Z
 Preferred-Languages: en, ur
-Canonical: https://jamals-finance-sable.vercel.app/.well-known/security.txt
-Policy: https://github.com/maijamalhoon/Jamals-finance/security/policy
+Canonical: https://jalvoro-app.vercel.app/.well-known/security.txt
+Policy: https://jalvoro-app.vercel.app/support#security
