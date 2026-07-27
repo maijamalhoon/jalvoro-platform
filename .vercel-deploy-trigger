@@ -1,3 +1,0 @@
-Production deployment trigger for the hardened Tax Engine and Fiscal Period Closing workspace.
-No application behavior is changed by this file.
-Triggered on 2026-07-22 after database security, rollback, advisor, and strict TypeScript verification.
