@@ -1,5 +1,6 @@
 package com.jamalsfinance.nativeapp.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,13 +24,6 @@ import androidx.compose.ui.unit.dp
 
 private val JalvoroLegacyTopBarHeight = 64.dp
 
-/**
- * Website-style utility shell for settings, privacy, accessibility and motion.
- *
- * The legacy utility screens retain their tested repositories, launchers, dialogs and security
- * actions. Their old native top bar is clipped outside the visible viewport so the app exposes one
- * consistent JALVORO header without duplicating navigation chrome.
- */
 @Composable
 internal fun JalvoroWebsiteUtilityShell(
     title: String,
@@ -41,15 +36,20 @@ internal fun JalvoroWebsiteUtilityShell(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainer,
-                shadowElevation = 5.dp,
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.76f),
+                ),
+                shadowElevation = 3.dp,
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 7.dp),
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     JalvoroIconAction(
@@ -63,16 +63,18 @@ internal fun JalvoroWebsiteUtilityShell(
                         compact = true,
                     )
                     Surface(
-                        modifier = Modifier.size(40.dp),
-                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.size(48.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.primary,
                     ) {
-                        Icon(
-                            imageVector = JalvoroIcons.Settings,
-                            contentDescription = null,
-                            modifier = Modifier.padding(10.dp).size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = JalvoroIcons.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(21.dp),
+                            )
+                        }
                     }
                 }
             }
