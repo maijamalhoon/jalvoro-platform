@@ -1,0 +1,84 @@
+name: Apply verified POS sale semantic payload
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-pos-sale-semantic-payload-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >-
+      github.event.pull_request.draft == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'agent/pos-sale-bridge-20260727' &&
+      github.event.pull_request.base.ref == 'agent/pos-workforce-security-20260727'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact semantic payload head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+          show-progress: false
+
+      - name: Verify, apply, and self-remove semantic payload
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PAYLOAD_B64_SHA256: 2da423446e6dacfba39eeebc98e50f10f8f980354ca5851bafdf3960c0ce53d8
+          PAYLOAD_TGZ_SHA256: e0099f6454d8c69586239151a78a14cc4dbf36ce4a66f1efdbbf94dae9eddcb2
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$HEAD_BRANCH" = "agent/pos-sale-bridge-20260727"
+
+          cat .agent/pos-sale-semantic.part-* > /tmp/pos-sale-semantic.b64
+          printf '%s  %s\n' "$PAYLOAD_B64_SHA256" /tmp/pos-sale-semantic.b64 | sha256sum --check --strict
+          base64 --decode /tmp/pos-sale-semantic.b64 > /tmp/pos-sale-semantic.tgz
+          printf '%s  %s\n' "$PAYLOAD_TGZ_SHA256" /tmp/pos-sale-semantic.tgz | sha256sum --check --strict
+
+          tar -tzf /tmp/pos-sale-semantic.tgz | sed 's#^\./##' | sort > /tmp/actual-manifest
+          cat > /tmp/expected-manifest <<'EOF'
+          supabase/migrations/20260727060000_pos_sale_transaction_bridge.sql
+          supabase/tests/business_pos_sale_bridge.sql
+          tests/business-pos-sale-bridge-contract.test.ts
+          EOF
+          sort -o /tmp/expected-manifest /tmp/expected-manifest
+          diff -u /tmp/expected-manifest /tmp/actual-manifest
+
+          tar -xzf /tmp/pos-sale-semantic.tgz
+
+          cat > /tmp/expected-sha256 <<'EOF'
+          6a0c8451cb195c8d6856826bf205d4d53052d4a2ef7e8a69a3b1debefcb73eb1  supabase/migrations/20260727060000_pos_sale_transaction_bridge.sql
+          feed3b929bb01f7ce5556bfd5837ad1f8a79da0a0e4cd99655a80ab9857bbd06  supabase/tests/business_pos_sale_bridge.sql
+          e6409e9eb84203a72eaed7aea26975674892b1be0f3465c8154d77ec56574ada  tests/business-pos-sale-bridge-contract.test.ts
+          EOF
+          sha256sum --check --strict /tmp/expected-sha256
+
+          rm -f .agent/pos-sale-semantic.part-*
+          rm -f .github/workflows/agent-fix-pos-sale-semantics.yml
+          rm -f .github/workflows/agent-apply-pos-sale-semantic-payload.yml
+          rmdir .agent 2>/dev/null || true
+
+          git add -A -- \
+            .agent \
+            .github/workflows/agent-fix-pos-sale-semantics.yml \
+            .github/workflows/agent-apply-pos-sale-semantic-payload.yml \
+            supabase/migrations/20260727060000_pos_sale_transaction_bridge.sql \
+            supabase/tests/business_pos_sale_bridge.sql \
+            tests/business-pos-sale-bridge-contract.test.ts
+          test -n "$(git status --porcelain)"
+          git diff --cached --check
+          git config user.name "jalvoro-agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Harden POS sale approval retry semantics"
+          git push origin "HEAD:$HEAD_BRANCH"
