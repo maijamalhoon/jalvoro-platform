@@ -23,6 +23,12 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Verify critical realm, identity, POS security, sale, and operations RPCs exist.
 - Run the repository's normal CI, security, currency, and production-audit workflows.
 
+## Migration-history repairs discovered by rehearsal
+
+- Added a schema-only baseline for the legacy personal-finance tables and the original auth-profile trigger that predated timestamped repository migrations.
+- Restored the missing `archive_transaction(uuid)` migration before the security grant migration that depends on it.
+- Renamed the withdrawal-function migration from duplicate version `20260721023000` to unique ordered version `20260721023100` without changing its SQL bytes.
+
 ## Hard boundary
 
 This rehearsal does not link to or modify a hosted Supabase project. It does not deploy Edge Functions, merge to `main`, trigger Vercel, change DNS, or modify production data.
