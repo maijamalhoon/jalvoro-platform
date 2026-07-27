@@ -92,12 +92,19 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $ErrorActionPreference = "Stop"
-          $source = "androidApp\build\outputs\apk\debug\androidApp-debug.apk"
-          if (-not (Test-Path $source)) { throw "Debug APK was not produced: $source" }
+          $outputRoot = "androidApp\build\outputs\apk\debug"
+          $source = Get-ChildItem -Path $outputRoot -Filter "*.apk" -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+          if ($null -eq $source) {
+            $available = Get-ChildItem -Path "androidApp\build\outputs" -File -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty FullName
+            throw "Debug APK was not found under $outputRoot. Available outputs:`n$($available -join "`n")"
+          }
           New-Item -ItemType Directory -Force -Path device-build | Out-Null
           $shortSha = $env:PR_HEAD_SHA.Substring(0, [Math]::Min(12, $env:PR_HEAD_SHA.Length))
           $target = "device-build\jalvoro-personal-device-test-$shortSha.apk"
-          Copy-Item $source $target -Force
+          Copy-Item $source.FullName $target -Force
           $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -Path device-build\SHA256SUMS.txt -Encoding ascii
           if ((Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
@@ -109,12 +116,19 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           $ErrorActionPreference = "Stop"
-          $source = "androidApp\build\outputs\bundle\release\androidApp-release.aab"
-          if (-not (Test-Path $source)) { throw "Release AAB was not produced: $source" }
+          $outputRoot = "androidApp\build\outputs\bundle\release"
+          $source = Get-ChildItem -Path $outputRoot -Filter "*.aab" -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+          if ($null -eq $source) {
+            $available = Get-ChildItem -Path "androidApp\build\outputs" -File -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty FullName
+            throw "Release AAB was not found under $outputRoot. Available outputs:`n$($available -join "`n")"
+          }
           New-Item -ItemType Directory -Force -Path release-build | Out-Null
           $shortSha = $env:PR_HEAD_SHA.Substring(0, [Math]::Min(12, $env:PR_HEAD_SHA.Length))
           $target = "release-build\jalvoro-personal-release-$shortSha.aab"
-          Copy-Item $source $target -Force
+          Copy-Item $source.FullName $target -Force
           $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash *$([IO.Path]::GetFileName($target))" | Set-Content -Path release-build\SHA256SUMS.txt -Encoding ascii
 
