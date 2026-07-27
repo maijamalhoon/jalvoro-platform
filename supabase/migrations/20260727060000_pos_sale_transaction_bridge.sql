@@ -263,7 +263,9 @@ declare
   total numeric:=0;
   allowed_keys text[]:=array['product_id','quantity','discount_percent','tax_rate'];
 begin
-  if jsonb_typeof(p_lines)<>'array' or jsonb_array_length(p_lines) not between 1 and 100 then
+  if p_lines is null
+     or jsonb_typeof(p_lines)<>'array'
+     or jsonb_array_length(p_lines) not between 1 and 100 then
     raise exception 'POS sale requires 1 to 100 lines.' using errcode='22023';
   end if;
 
@@ -278,7 +280,8 @@ begin
     if product_id_text is null or product_id_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
       raise exception 'POS sale line % has an invalid product.',item_number using errcode='22023';
     end if;
-    if jsonb_typeof(item->'quantity')<>'number'
+    if not (item ? 'quantity')
+       or jsonb_typeof(item->'quantity')<>'number'
        or (item ? 'discount_percent' and jsonb_typeof(item->'discount_percent')<>'number')
        or (item ? 'tax_rate' and jsonb_typeof(item->'tax_rate')<>'number') then
       raise exception 'POS sale line % has invalid numeric values.',item_number using errcode='22023';
@@ -446,6 +449,13 @@ begin
         jsonb_build_object('request_id',existing_request.id,'invoice_id',existing_request.invoice_id)
       );
       return coalesce(existing_request.result,'{}'::jsonb)||jsonb_build_object('replayed',true);
+    end if;
+    if existing_request.status='approval_required' and p_approval_id is null then
+      return jsonb_build_object(
+        'ok',false,'approval_required',true,'operation_type','high_discount',
+        'payload_hash',payload_hash,'request_id',existing_request.id,
+        'amount',estimated_total,'discount_percent',max_discount
+      );
     end if;
     if existing_request.attempt_count>=5 then
       return jsonb_build_object('ok',false,'error','retry_limit_reached');

@@ -27,6 +27,8 @@ describe("Retail POS sale transaction bridge contract", () => {
     expect(migration).toContain("'description',target_product.name");
     expect(migration).toContain("'revenue_account_id',target_product.revenue_account_id");
     expect(migration).toContain("contains unsupported fields");
+    expect(migration).toContain("if p_lines is null");
+    expect(migration).toContain("if not (item ? 'quantity')");
     expect(edgeFunction).not.toContain("unit_price:");
     expect(edgeFunction).not.toContain("warehouse_id:");
     expect(edgeFunction).not.toContain("revenue_account_id:");
@@ -36,6 +38,7 @@ describe("Retail POS sale transaction bridge contract", () => {
     expect(migration).toContain("unique (business_id, request_key)");
     expect(migration).toContain("existing_request.payload_hash<>payload_hash");
     expect(migration).toContain("existing_request.session_id<>target_session.id");
+    expect(migration).toContain("existing_request.status='approval_required' and p_approval_id is null");
     expect(migration).toContain("public.consume_business_pos_approval(");
     expect(migration).toContain("'high_discount',payload_hash");
     expect(migration).toContain("approval_required");
@@ -62,6 +65,7 @@ describe("Retail POS sale transaction bridge contract", () => {
     expect(regression).toContain("POS sale replay created a second invoice");
     expect(regression).toContain("POS idempotency key accepted a different payload");
     expect(regression).toContain("High discount POS sale posted without approval");
+    expect(regression).toContain("Waiting for approval incremented the POS posting retry counter");
     expect(regression).toContain("rollback;");
   });
 });

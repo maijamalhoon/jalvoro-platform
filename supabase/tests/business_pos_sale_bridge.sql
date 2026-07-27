@@ -212,7 +212,7 @@ end;
 $$;
 
 do $$
-declare state pos_sale_state; required jsonb; approval jsonb; posted jsonb;
+declare state pos_sale_state; required jsonb; waiting jsonb; approval jsonb; posted jsonb; retry_number integer; recorded_attempts smallint;
 begin
   select * into state from pos_sale_state;
   required:=public.post_business_pos_sale(
@@ -226,6 +226,26 @@ begin
     raise exception 'High discount POS sale posted without approval.';
   end if;
   update pos_sale_state set payload_hash=required->>'payload_hash';
+
+  for retry_number in 1..5 loop
+    waiting:=public.post_business_pos_sale(
+      encode(extensions.digest('sale-session-token','sha256'),'hex'),
+      (now() at time zone 'Asia/Karachi')::date,null,
+      jsonb_build_array(jsonb_build_object(
+        'product_id',state.product_id,'quantity',1,'discount_percent',20,'tax_rate',0
+      )),true,'Manager-approved discount','75555555-5555-4555-8555-555555555555',null
+    );
+    if not coalesce((waiting->>'approval_required')::boolean,false) then
+      raise exception 'Waiting POS approval request stopped returning approval context.';
+    end if;
+  end loop;
+  select request.attempt_count into recorded_attempts
+  from public.business_pos_sale_requests request
+  where request.business_id=state.business_id
+    and request.request_key='75555555-5555-4555-8555-555555555555';
+  if recorded_attempts<>1 then
+    raise exception 'Waiting for approval incremented the POS posting retry counter.';
+  end if;
 
   approval:=public.create_business_pos_approval_request(
     encode(extensions.digest('sale-session-token','sha256'),'hex'),
