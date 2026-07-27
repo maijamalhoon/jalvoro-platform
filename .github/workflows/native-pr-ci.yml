@@ -87,7 +87,7 @@ jobs:
           type native-ci.log
           exit /b %GRADLE_EXIT%
 
-      - name: Rebuild and prepare native artifacts
+      - name: Prepare deterministic native artifacts
         env:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -104,10 +104,9 @@ jobs:
             throw "Gradle executable was not found: $gradle"
           }
 
-          $artifactBuildStartedUtc = [DateTime]::UtcNow
           Push-Location $nativeRoot
           try {
-            & $gradle :androidApp:assembleDebug :androidApp:bundleRelease --rerun-tasks --no-build-cache --stacktrace *> $artifactLog
+            & $gradle :androidApp:prepareDebugApkForCi :androidApp:prepareReleaseBundleForCi --rerun-tasks --no-build-cache --stacktrace *> $artifactLog
             $artifactExit = $LASTEXITCODE
           } finally {
             Pop-Location
@@ -115,50 +114,29 @@ jobs:
 
           Get-Content -LiteralPath $artifactLog
           if ($artifactExit -ne 0) {
-            throw "Fresh APK/AAB build failed with exit code $artifactExit."
+            throw "Deterministic APK/AAB preparation failed with exit code $artifactExit."
           }
 
-          $allCandidates = @(Get-ChildItem -LiteralPath $nativeRoot -File -Recurse -Force -ErrorAction SilentlyContinue |
-            Where-Object {
-              $_.FullName -match "[\\/]androidApp[\\/]build[\\/]" -and
-              ($_.Extension -ieq ".apk" -or $_.Extension -ieq ".aab")
-            } |
+          $apkSourceRoot = Join-Path $nativeRoot "androidApp\build\ci-artifacts\debug"
+          $aabSourceRoot = Join-Path $nativeRoot "androidApp\build\ci-artifacts\release"
+          $apkCandidates = @(Get-ChildItem -LiteralPath $apkSourceRoot -Filter "*.apk" -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Length -gt 0 } |
+            Sort-Object LastWriteTimeUtc -Descending)
+          $aabCandidates = @(Get-ChildItem -LiteralPath $aabSourceRoot -Filter "*.aab" -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Length -gt 0 } |
             Sort-Object LastWriteTimeUtc -Descending)
 
-          $allCandidates |
+          @($apkCandidates + $aabCandidates) |
             ForEach-Object {
               "{0}`t{1}`t{2}" -f $_.LastWriteTimeUtc.ToString("o"), $_.Length, $_.FullName
             } |
             Set-Content -LiteralPath $pathLog -Encoding utf8
 
-          if ($allCandidates.Count -eq 0) {
-            throw "No APK or AAB files were found under $nativeRoot after a successful fresh build."
+          if ($apkCandidates.Count -ne 1) {
+            throw "Expected exactly one debug APK under $apkSourceRoot but found $($apkCandidates.Count)."
           }
-
-          $freshCutoffUtc = $artifactBuildStartedUtc.AddMinutes(-2)
-          $apk = $allCandidates |
-            Where-Object {
-              $_.Extension -ieq ".apk" -and
-              $_.Length -gt 0 -and
-              $_.LastWriteTimeUtc -ge $freshCutoffUtc -and
-              ($_.FullName -match "[\\/]outputs[\\/]apk[\\/]debug[\\/]" -or $_.Name -match "(?i)debug.*\.apk$")
-            } |
-            Select-Object -First 1
-
-          $aab = $allCandidates |
-            Where-Object {
-              $_.Extension -ieq ".aab" -and
-              $_.Length -gt 0 -and
-              $_.LastWriteTimeUtc -ge $freshCutoffUtc -and
-              ($_.FullName -match "[\\/]outputs[\\/]bundle[\\/]release[\\/]" -or $_.Name -match "(?i)release.*\.aab$")
-            } |
-            Select-Object -First 1
-
-          if ($null -eq $apk) {
-            throw "Fresh debug APK was not found. Candidate paths are recorded in $pathLog."
-          }
-          if ($null -eq $aab) {
-            throw "Fresh release AAB was not found. Candidate paths are recorded in $pathLog."
+          if ($aabCandidates.Count -ne 1) {
+            throw "Expected exactly one release AAB under $aabSourceRoot but found $($aabCandidates.Count)."
           }
 
           $shaValue = if ([string]::IsNullOrWhiteSpace($env:PR_HEAD_SHA)) { $env:GITHUB_SHA } else { $env:PR_HEAD_SHA }
@@ -172,9 +150,8 @@ jobs:
 
           $apkTarget = Join-Path $deviceBuild "jalvoro-personal-device-test-$shortSha.apk"
           $aabTarget = Join-Path $releaseBuild "jalvoro-personal-release-$shortSha.aab"
-
-          Copy-Item -LiteralPath $apk.FullName -Destination $apkTarget -Force
-          Copy-Item -LiteralPath $aab.FullName -Destination $aabTarget -Force
+          Copy-Item -LiteralPath $apkCandidates[0].FullName -Destination $apkTarget -Force
+          Copy-Item -LiteralPath $aabCandidates[0].FullName -Destination $aabTarget -Force
 
           foreach ($target in @($apkTarget, $aabTarget)) {
             if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
