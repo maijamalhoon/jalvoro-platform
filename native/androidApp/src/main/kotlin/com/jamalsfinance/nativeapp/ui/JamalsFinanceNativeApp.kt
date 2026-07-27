@@ -1,5 +1,6 @@
 package com.jamalsfinance.nativeapp.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,12 +48,22 @@ fun JamalsFinanceNativeApp(
     nativePreferences: AndroidNativePreferences,
     networkMonitor: NetworkMonitor,
     onSecureWindowChanged: (Boolean) -> Unit,
+    onSystemBarsChanged: (Boolean) -> Unit,
 ) {
     val localPreferences by nativePreferences.state.collectAsStateWithLifecycle()
     val online by networkMonitor.online.collectAsStateWithLifecycle()
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (localPreferences.themeMode) {
+        NativeThemeMode.System -> systemDark
+        NativeThemeMode.Light -> false
+        NativeThemeMode.Dark -> true
+    }
 
     LaunchedEffect(localPreferences.blockScreenshots, onSecureWindowChanged) {
         onSecureWindowChanged(localPreferences.blockScreenshots)
+    }
+    LaunchedEffect(darkTheme, onSystemBarsChanged) {
+        onSystemBarsChanged(darkTheme)
     }
 
     JamalsFinanceTheme(
