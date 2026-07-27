@@ -35,7 +35,7 @@ describe("Business identity recovery contract", () => {
     expect(migration).toContain("interval '5 minutes'");
   });
 
-  it("records inspection, success, and failure without secrets", () => {
+  it("records a durable start before reset, then inspection, success, or failure without secrets", () => {
     expect(migration).toContain("mfa_recovery_started");
     expect(migration).toContain("mfa_recovery_inspected");
     expect(migration).toContain("mfa_recovery_completed");
@@ -62,8 +62,10 @@ describe("Business identity recovery contract", () => {
   });
 
   it("ships a rollback-only authorization and audit regression", () => {
-    expect(regression).toContain("Non-owner inspected another member's MFA context");
+    expect(regression).toContain("Non-owner inspected another member''s MFA context");
     expect(regression).toContain("AAL1 owner obtained reset authorization");
+    expect(regression).toContain("'reset_mfa','started'");
+    expect(regression).toContain("mfa_recovery_started");
     expect(regression).toContain("mfa_recovery_completed");
     expect(regression).toContain("rollback;");
   });

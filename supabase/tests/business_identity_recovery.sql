@@ -79,6 +79,18 @@ begin
   );
   perform public.record_business_identity_recovery_result(
     target_business,'52222222-2222-4222-8222-222222222222',
+    'reset_mfa','started',0,0,0,null
+  );
+  if not exists(
+    select 1 from public.business_team_audit_log audit
+    where audit.business_id=target_business
+      and audit.target_user_id='52222222-2222-4222-8222-222222222222'
+      and audit.action='mfa_recovery_started'
+  ) then
+    raise exception 'Identity recovery start audit event was not written.';
+  end if;
+  perform public.record_business_identity_recovery_result(
+    target_business,'52222222-2222-4222-8222-222222222222',
     'reset_mfa','success',2,1,2,null
   );
   if not exists(
@@ -88,7 +100,7 @@ begin
       and audit.action='mfa_recovery_completed'
       and (audit.after_state->>'deleted_factor_count')::integer=2
   ) then
-    raise exception 'Identity recovery audit event was not written.';
+    raise exception 'Identity recovery completion audit event was not written.';
   end if;
 end;
 $$;
