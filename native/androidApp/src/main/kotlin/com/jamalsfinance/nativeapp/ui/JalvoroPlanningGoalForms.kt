@@ -72,7 +72,8 @@ internal fun GoalDialog(
             value = deadline,
             onValueChange = { deadline = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Deadline YYYY-MM-DD (optional)") },
+            label = { Text("Deadline (optional)") },
+            placeholder = { Text("YYYY-MM-DD") },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
         )
@@ -146,7 +147,8 @@ internal fun GoalContributionDialog(
             value = date,
             onValueChange = { date = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Contribution date YYYY-MM-DD") },
+            label = { Text("Contribution date") },
+            placeholder = { Text("YYYY-MM-DD") },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
         )
@@ -156,6 +158,7 @@ internal fun GoalContributionDialog(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Note (optional)") },
             minLines = 2,
+            maxLines = 4,
             shape = RoundedCornerShape(14.dp),
         )
         error?.let { JalvoroFeedbackCard(it, JalvoroFeedbackTone.Danger) }
