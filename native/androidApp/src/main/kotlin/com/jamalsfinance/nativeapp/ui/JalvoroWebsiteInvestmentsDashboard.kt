@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -166,14 +165,14 @@ private fun WebsiteGrowthHeader(
     onRefresh: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Investments",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.semantics { heading() },
                 )
@@ -187,15 +186,12 @@ private fun WebsiteGrowthHeader(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Button(
-                onClick = onRefresh,
+            JalvoroIconAction(
+                icon = JalvoroIcons.Refresh,
+                label = if (loading) "Refreshing Investments" else "Refresh Investments",
                 enabled = !loading,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-            ) {
-                Icon(JalvoroIcons.Refresh, contentDescription = null, modifier = Modifier.size(17.dp))
-                Spacer(Modifier.size(7.dp))
-                Text(if (loading) "Refreshing" else "Refresh")
-            }
+                onClick = onRefresh,
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
