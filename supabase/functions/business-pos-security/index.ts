@@ -10,7 +10,7 @@ type ManagementAction =
   | "revoke_credential"
   | "revoke_session"
   | "decide_approval";
-type KioskAction = "start_session" | "change_pin" | "request_approval";
+type KioskAction = "start_session" | "change_pin" | "request_approval" | "post_sale";
 type Action = ManagementAction | KioskAction;
 
 const MANAGEMENT_ACTIONS = new Set<ManagementAction>([
@@ -26,6 +26,7 @@ const KIOSK_ACTIONS = new Set<KioskAction>([
   "start_session",
   "change_pin",
   "request_approval",
+  "post_sale",
 ]);
 const PIN_REJECT_LIST = new Set([
   "000000",
@@ -74,6 +75,45 @@ function hashValue(value: unknown): string | null {
 
 function numeric(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function dateValue(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : value;
+}
+
+type PosSaleLine = {
+  product_id: string;
+  quantity: number;
+  discount_percent: number;
+  tax_rate: number;
+};
+
+function saleLines(value: unknown): PosSaleLine[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 100) return null;
+  const seen = new Set<string>();
+  const normalized: PosSaleLine[] = [];
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+    const line = candidate as Record<string, unknown>;
+    const productId = uuid(line.productId ?? line.product_id);
+    const quantity = numeric(line.quantity);
+    const discountPercent = numeric(line.discountPercent ?? line.discount_percent) ?? 0;
+    const taxRate = numeric(line.taxRate ?? line.tax_rate) ?? 0;
+    if (
+      !productId || seen.has(productId) || !quantity || quantity <= 0 || quantity > 1_000_000 ||
+      discountPercent < 0 || discountPercent > 100 || taxRate < 0 || taxRate > 100
+    ) return null;
+    seen.add(productId);
+    normalized.push({
+      product_id: productId,
+      quantity,
+      discount_percent: discountPercent,
+      tax_rate: taxRate,
+    });
+  }
+  return normalized;
 }
 
 function randomBytes(length: number): Uint8Array {
@@ -152,6 +192,7 @@ function rpcFailure(error: { code?: string; message?: string } | null): string {
   if (code === "POS02") return "pos_session_unavailable";
   if (code === "POS03") return "current_pin_incorrect";
   if (code === "POS04") return "approval_unavailable";
+  if (code === "POS05") return "pos_branch_configuration_missing";
   if (code === "22023") return "invalid_request";
   return "pos_security_operation_failed";
 }
@@ -399,6 +440,57 @@ Deno.serve(async (request: Request) => {
     return result.error
       ? response(origin, { error: rpcFailure(result.error) }, 403)
       : response(origin, { ok: true });
+  }
+
+  if (action === "post_sale") {
+    const saleDate = dateValue(body.saleDate ?? body.sale_date);
+    const requestKey = uuid(body.requestKey ?? body.request_key);
+    const lines = saleLines(body.lines);
+    const customerIdValue = body.customerId ?? body.customer_id;
+    const customerId = customerIdValue == null || customerIdValue === "" ? null : uuid(customerIdValue);
+    const approvalIdValue = body.approvalId ?? body.approval_id;
+    const approvalId = approvalIdValue == null || approvalIdValue === "" ? null : uuid(approvalIdValue);
+    const paidNow = body.paidNow ?? body.paid_now;
+    const notesValue = body.notes == null || body.notes === "" ? null : text(body.notes, 300);
+    if (
+      !saleDate || !requestKey || !lines ||
+      (customerIdValue != null && customerIdValue !== "" && !customerId) ||
+      (approvalIdValue != null && approvalIdValue !== "" && !approvalId) ||
+      (paidNow != null && typeof paidNow !== "boolean") ||
+      (body.notes != null && body.notes !== "" && !notesValue)
+    ) {
+      return response(origin, { error: "invalid_pos_sale_request" }, 400);
+    }
+
+    const result = await serviceClient.rpc("post_business_pos_sale", {
+      p_session_token_hash: sessionHash,
+      p_sale_date: saleDate,
+      p_customer_id: customerId,
+      p_lines: lines,
+      p_paid_now: paidNow !== false,
+      p_notes: notesValue,
+      p_request_key: requestKey,
+      p_approval_id: approvalId,
+    });
+    if (result.error) {
+      return response(origin, { error: rpcFailure(result.error) }, 403);
+    }
+    const sale = result.data as JsonRecord | null;
+    if (sale?.approval_required === true) {
+      return response(origin, {
+        ok: false,
+        approvalRequired: true,
+        operationType: sale.operation_type,
+        payloadHash: sale.payload_hash,
+        requestId: sale.request_id,
+        amount: sale.amount,
+        discountPercent: sale.discount_percent,
+      }, 409);
+    }
+    if (sale?.ok !== true) {
+      return response(origin, { error: typeof sale?.error === "string" ? sale.error : "pos_sale_rejected" }, 422);
+    }
+    return response(origin, { ok: true, sale });
   }
 
   const operationType = text(body.operationType, 40);

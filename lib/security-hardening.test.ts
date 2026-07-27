@@ -135,6 +135,28 @@ describe("security hardening contracts", () => {
     expect(manager).not.toContain("token_hash");
   });
 
+  it("keeps POS sale posting session-bound, idempotent, and catalog-priced", () => {
+    const edgeFunction = read(
+      "supabase/functions/business-pos-security/index.ts",
+    );
+    const migration = read(
+      "supabase/migrations/20260727060000_pos_sale_transaction_bridge.sql",
+    );
+
+    expect(edgeFunction).toContain('"post_sale"');
+    expect(edgeFunction).toContain('serviceClient.rpc("post_business_pos_sale"');
+    expect(edgeFunction).not.toContain("unit_price:");
+    expect(edgeFunction).not.toContain("warehouse_id:");
+    expect(migration).toContain("private.get_business_pos_session_internal");
+    expect(migration).toContain("private.normalize_business_pos_sale_lines");
+    expect(migration).toContain("target_product.sales_price");
+    expect(migration).toContain("unique (business_id, request_key)");
+    expect(migration).toContain("public.consume_business_pos_approval(");
+    expect(migration).toContain("private.create_business_simple_shop_sale_internal(");
+    expect(migration).toContain("set_config('request.jwt.claim.sub',target_session.user_id::text,true)");
+    expect(migration).not.toContain("auth.sessions");
+  });
+
   it("does not place administrative Supabase secrets in application source", () => {
     const source = applicationSourceDirectories
       .flatMap(collectSourceFiles)
