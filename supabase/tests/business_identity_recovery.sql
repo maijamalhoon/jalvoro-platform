@@ -30,6 +30,7 @@ select public.claim_account_realm('business');
 -- Fixture setup may call private role-template helpers only through the
 -- service-role boundary. Authorization assertions below immediately return to
 -- the authenticated member/owner roles used by the application.
+grant select on recovery_test_state to service_role;
 set local role service_role;
 insert into public.business_members(
   business_id,user_id,role,status,permissions,invited_by,joined_at
