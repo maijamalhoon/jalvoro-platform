@@ -54,7 +54,7 @@ for _ in $(seq 1 30); do
 done
 pg_isready -d "$LOCAL_DB_URL"
 
-LATEST_EXPECTED_MIGRATION="20260727070000"
+LATEST_EXPECTED_MIGRATION="20260727071000"
 MIGRATION_COUNT="$(psql "$LOCAL_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c \
   "select count(*) from supabase_migrations.schema_migrations;")"
 LATEST_APPLIED_MIGRATION="$(psql "$LOCAL_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c \
@@ -69,7 +69,65 @@ if [[ "$LATEST_APPLIED_MIGRATION" != "$LATEST_EXPECTED_MIGRATION" ]]; then
 fi
 
 echo "Linting public and private database functions for runtime errors..."
-supabase db lint --local --schema public,private --level error --fail-on error
+LINT_OUTPUT_FILE="$(mktemp)"
+set +e
+supabase db lint --local --schema public,private --level error >"$LINT_OUTPUT_FILE"
+LINT_COMMAND_STATUS=$?
+set -e
+cat "$LINT_OUTPUT_FILE"
+
+python3 - "$LINT_OUTPUT_FILE" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+raw = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+start = raw.find("[")
+end = raw.rfind("]")
+if start < 0 or end < start:
+    if raw.strip():
+        raise SystemExit("Supabase lint did not return a JSON issue list.")
+    issues = []
+else:
+    issues = json.loads(raw[start : end + 1])
+
+remaining = []
+allowlisted_count = 0
+for function_issue in issues:
+    function_name = function_issue.get("function")
+    blocked = []
+    for issue in function_issue.get("issues", []):
+        message = str(issue.get("message", ""))
+        is_known_temp_table_check = (
+            function_name == "private.import_finance_backup_internal"
+            and issue.get("sqlState") == "42P01"
+            and 'relation "pg_temp.finance_import_account_state" does not exist' in message
+        )
+        if is_known_temp_table_check:
+            allowlisted_count += 1
+        else:
+            blocked.append(issue)
+    if blocked:
+        remaining.append({**function_issue, "issues": blocked})
+
+if remaining:
+    print("Non-allowlisted database lint errors remain:", file=sys.stderr)
+    print(json.dumps(remaining, indent=2), file=sys.stderr)
+    raise SystemExit(1)
+
+print(
+    "Database lint passed"
+    + (f" with {allowlisted_count} documented temporary-table checker limitation(s)." if allowlisted_count else ".")
+)
+PY
+
+if [[ "$LINT_COMMAND_STATUS" -ne 0 ]]; then
+  echo "Supabase lint command failed independently of classified lint findings." >&2
+  exit "$LINT_COMMAND_STATUS"
+fi
+rm -f "$LINT_OUTPUT_FILE"
 
 mapfile -d '' SQL_TESTS < <(
   find supabase/tests -maxdepth 1 -type f -name '*.sql' -print0 | sort -z
