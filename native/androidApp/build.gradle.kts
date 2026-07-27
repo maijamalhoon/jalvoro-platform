@@ -1,4 +1,6 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.util.Properties
+import org.gradle.api.tasks.Sync
 
 plugins {
     alias(libs.plugins.android.application)
@@ -112,6 +114,28 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        tasks.register<Sync>("prepareDebugApkForCi") {
+            group = "build"
+            description = "Copies the AGP-produced debug APK into a deterministic CI directory."
+            from(variant.artifacts.get(SingleArtifact.APK)) {
+                include("**/*.apk")
+            }
+            into(layout.buildDirectory.dir("ci-artifacts/debug"))
+        }
+    }
+
+    onVariants(selector().withBuildType("release")) { variant ->
+        tasks.register<Sync>("prepareReleaseBundleForCi") {
+            group = "build"
+            description = "Copies the AGP-produced release bundle into a deterministic CI directory."
+            from(variant.artifacts.get(SingleArtifact.BUNDLE))
+            into(layout.buildDirectory.dir("ci-artifacts/release"))
+        }
     }
 }
 
