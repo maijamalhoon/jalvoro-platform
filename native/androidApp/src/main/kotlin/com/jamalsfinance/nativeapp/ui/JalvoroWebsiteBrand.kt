@@ -26,11 +26,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Native match for the website's blue CircleDollarSign JALVORO lockup. */
 @Composable
 fun JalvoroWebsiteBrandLockup(
     modifier: Modifier = Modifier,
-    subtitle: String = "PERSONAL WORKSPACE",
+    subtitle: String = JALVORO_PERSONAL,
     compact: Boolean = false,
 ) {
     Row(
@@ -39,23 +38,23 @@ fun JalvoroWebsiteBrandLockup(
         horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp),
     ) {
         JalvoroWebsiteBrandMark(
-            modifier = Modifier.size(if (compact) 40.dp else 46.dp),
+            modifier = Modifier.size(if (compact) 40.dp else 48.dp),
             contentDescription = "JALVORO logo",
         )
         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
-                text = "JALVORO",
+                text = JALVORO_NAME,
                 style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
-                letterSpacing = (-0.25).sp,
+                letterSpacing = (-0.2).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = subtitle,
+                text = subtitle.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontSize = if (compact) 9.sp else 10.sp,
-                    letterSpacing = if (compact) 1.35.sp else 1.5.sp,
+                    letterSpacing = if (compact) 1.25.sp else 1.4.sp,
                 ),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -75,10 +74,10 @@ fun JalvoroWebsiteBrandMark(
         modifier = modifier.semantics {
             if (contentDescription != null) this.contentDescription = contentDescription
         },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.primary,
         contentColor = Color.White,
-        shadowElevation = 6.dp,
+        shadowElevation = 4.dp,
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(9.dp)) {
             val stroke = 1.9.dp.toPx()
