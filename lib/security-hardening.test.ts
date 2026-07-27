@@ -112,6 +112,29 @@ describe("security hardening contracts", () => {
     expect(panel).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
   });
 
+  it("keeps POS device, PIN, session, and approval security server-only", () => {
+    const edgeFunction = read(
+      "supabase/functions/business-pos-security/index.ts",
+    );
+    const migration = read(
+      "supabase/migrations/20260727043000_pos_workforce_security.sql",
+    );
+    const manager = read("components/business/BusinessPosSecurityManager.tsx");
+
+    expect(edgeFunction).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
+    expect(edgeFunction).toContain("APP_ALLOWED_ORIGINS");
+    expect(edgeFunction).toContain("await sha256(sessionToken)");
+    expect(edgeFunction).not.toContain("auth.sessions");
+    expect(edgeFunction).not.toContain("mfa_factors");
+    expect(migration).toContain("extensions.crypt(p_pin,extensions.gen_salt('bf',12))");
+    expect(migration).toContain("revoke all on table public.business_pos_staff_credentials from public,anon,authenticated");
+    expect(migration).toContain("approval.requested_by=p_actor_user_id");
+    expect(manager).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(manager).not.toContain("pin_hash");
+    expect(manager).not.toContain("secret_hash");
+    expect(manager).not.toContain("token_hash");
+  });
+
   it("does not place administrative Supabase secrets in application source", () => {
     const source = applicationSourceDirectories
       .flatMap(collectSourceFiles)
