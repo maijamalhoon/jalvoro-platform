@@ -1,0 +1,167 @@
+# Replays the complete payment migration slice on a fresh local Supabase database.
+name: Billing database contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/billing-database-contract.yml"
+      - "supabase/migrations/202607242*.sql"
+      - "supabase/tests/**"
+      - "supabase/functions/paddle-webhook/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: billing-db-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database-contract:
+    name: Fresh database and billing lifecycle
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.109.1
+
+      - name: Prepare isolated payment migration workdir
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="${RUNNER_TEMP}/jalvoro-billing-contract"
+          mkdir -p "$workdir"
+          cd "$workdir"
+          supabase init --force
+          mkdir -p supabase/migrations
+
+          cp "${GITHUB_WORKSPACE}/supabase/tests/fixtures/20260720000000_billing_contract_prerequisites.sql" \
+            supabase/migrations/20260720000000_billing_contract_prerequisites.sql
+
+          for migration in \
+            20260724213000_create_billing_foundation.sql \
+            20260724214500_secure_current_user_trial_claim.sql \
+            20260724223000_multiverse_billing_accounts.sql \
+            20260724223500_preserve_billing_snapshot_contract.sql \
+            20260724224000_enterprise_billing_access.sql \
+            20260724225000_paddle_webhook_processing.sql \
+            20260724225500_paddle_billing_management_refs.sql \
+            20260724230000_paddle_adjustments_and_disputes.sql \
+            20260724230500_student_checkout_eligibility.sql
+          do
+            cp "${GITHUB_WORKSPACE}/supabase/migrations/${migration}" \
+              "supabase/migrations/${migration}"
+          done
+
+          echo "BILLING_CONTRACT_WORKDIR=${workdir}" >> "${GITHUB_ENV}"
+
+      - name: Start a fresh local database and apply payment migrations
+        id: database_start
+        shell: bash
+        run: |
+          set +e
+          cd "${BILLING_CONTRACT_WORKDIR}"
+          supabase db start > /tmp/supabase-db-start.log 2>&1
+          exit_code=$?
+
+          {
+            echo "=== ACTIONABLE DATABASE ERROR LINES ==="
+            grep -n -E "(Applying migration|ERROR:|error:|failed|Failure|SQLSTATE|cannot|does not exist|already exists|violates|syntax error)" \
+              /tmp/supabase-db-start.log | tail -n 240 || true
+            echo
+            echo "=== FINAL 160 LINES ==="
+            tail -n 160 /tmp/supabase-db-start.log
+          } > /tmp/supabase-db-diagnostic.log
+
+          cat /tmp/supabase-db-diagnostic.log
+          exit "$exit_code"
+
+      - name: Upload database migration diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: billing-database-migration-diagnostics
+          path: |
+            /tmp/supabase-db-start.log
+            /tmp/supabase-db-diagnostic.log
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Run rollback-only billing contracts
+        id: billing_contracts
+        shell: bash
+        run: |
+          set +e
+          database_container="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          if [[ -z "$database_container" ]]; then
+            echo "Supabase database container was not found." | tee /tmp/billing-contract-diagnostic.log
+            exit 1
+          fi
+
+          : > /tmp/billing-contracts.log
+          exit_code=0
+          for contract in \
+            "${GITHUB_WORKSPACE}/supabase/tests/regional_billing_foundation.sql" \
+            "${GITHUB_WORKSPACE}/supabase/tests/paddle_webhook_lifecycle.sql" \
+            "${GITHUB_WORKSPACE}/supabase/tests/paddle_adjustment_lifecycle.sql" \
+            "${GITHUB_WORKSPACE}/supabase/tests/student_checkout_eligibility.sql"
+          do
+            echo "=== RUNNING ${contract} ===" | tee -a /tmp/billing-contracts.log
+            docker exec -i "$database_container" \
+              psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+              < "$contract" >> /tmp/billing-contracts.log 2>&1
+            contract_code=$?
+            if [[ "$contract_code" -ne 0 ]]; then
+              exit_code="$contract_code"
+              break
+            fi
+          done
+
+          {
+            echo "=== ACTIONABLE CONTRACT ERROR LINES ==="
+            grep -n -E "(ERROR:|CONTEXT:|DETAIL:|HINT:|failure|failed|Privacy|Security|contract)" \
+              /tmp/billing-contracts.log | tail -n 240 || true
+            echo
+            echo "=== FINAL 200 LINES ==="
+            tail -n 200 /tmp/billing-contracts.log
+          } > /tmp/billing-contract-diagnostic.log
+
+          cat /tmp/billing-contract-diagnostic.log
+          exit "$exit_code"
+
+      - name: Upload billing contract diagnostics
+        if: failure() && steps.database_start.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: billing-lifecycle-contract-diagnostics
+          path: |
+            /tmp/billing-contracts.log
+            /tmp/billing-contract-diagnostic.log
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Show local Supabase status on failure
+        if: failure()
+        shell: bash
+        run: |
+          cd "${BILLING_CONTRACT_WORKDIR}"
+          supabase status || true
+          docker ps -a || true
+
+      - name: Destroy local database
+        if: always()
+        shell: bash
+        run: |
+          cd "${BILLING_CONTRACT_WORKDIR}"
+          supabase stop --no-backup || true

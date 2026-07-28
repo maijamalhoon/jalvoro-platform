@@ -21,7 +21,15 @@ const BUSINESS_TYPES = [
   { value: "other", label: "Other" },
 ] as const;
 
-const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as const;
+const BASE_CURRENCIES = [
+  "PKR",
+  "USD",
+  "INR",
+  "EUR",
+  "GBP",
+  "JPY",
+  "CNY",
+] as const;
 
 type WorkspaceMode = "simple_shop" | "advanced_company";
 
@@ -30,7 +38,8 @@ export default function CreateBusinessWorkspaceForm() {
   const supabase = useMemo(() => createClient(), []);
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState("retail");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple_shop");
+  const [workspaceMode, setWorkspaceMode] =
+    useState<WorkspaceMode>("simple_shop");
   const [countryCode, setCountryCode] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("PKR");
   const [timezone, setTimezone] = useState("UTC");
@@ -74,41 +83,25 @@ export default function CreateBusinessWorkspaceForm() {
       );
 
       if (error || typeof businessId !== "string") {
-        console.error("Business workspace creation failed", { code: error?.code });
-        toast.error("Business workspace could not be created. Please try again.");
-        return;
-      }
-
-      const { data: business, error: businessError } = await supabase
-        .from("businesses")
-        .select("slug, workspace_mode")
-        .eq("id", businessId)
-        .single();
-
-      if (businessError || !business?.slug) {
-        console.error("Created business could not be resolved", {
-          code: businessError?.code,
+        console.error("Business workspace creation failed", {
+          code: error?.code,
         });
-        toast.success("Business workspace created.");
-        router.replace("/business");
-        router.refresh();
+        toast.error("Business workspace could not be created. Please try again.");
         return;
       }
 
       setName("");
       toast.success(
         workspaceMode === "simple_shop"
-          ? "Simple Shop created with stock, cash, and accounting ready."
-          : "Advanced Company created with its ERP foundation.",
+          ? "Simple Shop created. Choose Free or a plan to continue."
+          : "Advanced Company created. Choose Free or a plan to continue.",
       );
-      router.replace(
-        business.workspace_mode === "simple_shop"
-          ? `/business/${business.slug}/shop`
-          : `/business/${business.slug}`,
-      );
+      router.replace(`/billing/choose-plan?businessId=${businessId}`);
       router.refresh();
     } catch {
-      toast.error("Business workspace could not be created. Check your connection and try again.");
+      toast.error(
+        "Business workspace could not be created. Check your connection and try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -129,15 +122,18 @@ export default function CreateBusinessWorkspaceForm() {
             Create a business workspace
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Choose a fast shop workflow or the full company ERP. Both use isolated tenants,
-            verified accounting, inventory, currency, and roles.
+            Choose a fast shop workflow or the full company ERP. Both use
+            isolated tenants, verified accounting, inventory, currency, and
+            roles.
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <fieldset className="space-y-3">
-          <legend className="text-sm font-bold text-text-primary">Workspace style</legend>
+          <legend className="text-sm font-bold text-text-primary">
+            Workspace style
+          </legend>
           <div className="grid gap-3 md:grid-cols-2">
             <button
               type="button"
@@ -154,7 +150,8 @@ export default function CreateBusinessWorkspaceForm() {
                 <strong className="text-sm">Simple Shop</strong>
               </span>
               <span className="mt-2 block text-xs leading-5 opacity-80">
-                Quick sale, purchase, stock, expenses, balances, returns, daily cash, and profit.
+                Quick sale, purchase, stock, expenses, balances, returns, daily
+                cash, and profit.
               </span>
             </button>
             <button
@@ -172,7 +169,8 @@ export default function CreateBusinessWorkspaceForm() {
                 <strong className="text-sm">Advanced Company</strong>
               </span>
               <span className="mt-2 block text-xs leading-5 opacity-80">
-                Full accounting, contacts, sales, purchases, inventory, CRM, and reports modules.
+                Full accounting, contacts, sales, purchases, inventory, CRM,
+                and reports modules.
               </span>
             </button>
           </div>
@@ -180,11 +178,17 @@ export default function CreateBusinessWorkspaceForm() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm font-bold text-text-primary">Business name</span>
+            <span className="text-sm font-bold text-text-primary">
+              Business name
+            </span>
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={workspaceMode === "simple_shop" ? "Example: Jamal General Store" : "Example: Jamal Traders"}
+              placeholder={
+                workspaceMode === "simple_shop"
+                  ? "Example: Jamal General Store"
+                  : "Example: Jamal Traders"
+              }
               autoComplete="organization"
               maxLength={120}
               disabled={saving}
@@ -193,7 +197,9 @@ export default function CreateBusinessWorkspaceForm() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-bold text-text-primary">Nature of business</span>
+            <span className="text-sm font-bold text-text-primary">
+              Nature of business
+            </span>
             <select
               value={businessType}
               onChange={(event) => setBusinessType(event.target.value)}
@@ -209,7 +215,9 @@ export default function CreateBusinessWorkspaceForm() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-bold text-text-primary">Base currency</span>
+            <span className="text-sm font-bold text-text-primary">
+              Base currency
+            </span>
             <select
               value={baseCurrency}
               onChange={(event) => setBaseCurrency(event.target.value)}
@@ -225,10 +233,14 @@ export default function CreateBusinessWorkspaceForm() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-bold text-text-primary">Country code</span>
+            <span className="text-sm font-bold text-text-primary">
+              Country code
+            </span>
             <Input
               value={countryCode}
-              onChange={(event) => setCountryCode(event.target.value.toUpperCase())}
+              onChange={(event) =>
+                setCountryCode(event.target.value.toUpperCase())
+              }
               placeholder="PK"
               inputMode="text"
               autoCapitalize="characters"
