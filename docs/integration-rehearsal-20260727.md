@@ -37,6 +37,49 @@ This branch combines the verified audit, product-entry, immutable-realm, Busines
 - Moved the AI preferences foundation before its RLS optimizer.
 - Moved the sealed finance-backup registry and base import/export functions before category-mapping and same-account recovery patches that depend on them.
 
-## Hard boundary
+## Production-schema compatibility rehearsal — 2026-07-28
 
-This rehearsal does not link to or modify a hosted Supabase project. It does not deploy Edge Functions, merge to `main`, trigger Vercel, change DNS, or modify production data.
+A schema-only dump from the hosted production Supabase project was restored into a disposable local Docker/Supabase database. The hosted project was queried read-only only; no hosted migration, Auth mutation, data write, Edge Function deployment, Vercel deployment, domain change, or DNS change was performed.
+
+Production baseline:
+
+- Hosted PostgreSQL version observed read-only: `17.6`
+- Hosted latest applied migration before this stack: `20260726074854_add_command_center_session_bridge`
+- Pending integration migrations applied locally: 14
+
+Schema-only dump omissions were restored only inside the disposable local parity database:
+
+- `supabase_migrations.schema_migrations` readiness metadata
+- canonical `billing.plans` free-plan reference row
+- enabled `auth.users` trigger `create_default_billing_subscription`
+
+The trigger was independently verified as enabled through a read-only hosted catalog query before the local parity fixture was created.
+
+Final result:
+
+- Production schema restore: passed
+- 14 pending migrations: passed in timestamp order
+- Migration readiness metadata: 12/12 confirmed
+- SQL regression files: 8/8 passed
+- Admin billing contract: passed
+- Business identity recovery: passed
+- POS operations bridge: passed
+- POS sale bridge: passed
+- POS workforce security: passed
+- Business role templates: passed
+- Immutable Individual/Business realms: passed
+- RLS user isolation: passed
+- Invalid or unready index probe: passed
+- Critical POS and account-realm RPC presence probes: passed
+
+Local evidence:
+
+`rehearsal-evidence/production-baseline-rehearsal.log`
+
+The evidence directory is excluded from Git because it contains local artifacts derived from the production schema.
+
+## Release boundary
+
+The production-schema compatibility blocker is cleared for this exact integration head. Review and merge, hosted migration execution, production database verification, Vercel Preview, and Vercel Production remain separate controlled release actions.
+
+Do not use production or the Command Centre database as a test environment.
