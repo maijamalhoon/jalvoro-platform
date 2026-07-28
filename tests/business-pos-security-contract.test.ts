@@ -93,7 +93,11 @@ describe("Retail POS workforce security contract", () => {
   it("uses unbiased rejection sampling for POS codes and temporary PINs", () => {
     expect(edgeFunction).toContain("function randomIndex(upperExclusive: number)");
     expect(edgeFunction).toContain("const acceptedRange = bucketSize * upperExclusive");
-    expect(edgeFunction).toContain("Math.floor(value / bucketSize)");
+    expect(edgeFunction).toContain("if (value >= acceptedRange) continue");
+    expect(edgeFunction).toContain(
+      "if (value < (index + 1) * bucketSize) return index",
+    );
+    expect(edgeFunction).not.toContain("Math.floor(value / bucketSize)");
     expect(edgeFunction).toContain(
       "DEVICE_ALPHABET[randomIndex(DEVICE_ALPHABET.length)]",
     );

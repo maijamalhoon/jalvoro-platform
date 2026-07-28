@@ -314,7 +314,11 @@ function randomIndex(upperExclusive: number): number {
   const acceptedRange = bucketSize * upperExclusive;
   for (let attempt = 0; attempt < 128; attempt += 1) {
     const value = randomBytes(1)[0];
-    if (value < acceptedRange) return Math.floor(value / bucketSize);
+    if (value >= acceptedRange) continue;
+
+    for (let index = 0; index < upperExclusive; index += 1) {
+      if (value < (index + 1) * bucketSize) return index;
+    }
   }
 
   throw new Error("secure_random_generation_failed");
