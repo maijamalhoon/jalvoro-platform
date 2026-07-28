@@ -1,7 +1,7 @@
 -- Restore the complete shared journal-source contract that was unintentionally
 -- narrowed when sales base-rounding logic replaced the journal-line trigger.
 -- Preserve deterministic sales rounding while retaining purchase, payment,
--- inventory, adjustment, and return source authorization.
+-- inventory, adjustment, return, and tightly scoped POS journal authorization.
 
 create or replace function private.prepare_business_journal_line()
 returns trigger
@@ -70,7 +70,40 @@ begin
   select
     account.system_key,
     account.is_active and (
-      (entry_source_type = 'manual' and account.allow_manual_posting)
+      (
+        entry_source_type = 'manual'
+        and (
+          account.allow_manual_posting
+          or exists (
+            select 1
+            from public.business_pos_operation_requests request
+            join public.business_pos_branch_settings pos_settings
+              on pos_settings.business_id = request.business_id
+             and pos_settings.branch_id = request.branch_id
+            where request.business_id = new.business_id
+              and request.id = entry_source_id
+              and request.status = 'pending'
+              and request.approval_id is not null
+              and (
+                (
+                  request.operation_type in ('refund', 'void')
+                  and (
+                    new.account_id = pos_settings.cash_account_id
+                    or account.system_key = 'customer_credits'
+                  )
+                )
+                or (
+                  request.operation_type = 'cash_adjustment'
+                  and new.account_id in (
+                    pos_settings.cash_account_id,
+                    pos_settings.cash_gain_account_id,
+                    pos_settings.cash_loss_account_id
+                  )
+                )
+              )
+          )
+        )
+      )
       or (
         entry_source_type = 'sales_invoice'
         and account.system_key in (
@@ -351,4 +384,4 @@ revoke execute on function private.prepare_business_journal_line()
   from public, anon, authenticated;
 
 comment on function private.prepare_business_journal_line() is
-  'Derives immutable base-currency values for authorized manual, sales, purchase, payment, inventory, adjustment, and return journal lines with deterministic rounding.';
+  'Derives immutable base-currency values for authorized manual, POS-controlled, sales, purchase, payment, inventory, adjustment, and return journal lines with deterministic rounding.';
