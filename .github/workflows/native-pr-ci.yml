@@ -11,6 +11,7 @@ on:
       - ".github/scripts/apply-native-parity-fixes.mjs"
       - ".github/scripts/apply-native-screenshot-acceptance-fixes.mjs"
       - ".github/scripts/apply-native-exact-overview-parity.mjs"
+      - ".github/scripts/apply-native-exact-money-parity.mjs"
       - ".github/scripts/prepare-native-artifacts.mjs"
 
 permissions:
@@ -56,9 +57,14 @@ jobs:
           if not "%SCREENSHOT_FIXER_EXIT%"=="0" exit /b %SCREENSHOT_FIXER_EXIT%
 
           "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-exact-overview-parity.mjs" >> "%FIXER_LOG%" 2>&1
-          set "EXACT_PARITY_EXIT=%ERRORLEVEL%"
+          set "EXACT_OVERVIEW_EXIT=%ERRORLEVEL%"
           type "%FIXER_LOG%"
-          if not "%EXACT_PARITY_EXIT%"=="0" exit /b %EXACT_PARITY_EXIT%
+          if not "%EXACT_OVERVIEW_EXIT%"=="0" exit /b %EXACT_OVERVIEW_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-exact-money-parity.mjs" >> "%FIXER_LOG%" 2>&1
+          set "EXACT_MONEY_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%EXACT_MONEY_EXIT%"=="0" exit /b %EXACT_MONEY_EXIT%
 
           git diff --check >> "%FIXER_LOG%" 2>&1
           if errorlevel 1 (
@@ -67,12 +73,12 @@ jobs:
           )
 
           set "CHANGES="
-          for /f "delims=" %%A in ('git status --porcelain -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewRedesign.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroAdvisorOverview.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt') do set "CHANGES=1"
+          for /f "delims=" %%A in ('git status --porcelain -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewRedesign.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteMoneyForms.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroAdvisorOverview.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt') do set "CHANGES=1"
           if defined CHANGES (
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewRedesign.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroAdvisorOverview.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
-            git commit -m "Restore exact website Overview hierarchy"
+            git add -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewRedesign.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteMoneyForms.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroAdvisorOverview.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt
+            git commit -m "Apply exact website Overview and Money parity"
             git push origin "HEAD:%PR_HEAD_REF%"
           ) else (
             echo Native website parity source is already committed.>> "%FIXER_LOG%"
