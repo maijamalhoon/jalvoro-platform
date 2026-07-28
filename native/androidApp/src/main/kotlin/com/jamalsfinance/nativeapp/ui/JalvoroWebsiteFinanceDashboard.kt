@@ -908,12 +908,15 @@ private fun transactionAmount(entry: LedgerEntry): String = when (entry.type) {
     else -> formatPkrWebsite(entry.amount)
 }
 
-private fun formatPkrWebsite(value: Double): String = runCatching {
-    NumberFormat.getCurrencyInstance(Locale("en", "PK")).apply {
-        currency = Currency.getInstance("PKR")
-        maximumFractionDigits = if (value % 1.0 == 0.0) 0 else 2
+private fun formatPkrWebsite(value: Double): String {
+    val fractionDigits = if (value % 1.0 == 0.0) 0 else 2
+    val formatted = NumberFormat.getNumberInstance(Locale.US).apply {
+        minimumFractionDigits = fractionDigits
+        maximumFractionDigits = fractionDigits
+        isGroupingUsed = true
     }.format(value)
-}.getOrElse { "PKR ${formatNumberWebsite(value)}" }
+    return "Rs $formatted"
+}
 
 private fun formatNumberWebsite(value: Double): String =
     NumberFormat.getNumberInstance(Locale.US).apply { maximumFractionDigits = 2 }.format(value)

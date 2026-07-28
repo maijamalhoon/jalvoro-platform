@@ -44,14 +44,12 @@ internal fun JalvoroOverviewTopBar(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier
-            .statusBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f),
+        modifier = modifier.statusBarsPadding(),
+        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f)),
-        shadowElevation = 2.dp,
+        shadowElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier

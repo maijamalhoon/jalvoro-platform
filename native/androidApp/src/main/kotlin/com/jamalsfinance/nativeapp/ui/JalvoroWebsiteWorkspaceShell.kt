@@ -457,6 +457,7 @@ private fun JalvoroWebsiteFloatingHeader(
             modifier = Modifier
                 .align(Alignment.Center)
                 .widthIn(max = 154.dp),
+            subtitle = "Personal",
             compact = true,
         )
 

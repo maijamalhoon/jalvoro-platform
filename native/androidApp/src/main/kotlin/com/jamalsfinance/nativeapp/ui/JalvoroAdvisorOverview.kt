@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -85,22 +86,38 @@ internal fun JalvoroAdvisorOverview(
             }
 
             if (insights.summaryCards.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    insights.summaryCards.take(4).chunked(2).forEach { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            row.forEach { card ->
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    if (maxWidth < 560.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            insights.summaryCards.take(4).forEach { card ->
                                 JalvoroAdvisorMetric(
                                     label = card.label,
                                     value = card.value,
                                     helper = card.caption,
                                     tone = jalvoroAdvisorTone(card.tone),
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
-                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            insights.summaryCards.take(4).chunked(2).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    row.forEach { card ->
+                                        JalvoroAdvisorMetric(
+                                            label = card.label,
+                                            value = card.value,
+                                            helper = card.caption,
+                                            tone = jalvoroAdvisorTone(card.tone),
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                                }
+                            }
                         }
                     }
                 }
@@ -199,8 +216,7 @@ private fun JalvoroAdvisorMetric(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 3,
             )
             Text(
                 text = helper,

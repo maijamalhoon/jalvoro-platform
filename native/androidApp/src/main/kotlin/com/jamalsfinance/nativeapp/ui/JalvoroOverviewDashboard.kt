@@ -1718,12 +1718,13 @@ private fun InvestmentsAnalyticsState.overviewSnapshotOrNull(): InvestmentsAnaly
 
 private fun formatPkrOrUnavailable(value: Double?): String {
     if (value == null || !value.isFinite()) return "Unavailable"
-    return runCatching {
-        NumberFormat.getCurrencyInstance(Locale("en", "PK")).apply {
-            currency = Currency.getInstance("PKR")
-            maximumFractionDigits = if (value % 1.0 == 0.0) 0 else 2
-        }.format(value)
-    }.getOrElse { "PKR ${"%,.2f".format(Locale.US, value)}" }
+    val fractionDigits = if (value % 1.0 == 0.0) 0 else 2
+    val formatted = NumberFormat.getNumberInstance(Locale.US).apply {
+        minimumFractionDigits = fractionDigits
+        maximumFractionDigits = fractionDigits
+        isGroupingUsed = true
+    }.format(value)
+    return "Rs $formatted"
 }
 
 private fun signedPkr(value: Double): String = when {
