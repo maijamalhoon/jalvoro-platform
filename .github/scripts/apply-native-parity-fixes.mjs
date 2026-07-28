@@ -118,10 +118,159 @@ const userBoundary = `    val providerReady = provider.isNotBlank() && model.isN
     }`;
 replaceBlock(advisorPath, technicalBoundary, userBoundary, "user-facing advisor privacy summary");
 
+const overviewPath = sourcePath("JalvoroOverviewDashboard.kt");
+replaceBlock(
+  overviewPath,
+  "                    top = 76.dp,",
+  "                    top = 92.dp,",
+  "non-overlapping redesigned Overview app bar inset",
+);
+
+const legacyHero = `                            OverviewBalanceHero(
+                                totalBalance = totalBalance,
+                                accountBalance = accountBalance,
+                                portfolioValue = portfolioValue,
+                                compact = !wide,
+                                actions = listOf(
+                                    OverviewQuickAction(
+                                        label = "Income",
+                                        description = "Open Money to add income",
+                                        icon = JalvoroIcons.Income,
+                                        tone = OverviewIncome,
+                                        onClick = onOpenFinance,
+                                    ),
+                                    OverviewQuickAction(
+                                        label = "Expense",
+                                        description = "Open Money to add an expense",
+                                        icon = JalvoroIcons.Expenses,
+                                        tone = OverviewExpense,
+                                        onClick = onOpenFinance,
+                                    ),
+                                    OverviewQuickAction(
+                                        label = "Transfer",
+                                        description = "Open Money to transfer funds",
+                                        icon = JalvoroIcons.Transfer,
+                                        tone = OverviewTransfer,
+                                        onClick = onOpenFinance,
+                                    ),
+                                    OverviewQuickAction(
+                                        label = "Invest",
+                                        description = "Open Investments to add a holding",
+                                        icon = JalvoroIcons.Investments,
+                                        tone = OverviewInvestment,
+                                        onClick = onOpenInvestments,
+                                    ),
+                                ),
+                            )`;
+const redesignedHero = `                            JalvoroOverviewHeroCard(
+                                totalBalance = totalBalance,
+                                accountBalance = accountBalance,
+                                portfolioValue = portfolioValue,
+                                compact = !wide,
+                                onIncome = onOpenFinance,
+                                onExpense = onOpenFinance,
+                                onTransfer = onOpenFinance,
+                                onInvest = onOpenInvestments,
+                            )`;
+replaceBlock(overviewPath, legacyHero, redesignedHero, "premium Overview balance hero and action dock");
+
+const legacyMetrics = `                    itemsIndexed(
+                        items = metricRows,
+                        key = { _, row -> row.joinToString("|") { it.title } },
+                    ) { rowIndex, row ->
+                        JalvoroEntrance(
+                            index = 2 + rowIndex,
+                            key = row.joinToString("|") { "\${it.title}:\${it.amount}:\${it.previousAmount}" },
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { metric ->
+                                    OverviewMetricCard(
+                                        metric = metric,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }`;
+const redesignedMetrics = `                    item {
+                        JalvoroEntrance(index = 2, key = "overview-monthly-summary") {
+                            JalvoroOverviewMonthlyPanel(
+                                savings = currentMonth?.netSavings,
+                                income = currentMonth?.income,
+                                expenses = currentMonth?.expenses,
+                                investment = investmentContribution,
+                            )
+                        }
+                    }`;
+replaceBlock(overviewPath, legacyMetrics, redesignedMetrics, "single-card Overview monthly summary");
+
+const legacyPulse = `                    item {
+                        JalvoroEntrance(index = 4, key = "overview-pulse-heading") {
+                            OverviewSectionHeading(
+                                title = "Today’s financial pulse",
+                                description = "Live values from today’s owner-scoped activity.",
+                            )
+                        }
+                    }
+
+                    itemsIndexed(
+                        items = pulseRows,
+                        key = { _, row -> row.joinToString("|") { it.title } },
+                    ) { rowIndex, row ->
+                        JalvoroEntrance(index = 5 + rowIndex, key = row.joinToString("|") { it.value }) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { pulse ->
+                                    OverviewPulseCard(
+                                        pulse = pulse,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (wide && row.size < 4) {
+                                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                                }
+                            }
+                        }
+                    }`;
+const redesignedPulse = `                    item {
+                        JalvoroEntrance(index = 3, key = "overview-today-panel") {
+                            JalvoroOverviewTodayPanel(
+                                income = today?.income,
+                                expenses = today?.expenses,
+                                net = today?.netSavings,
+                                daysRemaining = period.remainingDays,
+                            )
+                        }
+                    }`;
+replaceBlock(overviewPath, legacyPulse, redesignedPulse, "compact consolidated Overview today panel");
+
+const legacyTopBar = `            OverviewFloatingControls(
+                refreshing = refreshing,
+                onMenu = { scope.launch { drawerState.open() } },
+                onRefresh = { refreshRequest += 1 },
+                onSettings = onOpenSettings,
+                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+            )`;
+const redesignedTopBar = `            JalvoroOverviewTopBar(
+                refreshing = refreshing,
+                onMenu = { scope.launch { drawerState.open() } },
+                onRefresh = { refreshRequest += 1 },
+                onSettings = onOpenSettings,
+                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+            )`;
+replaceBlock(overviewPath, legacyTopBar, redesignedTopBar, "structured Overview top app bar");
+
 const contracts = [
   ["JamalsFinanceTheme.kt", ["fun JamalsFinanceTheme("]],
   ["JalvoroWebsiteWorkspaceShell.kt", ["top = 76.dp", ".widthIn(max = 154.dp)", "shadowElevation = 1.dp"]],
-  ["JalvoroOverviewDashboard.kt", ["top = 76.dp", "Modifier.size(48.dp)", "modifier.height(128.dp)"]],
+  ["JalvoroOverviewDashboard.kt", ["top = 92.dp", "JalvoroOverviewHeroCard(", "JalvoroOverviewMonthlyPanel(", "JalvoroOverviewTodayPanel(", "JalvoroOverviewTopBar("]],
+  ["JalvoroOverviewRedesign.kt", ["fun JalvoroOverviewHeroCard(", "fun JalvoroOverviewMonthlyPanel(", "return \"Rs $formatted\""]],
   ["JalvoroWebsiteFinanceDashboard.kt", [twoTabs, "style = MaterialTheme.typography.headlineSmall"]],
   ["JalvoroWebsiteModuleRoot.kt", ["horizontalArrangement = Arrangement.spacedBy(14.dp)", "maxLines = 2"]],
   ["JalvoroAdvisorOverview.kt", ["Privacy and guidance", "Your authenticated finance summary only"]],
@@ -141,4 +290,4 @@ for (const [name, requiredTokens] of contracts) {
   console.log(`Verified committed native UI source: ${name}`);
 }
 
-console.log("Screenshot-driven native UI polish is committed directly.");
+console.log("Screenshot-driven native Overview redesign is committed directly.");
