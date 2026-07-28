@@ -1,0 +1,59 @@
+name: Command Center live verification
+
+on:
+  push:
+    branches:
+      - agent/command-center-live-verify-20260728
+    paths:
+      - ".github/workflows/command-center-live-verification.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live-revision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_SHA: 180bee9b863a0d611e1ef3108a77ba6398d48492
+    steps:
+      - name: Probe known production endpoints
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p live-verification
+          matched=0
+          endpoints=(
+            "https://jamals-finance-sable.vercel.app"
+            "https://jalvoro-app.vercel.app"
+          )
+
+          for origin in "${endpoints[@]}"; do
+            name=$(printf '%s' "$origin" | sed 's#https://##; s#[^A-Za-z0-9._-]#_#g')
+            body="live-verification/${name}.json"
+            headers="live-verification/${name}.headers"
+            status=$(curl --silent --show-error --location \
+              --connect-timeout 15 --max-time 30 \
+              --dump-header "$headers" --output "$body" \
+              --write-out '%{http_code}' \
+              "$origin/api/app-version" || true)
+            printf '%s\t%s\n' "$origin" "$status" | tee -a live-verification/status.tsv
+
+            version=$(jq -r '.version // empty' "$body" 2>/dev/null || true)
+            printf '%s\t%s\n' "$origin" "$version" | tee -a live-verification/versions.tsv
+            if [[ "$status" == "200" && "$version" == "$EXPECTED_SHA" ]]; then
+              printf '%s\n' "$origin" > live-verification/matched-origin.txt
+              matched=1
+            fi
+          done
+
+          test "$matched" -eq 1
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: command-center-live-verification
+          path: live-verification
+          if-no-files-found: error
+          retention-days: 2
