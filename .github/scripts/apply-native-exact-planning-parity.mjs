@@ -148,6 +148,19 @@ replaceExactly(
   "website Payables filter-before-search order",
 );
 
+const planningOverviewPath = path.join(uiRoot, "JalvoroPlanningParityOverview.kt");
+const invalidWeightImport = "import androidx.compose.foundation.layout.weight\n";
+const planningOverviewSource = fs.readFileSync(planningOverviewPath, "utf8");
+if (planningOverviewSource.includes(invalidWeightImport)) {
+  fs.writeFileSync(
+    planningOverviewPath,
+    planningOverviewSource.replace(invalidWeightImport, ""),
+  );
+  console.log("Removed invalid explicit Compose weight import.");
+} else {
+  console.log("Verified Compose weight uses RowScope and ColumnScope member extensions.");
+}
+
 for (const [fileName, requiredTokens] of [
   ["JalvoroPlanningGoals.kt", ["JalvoroGoalsParityOverview(snapshot = snapshot)"]],
   ["JalvoroPlanningPayables.kt", ["JalvoroPayablesParityOverview(", "key = \"payables-filters\"", "key = \"payables-search\""]],
@@ -159,6 +172,11 @@ for (const [fileName, requiredTokens] of [
       throw new Error(`Required exact Planning parity token is missing from ${fileName}: ${token}`);
     }
   }
+}
+
+const finalPlanningOverview = fs.readFileSync(planningOverviewPath, "utf8");
+if (finalPlanningOverview.includes(invalidWeightImport)) {
+  throw new Error("Invalid explicit Compose weight import remains in Planning parity source.");
 }
 
 console.log("Website Planning overview hierarchy is enforced for the native build.");
