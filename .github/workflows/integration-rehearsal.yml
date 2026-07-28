@@ -87,6 +87,17 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
+          accounting_path = Path("supabase/migrations/20260722070000_business_purchases_accounts_payable.sql")
+          accounting = accounting_path.read_text()
+          account_failure = """    raise exception 'Account is inactive, restricted, or invalid for this journal source.'
+              using errcode = '23514';"""
+          account_diagnostic = """    raise exception 'Account invalid for journal source: source=%, account_id=%, system_key=%, account_type=%',
+              entry_source_type,new.account_id,account_system_key,account_type
+              using errcode = '23514';"""
+          if account_failure not in accounting:
+              raise SystemExit("Journal account diagnostic patch target changed")
+          accounting_path.write_text(accounting.replace(account_failure, account_diagnostic, 1))
+
           migration_path = Path("supabase/migrations/20260727070000_pos_operations_transaction_bridge.sql")
           migration = migration_path.read_text()
           declaration = "  caught_state text;\n  purchase_record jsonb;"
