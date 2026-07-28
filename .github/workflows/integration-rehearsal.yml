@@ -85,6 +85,28 @@ jobs:
         run: |
           set -Eeuo pipefail
           chmod +x scripts/verify-supabase-integration-rehearsal.sh
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("supabase/migrations/20260727070000_pos_operations_transaction_bridge.sql")
+          text = path.read_text()
+          declaration = "  caught_state text;\n  purchase_record jsonb;"
+          diagnostic_declaration = "  caught_state text;\n  caught_message text;\n  purchase_record jsonb;"
+          diagnostics = "    get stacked diagnostics caught_state=returned_sqlstate;"
+          diagnostic_details = """    get stacked diagnostics
+              caught_state=returned_sqlstate,
+              caught_message=message_text;"""
+          rejected = "    return jsonb_build_object('ok',false,'error',normalized_operation||'_rejected');"
+          diagnostic_rejected = """    raise exception 'POS operation diagnostic [%]: %', caught_state, caught_message
+              using errcode=coalesce(caught_state,'P0001');"""
+          if declaration not in text or diagnostics not in text or rejected not in text:
+              raise SystemExit("POS refund diagnostic patch target changed")
+          path.write_text(
+              text.replace(declaration, diagnostic_declaration, 1)
+                  .replace(diagnostics, diagnostic_details, 1)
+                  .replace(rejected, diagnostic_rejected, 1)
+          )
+          PY
           log_path="${GITHUB_WORKSPACE}/integration-rehearsal.log"
           set +e
           REHEARSAL_LOG_FILE=/dev/null \
