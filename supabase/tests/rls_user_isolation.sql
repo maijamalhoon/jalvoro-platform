@@ -67,8 +67,34 @@ values
   );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+
+-- Realm restrictions are intentionally restrictive and are ANDed with the
+-- ownership policies. Claim a valid Individual realm for both fixture users so
+-- this test exercises row ownership instead of failing because the caller or
+-- reassignment target has no product realm.
+select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","email":"security-user-a@example.invalid"}',
+  true
+);
+select public.claim_account_realm('individual');
+
+select set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated","email":"security-user-b@example.invalid"}',
+  true
+);
+select public.claim_account_realm('individual');
+
+select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","email":"security-user-a@example.invalid"}',
+  true
+);
 
 do $$
 begin
