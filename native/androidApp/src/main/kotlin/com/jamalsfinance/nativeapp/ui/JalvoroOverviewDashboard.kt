@@ -326,7 +326,7 @@ fun JalvoroOverviewDashboard(
                 contentPadding = PaddingValues(
                     start = horizontalPadding,
                     end = horizontalPadding,
-                    top = 76.dp,
+                    top = 92.dp,
                     bottom = 36.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -356,96 +356,38 @@ fun JalvoroOverviewDashboard(
                 } else {
                     item {
                         JalvoroEntrance(index = 1, key = "overview-balance:$totalBalance") {
-                            OverviewBalanceHero(
+                            JalvoroOverviewHeroCard(
                                 totalBalance = totalBalance,
                                 accountBalance = accountBalance,
                                 portfolioValue = portfolioValue,
                                 compact = !wide,
-                                actions = listOf(
-                                    OverviewQuickAction(
-                                        label = "Income",
-                                        description = "Open Money to add income",
-                                        icon = JalvoroIcons.Income,
-                                        tone = OverviewIncome,
-                                        onClick = onOpenFinance,
-                                    ),
-                                    OverviewQuickAction(
-                                        label = "Expense",
-                                        description = "Open Money to add an expense",
-                                        icon = JalvoroIcons.Expenses,
-                                        tone = OverviewExpense,
-                                        onClick = onOpenFinance,
-                                    ),
-                                    OverviewQuickAction(
-                                        label = "Transfer",
-                                        description = "Open Money to transfer funds",
-                                        icon = JalvoroIcons.Transfer,
-                                        tone = OverviewTransfer,
-                                        onClick = onOpenFinance,
-                                    ),
-                                    OverviewQuickAction(
-                                        label = "Invest",
-                                        description = "Open Investments to add a holding",
-                                        icon = JalvoroIcons.Investments,
-                                        tone = OverviewInvestment,
-                                        onClick = onOpenInvestments,
-                                    ),
-                                ),
+                                onIncome = onOpenFinance,
+                                onExpense = onOpenFinance,
+                                onTransfer = onOpenFinance,
+                                onInvest = onOpenInvestments,
                             )
-                        }
-                    }
-
-                    itemsIndexed(
-                        items = metricRows,
-                        key = { _, row -> row.joinToString("|") { it.title } },
-                    ) { rowIndex, row ->
-                        JalvoroEntrance(
-                            index = 2 + rowIndex,
-                            key = row.joinToString("|") { "${it.title}:${it.amount}:${it.previousAmount}" },
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                row.forEach { metric ->
-                                    OverviewMetricCard(
-                                        metric = metric,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
-                            }
                         }
                     }
 
                     item {
-                        JalvoroEntrance(index = 4, key = "overview-pulse-heading") {
-                            OverviewSectionHeading(
-                                title = "Today’s financial pulse",
-                                description = "Live values from today’s owner-scoped activity.",
+                        JalvoroEntrance(index = 2, key = "overview-monthly-summary") {
+                            JalvoroOverviewMonthlyPanel(
+                                savings = currentMonth?.netSavings,
+                                income = currentMonth?.income,
+                                expenses = currentMonth?.expenses,
+                                investment = investmentContribution,
                             )
                         }
                     }
 
-                    itemsIndexed(
-                        items = pulseRows,
-                        key = { _, row -> row.joinToString("|") { it.title } },
-                    ) { rowIndex, row ->
-                        JalvoroEntrance(index = 5 + rowIndex, key = row.joinToString("|") { it.value }) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                row.forEach { pulse ->
-                                    OverviewPulseCard(
-                                        pulse = pulse,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                if (wide && row.size < 4) {
-                                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-                                }
-                            }
+                    item {
+                        JalvoroEntrance(index = 3, key = "overview-today-panel") {
+                            JalvoroOverviewTodayPanel(
+                                income = today?.income,
+                                expenses = today?.expenses,
+                                net = today?.netSavings,
+                                daysRemaining = period.remainingDays,
+                            )
                         }
                     }
 
@@ -537,7 +479,7 @@ fun JalvoroOverviewDashboard(
                 }
             }
 
-            OverviewFloatingControls(
+            JalvoroOverviewTopBar(
                 refreshing = refreshing,
                 onMenu = { scope.launch { drawerState.open() } },
                 onRefresh = { refreshRequest += 1 },
