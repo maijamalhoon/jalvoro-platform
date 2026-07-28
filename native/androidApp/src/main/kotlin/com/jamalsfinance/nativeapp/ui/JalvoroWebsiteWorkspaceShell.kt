@@ -82,6 +82,7 @@ internal fun JalvoroWebsiteWorkspaceShell(
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val layout = LocalJalvoroLayout.current
 
     fun select(action: () -> Unit) {
         scope.launch {
@@ -115,8 +116,8 @@ internal fun JalvoroWebsiteWorkspaceShell(
         ) {
             content(
                 PaddingValues(
-                    top = 76.dp,
-                    bottom = 24.dp,
+                    top = layout.workspaceHeaderOffset,
+                    bottom = layout.bottomSafePadding,
                 ),
             )
             JalvoroWebsiteFloatingHeader(
@@ -194,7 +195,7 @@ private fun JalvoroWebsiteDrawer(
         modifier = Modifier
             .fillMaxHeight()
             .fillMaxWidth(0.9f)
-            .widthIn(max = 360.dp)
+            .widthIn(max = LocalJalvoroLayout.current.drawerMaxWidth)
             .navigationBarsPadding(),
         drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -412,6 +413,8 @@ private fun JalvoroWebsiteFloatingHeader(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val layout = LocalJalvoroLayout.current
+    val painter = LocalJalvoroPainter.current
     Box(
         modifier = modifier
             .statusBarsPadding()
@@ -421,17 +424,14 @@ private fun JalvoroWebsiteFloatingHeader(
         Surface(
             onClick = onMenu,
             modifier = Modifier
-                .size(48.dp)
+                .size(layout.iconControlSize)
                 .align(Alignment.CenterStart)
                 .semantics { contentDescription = "Open navigation menu" },
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f),
+            color = painter.elevatedCardColor.copy(alpha = 0.98f),
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
-            ),
-            shadowElevation = 1.dp,
+            border = BorderStroke(1.dp, painter.borderColor),
+            shadowElevation = painter.floatingElevation,
         ) {
             val lineColor = MaterialTheme.colorScheme.onSurface
             Canvas(modifier = Modifier.fillMaxSize().padding(13.dp)) {
@@ -464,17 +464,14 @@ private fun JalvoroWebsiteFloatingHeader(
         Surface(
             onClick = onSettings,
             modifier = Modifier
-                .size(48.dp)
+                .size(layout.iconControlSize)
                 .align(Alignment.CenterEnd)
                 .semantics { contentDescription = "Open profile and settings" },
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f),
+            color = painter.elevatedCardColor.copy(alpha = 0.98f),
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
-            ),
-            shadowElevation = 1.dp,
+            border = BorderStroke(1.dp, painter.borderColor),
+            shadowElevation = painter.floatingElevation,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(

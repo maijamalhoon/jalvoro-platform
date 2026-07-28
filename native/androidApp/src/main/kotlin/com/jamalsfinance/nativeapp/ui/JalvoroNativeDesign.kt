@@ -5,6 +5,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -156,17 +158,13 @@ fun JalvoroSurfaceCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val painter = LocalJalvoroPainter.current
     Card(
         modifier = modifier.jalvoroAnimateContentSize(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = painter.cardColor),
+        border = BorderStroke(width = 1.dp, color = painter.borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = painter.cardElevation),
     ) {
         content()
     }
@@ -180,10 +178,15 @@ fun JalvoroIconAction(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val layout = LocalJalvoroLayout.current
+    val painter = LocalJalvoroPainter.current
+    val shape = MaterialTheme.shapes.small
     IconButton(
         onClick = onClick,
         modifier = modifier
-            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .sizeIn(minWidth = layout.iconControlSize, minHeight = layout.iconControlSize)
+            .background(painter.controlColor, shape)
+            .border(BorderStroke(1.dp, painter.borderColor), shape)
             .semantics { contentDescription = label },
         enabled = enabled,
     ) {
@@ -208,17 +211,17 @@ fun JalvoroFeedbackCard(
     tone: JalvoroFeedbackTone,
     modifier: Modifier = Modifier,
 ) {
-    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val semantic = LocalJalvoroSemanticColors.current
     val container = when (tone) {
         JalvoroFeedbackTone.Info -> MaterialTheme.colorScheme.primaryContainer
         JalvoroFeedbackTone.Success -> MaterialTheme.colorScheme.tertiaryContainer
-        JalvoroFeedbackTone.Warning -> if (dark) Color(0xFF3B2D13) else Color(0xFFFFF3D6)
+        JalvoroFeedbackTone.Warning -> semantic.warning.copy(alpha = 0.14f)
         JalvoroFeedbackTone.Danger -> MaterialTheme.colorScheme.errorContainer
     }
     val contentColor = when (tone) {
         JalvoroFeedbackTone.Info -> MaterialTheme.colorScheme.onPrimaryContainer
         JalvoroFeedbackTone.Success -> MaterialTheme.colorScheme.onTertiaryContainer
-        JalvoroFeedbackTone.Warning -> if (dark) Color(0xFFFFDEA1) else Color(0xFF6B4705)
+        JalvoroFeedbackTone.Warning -> semantic.warning
         JalvoroFeedbackTone.Danger -> MaterialTheme.colorScheme.onErrorContainer
     }
 
@@ -255,10 +258,11 @@ fun JalvoroNavigationBar(
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalJalvoroMotion.current
+    val painter = LocalJalvoroPainter.current
     NavigationBar(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 3.dp,
+        containerColor = painter.elevatedCardColor,
+        tonalElevation = painter.floatingElevation,
     ) {
         destinations.forEach { destination ->
             val iconScale by animateFloatAsState(

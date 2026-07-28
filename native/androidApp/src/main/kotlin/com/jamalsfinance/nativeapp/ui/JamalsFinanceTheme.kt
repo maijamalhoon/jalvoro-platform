@@ -254,6 +254,7 @@ fun JamalsFinanceTheme(
         colorScheme = colors,
         typography = JalvoroTypography,
         shapes = JalvoroShapes,
-        content = content,
-    )
+    ) {
+        JalvoroDesignSystem(content = content)
+    }
 }
