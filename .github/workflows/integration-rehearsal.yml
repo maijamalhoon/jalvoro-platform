@@ -84,9 +84,13 @@ jobs:
           set -Eeuo pipefail
           chmod +x scripts/verify-supabase-integration-rehearsal.sh
           log_path="${GITHUB_WORKSPACE}/integration-rehearsal.log"
-          : > "$log_path"
-          REHEARSAL_LOG_FILE="$log_path" \
-            bash scripts/verify-supabase-integration-rehearsal.sh
+          set +e
+          REHEARSAL_LOG_FILE=/dev/null \
+            bash scripts/verify-supabase-integration-rehearsal.sh \
+            2>&1 | tee "$log_path"
+          rehearsal_status=${PIPESTATUS[0]}
+          set -e
+          test "$rehearsal_status" -eq 0
           test -s "$log_path"
 
       - name: Upload rehearsal evidence
