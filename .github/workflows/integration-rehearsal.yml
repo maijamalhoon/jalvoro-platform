@@ -95,8 +95,19 @@ jobs:
               entry_source_type,new.account_id,account_system_key,account_type
               using errcode = '23514';"""
           if account_failure not in accounting:
-              raise SystemExit("Journal account diagnostic patch target changed")
+              raise SystemExit("Initial journal account diagnostic patch target changed")
           accounting_path.write_text(accounting.replace(account_failure, account_diagnostic, 1))
+
+          weighted_path = Path("supabase/migrations/20260722082000_add_weighted_average_stock_posting.sql")
+          weighted = weighted_path.read_text()
+          weighted_failure = """    raise exception 'Account is inactive, restricted, or invalid for this journal source.'
+              using errcode='23514';"""
+          weighted_diagnostic = """    raise exception 'Account invalid for journal source: source=%, account_id=%, system_key=%',
+              entry_source_type,new.account_id,account_system_key
+              using errcode='23514';"""
+          if weighted_failure not in weighted:
+              raise SystemExit("Active journal account diagnostic patch target changed")
+          weighted_path.write_text(weighted.replace(weighted_failure, weighted_diagnostic, 1))
 
           migration_path = Path("supabase/migrations/20260727070000_pos_operations_transaction_bridge.sql")
           migration = migration_path.read_text()
