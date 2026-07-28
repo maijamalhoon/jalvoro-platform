@@ -161,6 +161,38 @@ if (planningOverviewSource.includes(invalidWeightImport)) {
   console.log("Verified Compose weight uses RowScope and ColumnScope member extensions.");
 }
 
+// The floating menu and profile controls intentionally start with identical
+// painter blocks. Anchor the first occurrence here so the global painter can
+// treat menu and profile as two deterministic passes instead of rejecting an
+// otherwise valid duplicate source block.
+const workspaceShellPath = path.join(uiRoot, "JalvoroWebsiteWorkspaceShell.kt");
+let workspaceShellSource = fs.readFileSync(workspaceShellPath, "utf8");
+const legacyFloatingControlPaint = `            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.82f),
+            ),
+            shadowElevation = 1.dp,`;
+const tokenizedFloatingControlPaint = `            color = painter.elevatedCardColor.copy(alpha = 0.98f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(1.dp, painter.borderColor),
+            shadowElevation = painter.floatingElevation,`;
+if (!workspaceShellSource.includes(tokenizedFloatingControlPaint)) {
+  const firstControlIndex = workspaceShellSource.indexOf(legacyFloatingControlPaint);
+  if (firstControlIndex < 0) {
+    throw new Error("Floating menu control painter block is missing.");
+  }
+  workspaceShellSource =
+    workspaceShellSource.slice(0, firstControlIndex) +
+    tokenizedFloatingControlPaint +
+    workspaceShellSource.slice(firstControlIndex + legacyFloatingControlPaint.length);
+  fs.writeFileSync(workspaceShellPath, workspaceShellSource);
+  console.log("Anchored floating menu control painter for deterministic global painting.");
+} else {
+  console.log("Verified floating menu control painter anchor.");
+}
+
 for (const [fileName, requiredTokens] of [
   ["JalvoroPlanningGoals.kt", ["JalvoroGoalsParityOverview(snapshot = snapshot)"]],
   ["JalvoroPlanningPayables.kt", ["JalvoroPayablesParityOverview(", "key = \"payables-filters\"", "key = \"payables-search\""]],
