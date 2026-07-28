@@ -22,6 +22,33 @@ jobs:
     env:
       EXPECTED_SHA: 180bee9b863a0d611e1ef3108a77ba6398d48492
     steps:
+      - name: Check out exact merged revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 180bee9b863a0d611e1ef3108a77ba6398d48492
+          persist-credentials: false
+          show-progress: false
+
+      - name: Export exact source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=.next \
+            --exclude=coverage \
+            --exclude=tsconfig.tsbuildinfo \
+            -czf "${RUNNER_TEMP}/jalvoro-command-center-source.tgz" .
+
+      - name: Upload exact source
+        uses: actions/upload-artifact@v4
+        with:
+          name: jalvoro-command-center-source
+          path: ${{ runner.temp }}/jalvoro-command-center-source.tgz
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Probe known production endpoints
         shell: bash
         run: |
