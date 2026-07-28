@@ -74,15 +74,11 @@ internal fun JalvoroWebsiteAccountDialog(
     var busy by remember { mutableStateOf(false) }
 
     JalvoroWebsiteFormDialog(
-        title = if (account == null) "Add account" else "Edit account",
-        description = if (account == null) {
-            "Create an owner-scoped account. Opening balance is converted to PKR once."
-        } else {
-            "Update account identity. Existing balance and ledger history remain unchanged."
-        },
+        title = if (account == null) "Account" else "Edit Account",
+        description = "",
         busy = busy,
         error = error,
-        submitLabel = if (account == null) "Add account" else "Save changes",
+        submitLabel = if (account == null) "Create Account" else "Update Account",
         onDismiss = onDismiss,
         onSubmit = {
             val cleanName = name.trim()
@@ -120,27 +116,37 @@ internal fun JalvoroWebsiteAccountDialog(
             }
         },
     ) {
-        JalvoroWebsiteTextField(name, { name = it }, "Account name", !busy)
-        JalvoroWebsiteTextField(accountNumber, { accountNumber = it }, "Account number (optional)", !busy)
-        Text("Account type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("savings" to "Savings", "current" to "Current").forEach { option ->
-                FilterChip(
-                    selected = accountKind == option.first,
-                    onClick = { accountKind = option.first },
-                    enabled = !busy,
-                    label = { Text(option.second) },
-                )
-            }
-        }
+        JalvoroWebsiteTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = "Account Name",
+            enabled = !busy,
+            placeholder = "e.g. UBL, Bank of America, JazzCash",
+        )
+        JalvoroWebsiteTextField(
+            value = accountNumber,
+            onValueChange = { accountNumber = it },
+            label = "Account Number (Optional)",
+            enabled = !busy,
+            keyboardType = KeyboardType.Number,
+            placeholder = "e.g. 0123456789",
+        )
+        JalvoroWebsiteChoiceField(
+            label = "Account Type",
+            selectedKey = accountKind,
+            options = listOf("savings" to "Savings", "current" to "Current"),
+            enabled = !busy,
+            onSelected = { accountKind = it },
+        )
+        JalvoroWebsiteTextField(
+            value = if (account == null) openingAmount else account.balance.moneyInput(),
+            onValueChange = { if (account == null) openingAmount = it },
+            label = if (account == null) "Opening Balance (${currency})" else "Current Balance (PKR)",
+            enabled = account == null && !busy,
+            keyboardType = KeyboardType.Decimal,
+            placeholder = "0",
+        )
         if (account == null) {
-            JalvoroWebsiteTextField(
-                openingAmount,
-                { openingAmount = it },
-                "Opening amount",
-                !busy,
-                KeyboardType.Decimal,
-            )
             JalvoroWebsiteChoiceField(
                 label = "Currency",
                 selectedKey = currency,
@@ -150,11 +156,11 @@ internal fun JalvoroWebsiteAccountDialog(
             )
             if (currency != "PKR") {
                 JalvoroWebsiteTextField(
-                    exchangeRate,
-                    { exchangeRate = it },
-                    "Exchange rate to PKR",
-                    !busy,
-                    KeyboardType.Decimal,
+                    value = exchangeRate,
+                    onValueChange = { exchangeRate = it },
+                    label = "Exchange rate to PKR",
+                    enabled = !busy,
+                    keyboardType = KeyboardType.Decimal,
                 )
             }
         }
@@ -194,7 +200,7 @@ internal fun JalvoroWebsiteTransferDialog(
                 fromId == toId -> "Choose two different accounts."
                 parsedAmount == null || parsedAmount <= 0 -> "Enter a valid amount."
                 currency != "PKR" && (parsedRate == null || parsedRate <= 0) -> "Enter a valid PKR exchange rate."
-                !isDateKey(date) -> "Use a valid YYYY-MM-DD date."
+                !isDateKey(date.trim()) -> "Use a valid YYYY-MM-DD date."
                 else -> null
             }
             if (error == null) {
@@ -207,7 +213,7 @@ internal fun JalvoroWebsiteTransferDialog(
                             amountOriginal = parsedAmount ?: 0.0,
                             currency = currency,
                             exchangeRateToPkr = if (currency == "PKR") 1.0 else parsedRate ?: 1.0,
-                            date = date,
+                            date = date.trim(),
                             note = note.trim().ifBlank { null },
                             reference = reference.trim().ifBlank { null },
                         ),
@@ -224,7 +230,13 @@ internal fun JalvoroWebsiteTransferDialog(
         val accountOptions = accounts.map { it.id to "${it.name} • ${formatPkrCompact(it.balance)}" }
         JalvoroWebsiteChoiceField("From account", fromId, accountOptions, !busy) { fromId = it }
         JalvoroWebsiteChoiceField("To account", toId, accountOptions, !busy) { toId = it }
-        JalvoroWebsiteTextField(amount, { amount = it }, "Amount", !busy, KeyboardType.Decimal)
+        JalvoroWebsiteTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = "Amount",
+            enabled = !busy,
+            keyboardType = KeyboardType.Decimal,
+        )
         JalvoroWebsiteChoiceField(
             "Currency",
             currency,
@@ -265,7 +277,9 @@ internal fun JalvoroWebsiteTransactionDialog(
     var accountId by remember(editable?.id) {
         mutableStateOf(editable?.accountId ?: accounts.firstOrNull()?.id.orEmpty())
     }
-    var date by remember(editable?.id) { mutableStateOf(editable?.date ?: todayKey()) }
+    var date by remember(editable?.id) {
+        mutableStateOf(editable?.date?.toDisplayDate() ?: todayDisplayDate())
+    }
     var note by remember(editable?.id) { mutableStateOf(editable?.note.orEmpty()) }
     var sourceName by remember(editable?.id) { mutableStateOf(editable?.sourceName.orEmpty()) }
     var personName by remember(editable?.id) { mutableStateOf(editable?.personName.orEmpty()) }
@@ -282,11 +296,19 @@ internal fun JalvoroWebsiteTransactionDialog(
     }
 
     JalvoroWebsiteFormDialog(
-        title = if (editable == null) "Add transaction" else "Edit transaction",
-        description = "Record owner-scoped income or expense. PKR conversion and balance updates remain server-authoritative.",
+        title = if (editable == null) {
+            if (type == "income") "Income" else "Expense"
+        } else {
+            if (type == "income") "Edit Income" else "Edit Expense"
+        },
+        description = "",
         busy = busy,
         error = error,
-        submitLabel = if (editable == null) "Save transaction" else "Save changes",
+        submitLabel = if (editable == null) {
+            if (type == "income") "Add Income" else "Add Expense"
+        } else {
+            if (type == "income") "Update Income" else "Update Expense"
+        },
         onDismiss = onDismiss,
         onSubmit = {
             val parsedAmount = amount.toDoubleOrNull()
@@ -297,7 +319,7 @@ internal fun JalvoroWebsiteTransactionDialog(
                 accountId.isBlank() -> "Choose an account."
                 categoryId.isBlank() -> "Choose a category."
                 currency != "PKR" && (parsedRate == null || parsedRate <= 0) -> "Enter a valid PKR exchange rate."
-                !isDateKey(date) -> "Use a valid YYYY-MM-DD date."
+                parseDisplayDate(date) == null -> "Enter a valid date as DD/MM/YYYY."
                 else -> null
             }
             if (error == null) {
@@ -311,7 +333,7 @@ internal fun JalvoroWebsiteTransactionDialog(
                             exchangeRateToPkr = if (currency == "PKR") 1.0 else parsedRate ?: 1.0,
                             categoryId = categoryId,
                             accountId = accountId,
-                            date = date,
+                            date = parseDisplayDate(date) ?: todayKey(),
                             note = note.trim().ifBlank { null },
                             sourceName = sourceName.trim().ifBlank { null },
                             personName = personName.trim().ifBlank { null },
@@ -342,7 +364,14 @@ internal fun JalvoroWebsiteTransactionDialog(
                 )
             }
         }
-        JalvoroWebsiteTextField(amount, { amount = it }, "Amount", !busy, KeyboardType.Decimal)
+        JalvoroWebsiteTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = "Amount (${currency})",
+            enabled = !busy,
+            keyboardType = KeyboardType.Decimal,
+            placeholder = "0",
+        )
         JalvoroWebsiteChoiceField(
             "Currency",
             currency,
@@ -370,15 +399,22 @@ internal fun JalvoroWebsiteTransactionDialog(
             matchingCategories.map { it.id to it.name },
             !busy,
         ) { categoryId = it }
-        JalvoroWebsiteTextField(date, { date = it }, "Date (YYYY-MM-DD)", !busy)
-        if (type == "income") {
-            JalvoroWebsiteTextField(sourceName, { sourceName = it }, "Income source (optional)", !busy)
-        } else {
-            JalvoroWebsiteTextField(itemName, { itemName = it }, "Item (optional)", !busy)
-            JalvoroWebsiteTextField(personName, { personName = it }, "Person or merchant (optional)", !busy)
-        }
-        JalvoroWebsiteTextField(note, { note = it }, "Note (optional)", !busy)
-        JalvoroWebsiteTextField(reference, { reference = it }, "Reference (optional)", !busy)
+        JalvoroWebsiteTextField(
+            value = date,
+            onValueChange = { date = it },
+            label = "Date",
+            enabled = !busy,
+            keyboardType = KeyboardType.Number,
+            placeholder = "DD/MM/YYYY",
+        )
+        JalvoroWebsiteTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = "Note (Optional)",
+            enabled = !busy,
+            placeholder = "What was this for?",
+            singleLine = false,
+        )
     }
 }
 
@@ -405,22 +441,39 @@ private fun JalvoroWebsiteFormDialog(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(13.dp),
             ) {
-                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-                Text(
-                    description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (error != null) JalvoroFeedbackCard(error, JalvoroFeedbackTone.Danger)
-                content()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") }
-                    Spacer(Modifier.size(8.dp))
-                    Button(onClick = onSubmit, enabled = !busy) { Text(submitLabel) }
+                    Text(
+                        title,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
+                    )
+                    JalvoroIconAction(
+                        icon = JalvoroIcons.Close,
+                        label = "Close dialog",
+                        enabled = !busy,
+                        onClick = onDismiss,
+                    )
+                }
+                if (description.isNotBlank()) {
+                    Text(
+                        description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (error != null) JalvoroFeedbackCard(error, JalvoroFeedbackTone.Danger)
+                content()
+                Button(
+                    onClick = onSubmit,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(submitLabel)
                 }
             }
         }
@@ -434,14 +487,22 @@ private fun JalvoroWebsiteTextField(
     label: String,
     enabled: Boolean,
     keyboardType: KeyboardType = KeyboardType.Text,
+    placeholder: String? = null,
+    singleLine: Boolean = true,
 ) {
+    val placeholderContent: (@Composable () -> Unit)? = placeholder?.let { hint ->
+        { Text(hint) }
+    }
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         enabled = enabled,
         label = { Text(label) },
-        singleLine = true,
+        placeholder = placeholderContent,
+        singleLine = singleLine,
+        minLines = if (singleLine) 1 else 2,
+        maxLines = if (singleLine) 1 else 4,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -508,10 +569,25 @@ private fun Double.moneyInput(): String = if (isFinite()) toString().removeSuffi
 
 private fun todayKey(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
+private fun todayDisplayDate(): String = SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date())
+
+private fun String.toDisplayDate(): String = runCatching {
+    val source = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+    val parsed = source.parse(this) ?: return@runCatching this
+    SimpleDateFormat("dd/MM/yyyy", Locale.US).format(parsed)
+}.getOrDefault(this)
+
+private fun parseDisplayDate(value: String): String? = runCatching {
+    val display = SimpleDateFormat("dd/MM/yyyy", Locale.US).apply { isLenient = false }
+    val parsed = display.parse(value) ?: return@runCatching null
+    if (display.format(parsed) != value) return@runCatching null
+    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(parsed)
+}.getOrNull()
+
 private fun isDateKey(value: String): Boolean = runCatching {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
     val parsed = formatter.parse(value) ?: return@runCatching false
     formatter.format(parsed) == value
 }.getOrDefault(false)
 
-private fun formatPkrCompact(value: Double): String = "PKR ${"%,.2f".format(Locale.US, value)}"
+private fun formatPkrCompact(value: Double): String = "Rs ${"%,.2f".format(Locale.US, value)}"

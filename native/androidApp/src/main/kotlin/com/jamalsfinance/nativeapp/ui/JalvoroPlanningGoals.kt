@@ -46,18 +46,7 @@ internal fun GoalsScreen(
         if (snapshot.goals.isNotEmpty()) {
             item {
                 JalvoroEntrance(index = 0, key = "goals-summary") {
-                    PlanningHeroCard(
-                        icon = JalvoroIcons.Target,
-                        eyebrow = "Savings progress",
-                        primary = formatPkr(snapshot.totalGoalSaved),
-                        secondary = "Saved of ${formatPkr(snapshot.totalGoalTarget)}",
-                        detail = "${snapshot.completedGoals} of ${snapshot.goals.size} goals completed",
-                        progress = if (snapshot.totalGoalTarget > 0) {
-                            snapshot.totalGoalSaved / snapshot.totalGoalTarget
-                        } else {
-                            0.0
-                        },
-                    )
+                    JalvoroGoalsParityOverview(snapshot = snapshot)
                 }
             }
         }

@@ -71,34 +71,14 @@ internal fun PayablesScreen(
         } else {
             item {
                 JalvoroEntrance(index = 0, key = "payables-pulse") {
-                    PayablesPulseCard(
+                    JalvoroPayablesParityOverview(
                         snapshot = snapshot,
                         overdueCount = statusCounts["overdue"] ?: 0,
                     )
                 }
             }
             item {
-                JalvoroEntrance(index = 1, key = "payables-search") {
-                    OutlinedTextField(
-                        value = search,
-                        onValueChange = { search = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = JalvoroIcons.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        },
-                        label = { Text("Search payables") },
-                        placeholder = { Text("Person, item, reason, or notes") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                    )
-                }
-            }
-            item {
-                JalvoroEntrance(index = 2, key = "payables-filters") {
+                JalvoroEntrance(index = 1, key = "payables-filters") {
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -116,6 +96,26 @@ internal fun PayablesScreen(
                             )
                         }
                     }
+                }
+            }
+            item {
+                JalvoroEntrance(index = 2, key = "payables-search") {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = JalvoroIcons.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                        label = { Text("Search payables") },
+                        placeholder = { Text("Person, item, reason, or notes") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                    )
                 }
             }
 

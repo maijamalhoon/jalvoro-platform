@@ -369,25 +369,57 @@ fun JalvoroOverviewDashboard(
                         }
                     }
 
-                    item {
-                        JalvoroEntrance(index = 2, key = "overview-monthly-summary") {
-                            JalvoroOverviewMonthlyPanel(
-                                savings = currentMonth?.netSavings,
-                                income = currentMonth?.income,
-                                expenses = currentMonth?.expenses,
-                                investment = investmentContribution,
-                            )
+                    itemsIndexed(
+                        items = metricRows,
+                        key = { _, row -> row.joinToString("|") { it.title } },
+                    ) { rowIndex, row ->
+                        JalvoroEntrance(
+                            index = 2 + rowIndex,
+                            key = row.joinToString("|") { "${it.title}:${it.amount}:${it.previousAmount}" },
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { metric ->
+                                    OverviewMetricCard(
+                                        metric = metric,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (twoColumns && row.size == 1) Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
 
                     item {
-                        JalvoroEntrance(index = 3, key = "overview-today-panel") {
-                            JalvoroOverviewTodayPanel(
-                                income = today?.income,
-                                expenses = today?.expenses,
-                                net = today?.netSavings,
-                                daysRemaining = period.remainingDays,
+                        JalvoroEntrance(index = 4, key = "overview-pulse-heading") {
+                            OverviewSectionHeading(
+                                title = "Today’s financial pulse",
+                                description = "Live values from today’s owner-scoped activity.",
                             )
+                        }
+                    }
+
+                    itemsIndexed(
+                        items = pulseRows,
+                        key = { _, row -> row.joinToString("|") { it.title } },
+                    ) { rowIndex, row ->
+                        JalvoroEntrance(index = 5 + rowIndex, key = row.joinToString("|") { it.value }) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { pulse ->
+                                    OverviewPulseCard(
+                                        pulse = pulse,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (wide && row.size < 4) {
+                                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                                }
+                            }
                         }
                     }
 
