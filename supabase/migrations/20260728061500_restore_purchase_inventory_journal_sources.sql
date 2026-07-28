@@ -1,6 +1,7 @@
--- Restore purchase, supplier-payment, and inventory-COGS journal support that
--- was unintentionally removed when sales base-rounding logic replaced the
--- shared journal-line trigger function.
+-- Restore the complete shared journal-source contract that was unintentionally
+-- narrowed when sales base-rounding logic replaced the journal-line trigger.
+-- Preserve deterministic sales rounding while retaining purchase, payment,
+-- inventory, adjustment, and return source authorization.
 
 create or replace function private.prepare_business_journal_line()
 returns trigger
@@ -113,6 +114,77 @@ begin
             and new.account_id in (product.inventory_account_id, product.cogs_account_id)
         )
       )
+      or (
+        entry_source_type = 'stock_adjustment'
+        and (
+          account.system_key in ('inventory_adjustment_gain', 'inventory_adjustment_loss')
+          or exists (
+            select 1
+            from public.business_stock_adjustment_lines adjustment_line
+            join public.business_products product
+              on product.business_id = adjustment_line.business_id
+             and product.id = adjustment_line.product_id
+            where adjustment_line.business_id = new.business_id
+              and adjustment_line.adjustment_id = entry_source_id
+              and product.inventory_account_id = new.account_id
+          )
+        )
+      )
+      or (
+        entry_source_type = 'sales_return'
+        and (
+          account.system_key in (
+            'accounts_receivable',
+            'customer_credits',
+            'taxes_payable'
+          )
+          or exists (
+            select 1
+            from public.business_sales_return_lines return_line
+            join public.business_sales_invoice_lines invoice_line
+              on invoice_line.business_id = return_line.business_id
+             and invoice_line.id = return_line.invoice_line_id
+            left join public.business_products product
+              on product.business_id = return_line.business_id
+             and product.id = return_line.product_id
+            where return_line.business_id = new.business_id
+              and return_line.return_id = entry_source_id
+              and new.account_id in (
+                invoice_line.revenue_account_id,
+                product.inventory_account_id,
+                product.cogs_account_id
+              )
+          )
+        )
+      )
+      or (
+        entry_source_type = 'purchase_return'
+        and (
+          account.system_key in (
+            'accounts_payable',
+            'supplier_refunds_receivable',
+            'tax_recoverable',
+            'inventory_adjustment_gain',
+            'inventory_adjustment_loss'
+          )
+          or exists (
+            select 1
+            from public.business_purchase_return_lines return_line
+            join public.business_supplier_bill_lines bill_line
+              on bill_line.business_id = return_line.business_id
+             and bill_line.id = return_line.bill_line_id
+            left join public.business_products product
+              on product.business_id = return_line.business_id
+             and product.id = return_line.product_id
+            where return_line.business_id = new.business_id
+              and return_line.return_id = entry_source_id
+              and new.account_id in (
+                bill_line.allocation_account_id,
+                product.inventory_account_id
+              )
+          )
+        )
+      )
     )
   into account_system_key, account_valid
   from public.business_chart_of_accounts account
@@ -133,7 +205,13 @@ begin
     raise exception 'Accounting settings are missing.' using errcode = '23503';
   end if;
 
-  if entry_source_type in ('manual', 'inventory_cogs') then
+  if entry_source_type in (
+    'manual',
+    'inventory_cogs',
+    'stock_adjustment',
+    'sales_return',
+    'purchase_return'
+  ) then
     new.debit_base := round(new.debit_transaction * entry_exchange_rate, rounding_scale);
     new.credit_base := round(new.credit_transaction * entry_exchange_rate, rounding_scale);
     return new;
@@ -273,4 +351,4 @@ revoke execute on function private.prepare_business_journal_line()
   from public, anon, authenticated;
 
 comment on function private.prepare_business_journal_line() is
-  'Derives immutable base-currency values for manual, sales, purchase, supplier-payment, and inventory-COGS journal lines with deterministic rounding.';
+  'Derives immutable base-currency values for authorized manual, sales, purchase, payment, inventory, adjustment, and return journal lines with deterministic rounding.';
