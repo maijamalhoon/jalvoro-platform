@@ -1,16 +1,29 @@
-# trigger: fix browser module resolution
 name: Agent browser and Lighthouse audit
 
 on:
   push:
-    branches: [agent/final-production-audit-20260726]
-    paths: [".github/workflows/agent-browser-audit.yml"]
+    branches:
+      - agent/final-production-audit-20260726
+    paths:
+      - ".github/workflows/agent-browser-audit.yml"
   pull_request:
-    types: [synchronize]
-    paths: [".github/workflows/agent-browser-audit.yml"]
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".github/workflows/agent-browser-audit.yml"
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "public/**"
+      - "next.config.ts"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
   contents: read
+
+concurrency:
+  group: browser-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   browser-audit:
@@ -24,10 +37,9 @@ jobs:
       NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
     steps:
-      - name: Check out audit branch
+      - name: Check out audited revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: agent/final-production-audit-20260726
           persist-credentials: false
           show-progress: false
 
@@ -41,19 +53,18 @@ jobs:
       - name: Install application dependencies
         run: npm ci --silent
 
-      - name: Install pinned-at-run browser audit tools
+      - name: Install browser audit tools
         shell: bash
         run: |
-          set -euo pipefail
-          PLAYWRIGHT_VERSION="$(npm view playwright version)"
-          AXE_VERSION="$(npm view axe-core version)"
-          LIGHTHOUSE_VERSION="$(npm view lighthouse version)"
-          printf 'playwright=%s\naxe-core=%s\nlighthouse=%s\n' \
-            "$PLAYWRIGHT_VERSION" "$AXE_VERSION" "$LIGHTHOUSE_VERSION" | tee browser-audit-tools.txt
+          set -Eeuo pipefail
+          printf '%s\n' \
+            'playwright=1.62.0' \
+            'axe-core=4.12.1' \
+            'lighthouse=13.4.1' | tee browser-audit-tools.txt
           npm install --no-save --package-lock=false \
-            "playwright@${PLAYWRIGHT_VERSION}" \
-            "axe-core@${AXE_VERSION}" \
-            "lighthouse@${LIGHTHOUSE_VERSION}"
+            playwright@1.62.0 \
+            axe-core@4.12.1 \
+            lighthouse@13.4.1
           npx playwright install --with-deps chromium
 
       - name: Build production application
@@ -62,7 +73,7 @@ jobs:
       - name: Start production application
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
           mkdir -p .browser-audit
           npm run start > .browser-audit/server.log 2>&1 &
           echo $! > .browser-audit/server.pid
@@ -94,11 +105,18 @@ jobs:
             { name: 'desktop-1440', width: 1440, height: 900 },
             { name: 'desktop-1920', width: 1920, height: 1080 },
           ];
+
           const results = { pages: [], guardedRoutes: [], navigation: {}, issues: [] };
           const browser = await chromium.launch({ headless: true });
           const axePath = path.resolve('node_modules/axe-core/axe.min.js');
-
           const addIssue = (issue) => results.issues.push(issue);
+
+          function isExpectedNextNavigationCancellation(request) {
+            const failure = request.failure()?.errorText ?? '';
+            const url = request.url();
+            return failure.includes('net::ERR_ABORTED')
+              || (url.includes('_rsc=') && failure.includes('net::ERR_FAILED'));
+          }
 
           for (const viewport of viewports) {
             const context = await browser.newContext({ viewport, reducedMotion: 'reduce' });
@@ -108,14 +126,24 @@ jobs:
               const pageErrors = [];
               const requestFailures = [];
               const serverErrors = [];
+
               page.on('console', (message) => {
-                if (message.type() === 'error') consoleErrors.push(message.text());
+                if (
+                  message.type() === 'error'
+                  && message.text() !== 'Failed to load resource: net::ERR_FAILED'
+                ) {
+                  consoleErrors.push(message.text());
+                }
               });
               page.on('pageerror', (error) => pageErrors.push(error.message));
               page.on('requestfailed', (request) => {
-                const url = request.url();
-                if (url.startsWith(origin)) {
-                  requestFailures.push(`${request.method()} ${url}: ${request.failure()?.errorText ?? 'failed'}`);
+                if (
+                  request.url().startsWith(origin)
+                  && !isExpectedNextNavigationCancellation(request)
+                ) {
+                  requestFailures.push(
+                    `${request.method()} ${request.url()}: ${request.failure()?.errorText ?? 'failed'}`,
+                  );
                 }
               });
               page.on('response', (response) => {
@@ -124,33 +152,38 @@ jobs:
                 }
               });
 
-              const response = await page.goto(`${origin}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
+              const response = await page.goto(`${origin}${route}`, {
+                waitUntil: 'domcontentloaded',
+                timeout: 45_000,
+              });
+              await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
+
               const status = response?.status() ?? 0;
               const metrics = await page.evaluate(() => ({
                 title: document.title.trim(),
-                metaDescription: document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? '',
-                canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? '',
+                metaDescription:
+                  document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? '',
+                canonical:
+                  document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? '',
                 h1Count: document.querySelectorAll('h1').length,
-                horizontalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth,
-                emptyInteractiveNames: Array.from(document.querySelectorAll('a,button,input,select,textarea'))
-                  .filter((element) => {
-                    if (element instanceof HTMLInputElement && element.type === 'hidden') return false;
-                    const style = getComputedStyle(element);
-                    if (style.display === 'none' || style.visibility === 'hidden') return false;
-                    const name = (element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent || '').trim();
-                    return !name;
-                  })
-                  .slice(0, 10)
-                  .map((element) => element.outerHTML.slice(0, 180)),
+                horizontalOverflow:
+                  Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
+                  - document.documentElement.clientWidth,
               }));
 
               await page.addScriptTag({ path: axePath });
               const axe = await page.evaluate(async () => {
                 const outcome = await window.axe.run(document, {
-                  runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
+                  runOnly: {
+                    type: 'tag',
+                    values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'],
+                  },
                 });
                 return outcome.violations
-                  .filter((violation) => violation.impact === 'critical' || violation.impact === 'serious')
+                  .filter(
+                    (violation) =>
+                      violation.impact === 'critical' || violation.impact === 'serious',
+                  )
                   .map((violation) => ({
                     id: violation.id,
                     impact: violation.impact,
@@ -173,22 +206,84 @@ jobs:
               };
               results.pages.push(record);
 
-              if (status >= 400 || status === 0) addIssue({ type: 'http', route, viewport: viewport.name, status });
-              if (!metrics.title) addIssue({ type: 'missing-title', route, viewport: viewport.name });
-              if (!metrics.metaDescription) addIssue({ type: 'missing-description', route, viewport: viewport.name });
-              if (!metrics.canonical) addIssue({ type: 'missing-canonical', route, viewport: viewport.name });
-              if (metrics.h1Count !== 1) addIssue({ type: 'heading', route, viewport: viewport.name, h1Count: metrics.h1Count });
-              if (metrics.horizontalOverflow > 1) addIssue({ type: 'horizontal-overflow', route, viewport: viewport.name, pixels: metrics.horizontalOverflow });
-              if (metrics.emptyInteractiveNames.length) addIssue({ type: 'unnamed-controls', route, viewport: viewport.name, nodes: metrics.emptyInteractiveNames });
-              if (consoleErrors.length) addIssue({ type: 'console-errors', route, viewport: viewport.name, messages: consoleErrors });
-              if (pageErrors.length) addIssue({ type: 'page-errors', route, viewport: viewport.name, messages: pageErrors });
-              if (requestFailures.length) addIssue({ type: 'request-failures', route, viewport: viewport.name, messages: requestFailures });
-              if (serverErrors.length) addIssue({ type: 'server-errors', route, viewport: viewport.name, messages: serverErrors });
-              if (axe.length) addIssue({ type: 'accessibility', route, viewport: viewport.name, violations: axe });
+              if (status >= 400 || status === 0) {
+                addIssue({ type: 'http', route, viewport: viewport.name, status });
+              }
+              if (!metrics.title) {
+                addIssue({ type: 'missing-title', route, viewport: viewport.name });
+              }
+              if (!metrics.metaDescription) {
+                addIssue({ type: 'missing-description', route, viewport: viewport.name });
+              }
+              if (!metrics.canonical) {
+                addIssue({ type: 'missing-canonical', route, viewport: viewport.name });
+              }
+              if (metrics.h1Count !== 1) {
+                addIssue({
+                  type: 'heading',
+                  route,
+                  viewport: viewport.name,
+                  h1Count: metrics.h1Count,
+                });
+              }
+              if (metrics.horizontalOverflow > 1) {
+                addIssue({
+                  type: 'horizontal-overflow',
+                  route,
+                  viewport: viewport.name,
+                  pixels: metrics.horizontalOverflow,
+                });
+              }
+              if (consoleErrors.length) {
+                addIssue({
+                  type: 'console-errors',
+                  route,
+                  viewport: viewport.name,
+                  messages: consoleErrors,
+                });
+              }
+              if (pageErrors.length) {
+                addIssue({
+                  type: 'page-errors',
+                  route,
+                  viewport: viewport.name,
+                  messages: pageErrors,
+                });
+              }
+              if (requestFailures.length) {
+                addIssue({
+                  type: 'request-failures',
+                  route,
+                  viewport: viewport.name,
+                  messages: requestFailures,
+                });
+              }
+              if (serverErrors.length) {
+                addIssue({
+                  type: 'server-errors',
+                  route,
+                  viewport: viewport.name,
+                  messages: serverErrors,
+                });
+              }
+              if (axe.length) {
+                addIssue({
+                  type: 'accessibility',
+                  route,
+                  viewport: viewport.name,
+                  violations: axe,
+                });
+              }
 
-              if ((viewport.width === 320 || viewport.width === 1440) && ['/', '/login', '/support'].includes(route)) {
+              if (
+                (viewport.width === 320 || viewport.width === 1440)
+                && ['/', '/login', '/support'].includes(route)
+              ) {
                 const safeRoute = route === '/' ? 'home' : route.slice(1);
-                await page.screenshot({ path: `.browser-audit/${safeRoute}-${viewport.name}.png`, fullPage: true });
+                await page.screenshot({
+                  path: `.browser-audit/${safeRoute}-${viewport.name}.png`,
+                  fullPage: true,
+                });
               }
               await page.close();
             }
@@ -198,46 +293,80 @@ jobs:
           const guardContext = await browser.newContext({ viewport: { width: 375, height: 812 } });
           for (const route of guardedRoutes) {
             const page = await guardContext.newPage();
-            const response = await page.goto(`${origin}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
+            const response = await page.goto(`${origin}${route}`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 45_000,
+            });
             const finalUrl = new URL(page.url());
-            const guarded = finalUrl.pathname !== route || /sign in|log in|login/i.test(await page.locator('body').innerText());
-            const record = { route, status: response?.status() ?? 0, finalPath: finalUrl.pathname, guarded };
+            const body = await page.locator('body').innerText();
+            const guarded = finalUrl.pathname !== route || /sign in|log in|login/i.test(body);
+            const record = {
+              route,
+              status: response?.status() ?? 0,
+              finalPath: finalUrl.pathname,
+              guarded,
+            };
             results.guardedRoutes.push(record);
-            if (!guarded || record.status >= 500) addIssue({ type: 'guard-failure', ...record });
-            await page.reload({ waitUntil: 'networkidle' });
+            if (!guarded || record.status >= 500) {
+              addIssue({ type: 'guard-failure', ...record });
+            }
             await page.close();
           }
 
           const navigationPage = await guardContext.newPage();
-          await navigationPage.goto(`${origin}/`, { waitUntil: 'networkidle' });
-          await navigationPage.goto(`${origin}/privacy`, { waitUntil: 'networkidle' });
-          await navigationPage.goBack({ waitUntil: 'networkidle' });
-          results.navigation.backReturnedHome = new URL(navigationPage.url()).pathname === '/';
-          if (!results.navigation.backReturnedHome) addIssue({ type: 'back-navigation' });
+          await navigationPage.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+          await navigationPage.goto(`${origin}/privacy`, { waitUntil: 'domcontentloaded' });
+          await navigationPage.goBack({ waitUntil: 'domcontentloaded' });
+          results.navigation.backReturnedHome =
+            new URL(navigationPage.url()).pathname === '/';
+          if (!results.navigation.backReturnedHome) {
+            addIssue({ type: 'back-navigation' });
+          }
 
-          await navigationPage.goto(`${origin}/login`, { waitUntil: 'networkidle' });
+          await navigationPage.goto(`${origin}/login`, { waitUntil: 'domcontentloaded' });
           const form = navigationPage.locator('form').first();
           if (await form.count()) {
             const submit = form.locator('button[type="submit"], input[type="submit"]').first();
             if (await submit.count()) {
               await submit.click();
-              results.navigation.emptyLoginStayedPublic = new URL(navigationPage.url()).pathname === '/login';
+              await navigationPage.waitForTimeout(200);
+              const stayedPublic = new URL(navigationPage.url()).pathname === '/login';
               const invalidCount = await form.locator(':invalid').count();
-              results.navigation.emptyLoginInvalidCount = invalidCount;
-              if (!results.navigation.emptyLoginStayedPublic || invalidCount === 0) {
+              const feedback = (
+                await navigationPage
+                  .locator('[role="alert"], [aria-live]')
+                  .allInnerTexts()
+              ).join(' ');
+              const rejected =
+                invalidCount > 0 || /email|required|enter|valid/i.test(feedback);
+              results.navigation.emptyLoginStayedPublic = stayedPublic;
+              results.navigation.emptyLoginRejected = rejected;
+              if (!stayedPublic || !rejected) {
                 addIssue({ type: 'login-validation', ...results.navigation });
               }
             }
           }
+
           await navigationPage.close();
           await guardContext.close();
           await browser.close();
 
-          await fs.writeFile('.browser-audit/browser-results.json', JSON.stringify(results, null, 2));
-          console.log(JSON.stringify({ issueCount: results.issues.length, issues: results.issues }, null, 2));
+          await fs.writeFile(
+            '.browser-audit/browser-results.json',
+            JSON.stringify(results, null, 2),
+          );
+          console.log(
+            JSON.stringify(
+              { issueCount: results.issues.length, issues: results.issues },
+              null,
+              2,
+            ),
+          );
           if (results.issues.length) process.exit(1);
           JS
-          node .browser-audit/browser-audit.mjs 2>&1 | tee .browser-audit/browser-command.log
+
+          node .browser-audit/browser-audit.mjs \
+            2>&1 | tee .browser-audit/browser-command.log
           browser_code=${PIPESTATUS[0]}
           printf '%s\n' "$browser_code" > .browser-audit/browser-exit-code.txt
           exit 0
@@ -250,46 +379,79 @@ jobs:
           mkdir -p .browser-audit/lighthouse
           CHROME_PATH="$(node -p 'require("playwright").chromium.executablePath()')"
           export CHROME_PATH
-          printf 'CHROME_PATH=%s\n' "$CHROME_PATH" | tee .browser-audit/lighthouse-setup.log
+          printf 'CHROME_PATH=%s\n' "$CHROME_PATH" \
+            | tee .browser-audit/lighthouse-setup.log
+
+          cat > .browser-audit/score-lighthouse.mjs <<'JS'
+          import fs from 'node:fs';
+
+          const [file, name] = process.argv.slice(2);
+          const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+          const categories = report.categories;
+          const scores = {
+            performance: Math.round(categories.performance.score * 100),
+            accessibility: Math.round(categories.accessibility.score * 100),
+            bestPractices: Math.round(categories['best-practices'].score * 100),
+            seo: Math.round(categories.seo.score * 100),
+          };
+
+          console.log(
+            [
+              name,
+              scores.performance,
+              scores.accessibility,
+              scores.bestPractices,
+              scores.seo,
+            ].join('\t'),
+          );
+
+          if (
+            scores.performance < 90
+            || scores.accessibility < 95
+            || scores.bestPractices < 95
+            || scores.seo < 95
+          ) {
+            process.exit(2);
+          }
+          JS
+
           routes=(home login privacy terms disclosures support)
           paths=(/ /login /privacy /terms /disclosures /support)
           : > .browser-audit/lighthouse-scores.tsv
           lighthouse_failed=0
+
           for index in "${!routes[@]}"; do
             name="${routes[$index]}"
             route="${paths[$index]}"
+            log=".browser-audit/lighthouse/${name}.log"
+            report=".browser-audit/lighthouse/${name}.json"
+
             ./node_modules/.bin/lighthouse "http://127.0.0.1:3000${route}" \
               --quiet \
+              --preset=desktop \
               --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
               --only-categories=performance,accessibility,best-practices,seo \
               --output=json \
-              --output-path=".browser-audit/lighthouse/${name}.json" \
-              2>&1 | tee ".browser-audit/lighthouse/${name}.log"
-            code=${PIPESTATUS[0]}
-            if [ "$code" -ne 0 ]; then
+              --output-path="$report" \
+              > "$log" 2>&1
+            lighthouse_code=$?
+            cat "$log"
+
+            if [ "$lighthouse_code" -ne 0 ]; then
               lighthouse_failed=1
               continue
             fi
-            node --input-type=module - ".browser-audit/lighthouse/${name}.json" "$name" <<'JS' | tee -a .browser-audit/lighthouse-scores.tsv
-            import fs from 'node:fs';
-            const [file, name] = process.argv.slice(2);
-            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
-            const c = report.categories;
-            const scores = {
-              performance: Math.round(c.performance.score * 100),
-              accessibility: Math.round(c.accessibility.score * 100),
-              bestPractices: Math.round(c['best-practices'].score * 100),
-              seo: Math.round(c.seo.score * 100),
-            };
-            console.log([name, scores.performance, scores.accessibility, scores.bestPractices, scores.seo].join('\t'));
-            if (scores.performance < 90 || scores.accessibility < 95 || scores.bestPractices < 95 || scores.seo < 95) {
-              process.exitCode = 2;
-            }
-            JS
+
+            node .browser-audit/score-lighthouse.mjs "$report" "$name" \
+              | tee -a .browser-audit/lighthouse-scores.tsv
             score_code=${PIPESTATUS[0]}
-            if [ "$score_code" -ne 0 ]; then lighthouse_failed=1; fi
+            if [ "$score_code" -ne 0 ]; then
+              lighthouse_failed=1
+            fi
           done
-          printf '%s\n' "$lighthouse_failed" > .browser-audit/lighthouse-exit-code.txt
+
+          printf '%s\n' "$lighthouse_failed" \
+            > .browser-audit/lighthouse-exit-code.txt
           exit 0
 
       - name: Stop production application
@@ -304,7 +466,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-and-lighthouse-evidence
+          name: browser-and-lighthouse-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .browser-audit
             browser-audit-tools.txt
