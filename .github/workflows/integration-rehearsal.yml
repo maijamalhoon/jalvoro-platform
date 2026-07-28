@@ -81,15 +81,19 @@ jobs:
       - name: Replay migrations and run database regressions locally
         shell: bash
         run: |
+          set -Eeuo pipefail
           chmod +x scripts/verify-supabase-integration-rehearsal.sh
-          REHEARSAL_LOG_FILE=integration-rehearsal.log \
+          log_path="${GITHUB_WORKSPACE}/integration-rehearsal.log"
+          : > "$log_path"
+          REHEARSAL_LOG_FILE="$log_path" \
             bash scripts/verify-supabase-integration-rehearsal.sh
+          test -s "$log_path"
 
       - name: Upload rehearsal evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-rehearsal-${{ github.sha }}
+          name: integration-rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
           path: integration-rehearsal.log
           if-no-files-found: error
           retention-days: 14
