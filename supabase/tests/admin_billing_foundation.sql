@@ -46,17 +46,23 @@ values
 insert into private.platform_admins (user_id, role)
 values ('11111111-1111-4111-8111-111111111111', 'owner');
 
-set local role authenticated;
+set local role service_role;
 select set_config(
-  'request.jwt.claim.sub',
-  '11111111-1111-4111-8111-111111111111',
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '00000000-0000-4000-8000-000000000000',
+    'role', 'service_role'
+  )::text,
   true
 );
-select set_config('request.jwt.claim.role', 'authenticated', true);
 
 do $$
 declare
-  snapshot jsonb := public.get_platform_admin_snapshot();
+  snapshot jsonb := public.execute_command_center_operation(
+    '11111111-1111-4111-8111-111111111111',
+    'get_platform_admin_snapshot',
+    '{}'::jsonb
+  );
 begin
   if snapshot->>'adminRole' <> 'owner' then
     raise exception 'Admin contract failure: owner role was not returned.';
@@ -72,6 +78,17 @@ begin
 end;
 $$;
 
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '11111111-1111-4111-8111-111111111111',
+    'role', 'authenticated'
+  )::text,
+  true
+);
+
 do $$
 begin
   begin
@@ -85,8 +102,11 @@ end;
 $$;
 
 select set_config(
-  'request.jwt.claim.sub',
-  '22222222-2222-4222-8222-222222222222',
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '22222222-2222-4222-8222-222222222222',
+    'role', 'authenticated'
+  )::text,
   true
 );
 
