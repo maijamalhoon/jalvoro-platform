@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - agent/final-production-audit-20260726
-      - agent/command-center-final-20260728
     paths:
       - ".github/workflows/agent-audit-checkout.yml"
   pull_request:
