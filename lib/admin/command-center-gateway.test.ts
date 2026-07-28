@@ -21,12 +21,9 @@ describe("Command Center dual authorization gateway", () => {
     expect(edge).not.toContain("console.log");
   });
 
-  it("removes authenticated direct execution and preserves the verified actor", () => {
+  it("adds a service-only compatibility gateway and preserves the verified actor", () => {
     const migration = read(
       "supabase/migrations/20260728110000_command_center_dual_auth_gateway.sql",
-    );
-    const cutover = read(
-      "supabase/migrations/20260728113000_command_center_disable_direct_rpc.sql",
     );
 
     expect(migration).toContain("execute_command_center_operation");
@@ -34,9 +31,8 @@ describe("Command Center dual authorization gateway", () => {
     expect(migration).toContain("set_config('request.jwt.claims'");
     expect(migration).toContain("from public, anon, authenticated");
     expect(migration).toContain("to service_role");
-    expect(cutover).toContain("from public, anon, authenticated");
-    expect(cutover).toContain("to service_role");
     expect(migration).toContain("email_confirmed_at is not null");
+    expect(migration).toContain("without revoking the currently live application RPC surface");
   });
 
   it("intercepts only the bounded Command Center RPC allowlist", () => {
