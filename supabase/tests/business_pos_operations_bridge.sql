@@ -201,9 +201,9 @@ begin
   );
   if not coalesce((sale->>'ok')::boolean,false) then raise exception 'Refund fixture sale did not post.'; end if;
   update pos_operation_state set invoice_id=(sale->>'invoice_id')::uuid;
-  update pos_operation_state state set invoice_line_id=(
+  update pos_operation_state fixture set invoice_line_id=(
     select line.id from public.business_sales_invoice_lines line
-    where line.business_id=state.business_id and line.invoice_id=state.invoice_id
+    where line.business_id=fixture.business_id and line.invoice_id=fixture.invoice_id
     order by line.line_number limit 1
   );
 end;
