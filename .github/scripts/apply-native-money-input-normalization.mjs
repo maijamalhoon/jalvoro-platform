@@ -41,5 +41,16 @@ replaceFirst(
   `                            date = date.trim(),`,
   "trimmed transfer date submission",
 );
+replaceFirst(
+  `        JalvoroWebsiteTextField(amount, { amount = it }, "Amount", !busy, KeyboardType.Decimal)`,
+  `        JalvoroWebsiteTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = "Amount",
+            enabled = !busy,
+            keyboardType = KeyboardType.Decimal,
+        )`,
+  "unambiguous transfer amount field",
+);
 
 fs.writeFileSync(filePath, source);
