@@ -57,6 +57,7 @@ jobs:
             20260727060000_pos_sale_transaction_bridge.sql
             20260727070000_pos_operations_transaction_bridge.sql
             20260728054500_seed_primary_branch_during_business_registration.sql
+            20260728061500_restore_purchase_inventory_journal_sources.sql
           )
           for migration in "${expected[@]}"; do
             test -f "supabase/migrations/$migration" || {
@@ -84,72 +85,6 @@ jobs:
         run: |
           set -Eeuo pipefail
           chmod +x scripts/verify-supabase-integration-rehearsal.sh
-          python - <<'PY'
-          from pathlib import Path
-
-          accounting_path = Path("supabase/migrations/20260722070000_business_purchases_accounts_payable.sql")
-          accounting = accounting_path.read_text()
-          account_failure = """    raise exception 'Account is inactive, restricted, or invalid for this journal source.'
-              using errcode = '23514';"""
-          account_diagnostic = """    raise exception 'Account invalid for journal source: source=%, account_id=%, system_key=%, account_type=%',
-              entry_source_type,new.account_id,account_system_key,account_type
-              using errcode = '23514';"""
-          if account_failure not in accounting:
-              raise SystemExit("Initial journal account diagnostic patch target changed")
-          accounting_path.write_text(accounting.replace(account_failure, account_diagnostic, 1))
-
-          weighted_path = Path("supabase/migrations/20260722082000_add_weighted_average_stock_posting.sql")
-          weighted = weighted_path.read_text()
-          weighted_failure = """    raise exception 'Account is inactive, restricted, or invalid for this journal source.'
-              using errcode='23514';"""
-          weighted_diagnostic = """    raise exception 'Account invalid for journal source: source=%, account_id=%, system_key=%',
-              entry_source_type,new.account_id,account_system_key
-              using errcode='23514';"""
-          if weighted_failure not in weighted:
-              raise SystemExit("Active journal account diagnostic patch target changed")
-          weighted_path.write_text(weighted.replace(weighted_failure, weighted_diagnostic, 1))
-
-          migration_path = Path("supabase/migrations/20260727070000_pos_operations_transaction_bridge.sql")
-          migration = migration_path.read_text()
-          declaration = "  caught_state text;\n  purchase_record jsonb;"
-          diagnostic_declaration = "  caught_state text;\n  caught_message text;\n  caught_constraint text;\n  purchase_record jsonb;"
-          diagnostics = "    get stacked diagnostics caught_state=returned_sqlstate;"
-          diagnostic_details = """    get stacked diagnostics
-              caught_state=returned_sqlstate,
-              caught_message=message_text,
-              caught_constraint=constraint_name;"""
-          rejected = "    return jsonb_build_object('ok',false,'error',normalized_operation||'_rejected');"
-          diagnostic_rejected = """    return jsonb_build_object(
-              'ok',false,
-              'error',normalized_operation||'_rejected',
-              'sqlstate',caught_state,
-              'message',caught_message,
-              'constraint',nullif(caught_constraint,'')
-            );"""
-          if declaration not in migration or diagnostics not in migration or rejected not in migration:
-              raise SystemExit("POS operation diagnostic patch target changed")
-          migration_path.write_text(
-              migration.replace(declaration, diagnostic_declaration, 1)
-                  .replace(diagnostics, diagnostic_details, 1)
-                  .replace(rejected, diagnostic_rejected, 1)
-          )
-
-          test_path = Path("supabase/tests/business_pos_operations_bridge.sql")
-          test = test_path.read_text()
-          test_declaration = "declare state pos_operation_state; first_result jsonb; replay jsonb; bill_count bigint;"
-          failure = "    raise exception 'Valid POS purchase did not post.';"
-          diagnostic_failure = """    select request.error_code into failure_code
-              from public.business_pos_operation_requests request
-              where request.business_id=state.business_id
-                and request.request_key='84444444-4444-4444-8444-444444444444'::uuid;
-              raise exception 'Valid POS purchase did not post: result=%, sqlstate=%', first_result, failure_code;"""
-          if test_declaration not in test or failure not in test:
-              raise SystemExit("POS purchase diagnostic patch target changed")
-          test_path.write_text(
-              test.replace(test_declaration, test_declaration + " failure_code text;", 1)
-                  .replace(failure, diagnostic_failure, 1)
-          )
-          PY
           log_path="${GITHUB_WORKSPACE}/integration-rehearsal.log"
           set +e
           REHEARSAL_LOG_FILE=/dev/null \
