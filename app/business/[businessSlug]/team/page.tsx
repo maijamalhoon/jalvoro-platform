@@ -4,7 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Crown, MailCheck, ShieldCheck, UserRoundCheck, UsersRound } from "lucide-react";
 
 import BusinessFinancialPermissionPanel from "@/components/business/BusinessFinancialPermissionPanel";
+import BusinessIdentityRecoveryPanel from "@/components/business/BusinessIdentityRecoveryPanel";
 import BusinessTeamManager from "@/components/business/BusinessTeamManager";
+import { isPrivilegedBusinessRole } from "@/lib/business/team-access";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -148,7 +150,9 @@ export default async function BusinessTeamPage({
     ["pending", "expired"].includes(invitation.status),
   ).length;
   const administrators = snapshot.members.filter(
-    (member) => member.status === "active" && ["owner", "admin"].includes(member.role),
+    (member) =>
+      member.status === "active" &&
+      (member.role === "owner" || isPrivilegedBusinessRole(member.role)),
   ).length;
   const backHref =
     business.workspace_mode === "simple_shop"
@@ -207,6 +211,14 @@ export default async function BusinessTeamPage({
             />
           </div>
         ) : null}
+
+        <div className="mt-8">
+          <BusinessIdentityRecoveryPanel
+            businessId={business.id}
+            isPrimaryOwner={business.owner_user_id === user.id}
+            members={snapshot.members}
+          />
+        </div>
 
         <div className="mt-8">
           <BusinessTeamManager

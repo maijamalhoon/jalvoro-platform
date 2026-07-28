@@ -1,0 +1,105 @@
+name: Integration rehearsal
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-rehearsal-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  stack-integrity:
+    if: github.head_ref == 'integration/product-realms-pos-rehearsal-20260727'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact integration head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify current main is integrated
+        run: git merge-base --is-ancestor "${{ github.event.pull_request.base.sha }}" HEAD
+
+      - name: Verify stale deployment triggers remain removed
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for path in \
+            .vercel-deploy-trigger \
+            .vercel-redeploy-security-sync \
+            .vercel-swipe-redeploy \
+            .vercel-trigger \
+            vercel.json; do
+            if [[ -e "$path" ]]; then
+              echo "Stale deployment file returned: $path" >&2
+              exit 1
+            fi
+          done
+
+      - name: Verify ordered security and POS migrations exist
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          expected=(
+            20260726181500_business_product_tier_foundation.sql
+            20260726193000_immutable_account_realms.sql
+            20260726193100_immutable_account_realm_enforcement.sql
+            20260726211500_business_role_templates_and_lifecycle.sql
+            20260726223000_business_identity_recovery.sql
+            20260726223100_fix_business_identity_recovery_wrapper_execution.sql
+            20260727043000_pos_workforce_security.sql
+            20260727060000_pos_sale_transaction_bridge.sql
+            20260727070000_pos_operations_transaction_bridge.sql
+            20260728054500_seed_primary_branch_during_business_registration.sql
+            20260728061500_restore_purchase_inventory_journal_sources.sql
+          )
+          for migration in "${expected[@]}"; do
+            test -f "supabase/migrations/$migration" || {
+              echo "Missing integration migration: $migration" >&2
+              exit 1
+            }
+          done
+
+  database-rehearsal:
+    if: github.head_ref == 'integration/product-realms-pos-rehearsal-20260727'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Check out exact integration head
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+          github-token: ${{ github.token }}
+
+      - name: Replay migrations and run database regressions locally
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/verify-supabase-integration-rehearsal.sh
+          log_path="${GITHUB_WORKSPACE}/integration-rehearsal.log"
+          set +e
+          REHEARSAL_LOG_FILE=/dev/null \
+            bash scripts/verify-supabase-integration-rehearsal.sh \
+            2>&1 | tee "$log_path"
+          rehearsal_status=${PIPESTATUS[0]}
+          set -e
+          test "$rehearsal_status" -eq 0
+          test -s "$log_path"
+
+      - name: Upload rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
+          path: integration-rehearsal.log
+          if-no-files-found: error
+          retention-days: 14

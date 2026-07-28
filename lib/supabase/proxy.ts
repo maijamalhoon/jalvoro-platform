@@ -15,6 +15,7 @@ const PUBLIC_PAGE_ROUTES = [
   "/login",
   "/reset-password",
   "/auth/callback",
+  "/pos",
   "/privacy",
   "/terms",
   "/disclosures",

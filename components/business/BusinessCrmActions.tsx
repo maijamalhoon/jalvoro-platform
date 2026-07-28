@@ -98,7 +98,7 @@ export function OpportunityActions({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const today = useMemo(localDateString, []);
+  const today = useMemo(() => localDateString(), []);
   const [selectedStageId, setSelectedStageId] = useState(currentStageId);
   const [lostReason, setLostReason] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(today);

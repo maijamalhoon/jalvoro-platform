@@ -117,12 +117,12 @@ function createFallbackAsset(
 
 export function useLiveInvestmentRows<T extends InvestmentLike>(investments: T[]) {
   const { rates } = useCurrency();
-  const [catalogVersion, setCatalogVersion] = useState(0);
+  const [catalog, setCatalog] = useState(() => getInvestmentAssetCatalog());
 
   useEffect(() => {
     let active = true;
     void loadRuntimeCryptoCatalog().then(() => {
-      if (active) setCatalogVersion((current) => current + 1);
+      if (active) setCatalog(getInvestmentAssetCatalog());
     });
     return () => {
       active = false;
@@ -133,7 +133,7 @@ export function useLiveInvestmentRows<T extends InvestmentLike>(investments: T[]
     const byId = new Map<string, InvestmentMarketAsset>();
     const byTypeAndSymbol = new Map<string, InvestmentMarketAsset>();
 
-    for (const asset of getInvestmentAssetCatalog()) {
+    for (const asset of catalog) {
       byId.set(asset.id.toLowerCase(), asset);
       byTypeAndSymbol.set(
         `${asset.assetType}:${asset.symbol.toUpperCase()}`,
@@ -142,7 +142,7 @@ export function useLiveInvestmentRows<T extends InvestmentLike>(investments: T[]
     }
 
     return { byId, byTypeAndSymbol };
-  }, [catalogVersion]);
+  }, [catalog]);
 
   const resolved = useMemo(() => {
     const assetsByKey = new Map<string, InvestmentMarketAsset>();
@@ -214,9 +214,8 @@ export function useLiveInvestmentRows<T extends InvestmentLike>(investments: T[]
         current_price_currency: snapshot.currency,
         price_source: snapshot.source,
         price_currency: BASE_CURRENCY,
-        price_updated_at: new Date(
-          snapshot.updatedAt ?? Date.now(),
-        ).toISOString(),
+        price_updated_at:
+          snapshot.updatedAt ?? investment.price_updated_at ?? null,
         price_change_24h: snapshot.change24h,
         is_live_priced: true,
       } as T;

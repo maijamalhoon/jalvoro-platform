@@ -1,0 +1,117 @@
+name: Agent production audit
+
+on:
+  push:
+    branches:
+      - agent/final-production-audit-20260726
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-production-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder
+      NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: "false"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          package-manager-cache: true
+
+      - name: Run complete verification with retained logs
+        id: verification
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .audit-logs
+          : > .audit-logs/status.tsv
+
+          run_check() {
+            name="$1"
+            shift
+            echo "=== ${name} ===" | tee ".audit-logs/${name}.log"
+            "$@" 2>&1 | tee -a ".audit-logs/${name}.log"
+            code=${PIPESTATUS[0]}
+            printf '%s\t%s\n' "${name}" "${code}" >> .audit-logs/status.tsv
+            return 0
+          }
+
+          run_check install npm ci --silent
+          run_check brand npm run check:brand
+          run_check dependency-audit npm run audit:ci
+          run_check lint npm run lint
+          run_check typecheck npm run typecheck
+          run_check tests npm test
+          run_check build npm run build
+
+          build_code="$(awk -F '\t' '$1 == "build" {print $2}' .audit-logs/status.tsv)"
+          if [ "${build_code}" = "0" ]; then
+            npm run start > .audit-logs/runtime-server.log 2>&1 &
+            server_pid=$!
+            ready=0
+            for _ in $(seq 1 45); do
+              if curl --silent --fail --output /dev/null http://127.0.0.1:3000/; then
+                ready=1
+                break
+              fi
+              sleep 1
+            done
+
+            if [ "${ready}" = "1" ]; then
+              runtime_code=0
+              for route in / /login /privacy /terms /disclosures /support /robots.txt /sitemap.xml /manifest.webmanifest /api/app-version; do
+                status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:3000${route}")"
+                printf '%s\t%s\n' "${route}" "${status}" | tee -a .audit-logs/runtime-routes.tsv
+                case "${status}" in
+                  200|204|301|302|303|307|308) ;;
+                  *) runtime_code=1 ;;
+                esac
+              done
+            else
+              runtime_code=1
+              echo "Production server did not become ready." | tee -a .audit-logs/runtime-server.log
+            fi
+            kill "${server_pid}" 2>/dev/null || true
+            wait "${server_pid}" 2>/dev/null || true
+          else
+            runtime_code=1
+            echo "Runtime smoke test skipped because the production build failed." > .audit-logs/runtime-server.log
+          fi
+          printf 'runtime\t%s\n' "${runtime_code}" >> .audit-logs/status.tsv
+
+          cat .audit-logs/status.tsv
+          if awk -F '\t' '$2 != 0 {failed=1} END {exit failed ? 0 : 1}' .audit-logs/status.tsv; then
+            echo "One or more verification stages failed."
+            exit 1
+          fi
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-production-audit-logs
+          path: .audit-logs
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 2

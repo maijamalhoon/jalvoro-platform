@@ -226,7 +226,6 @@ function mutationErrorMessage(error: { message?: string } | null, fallback: stri
 export default function CategorySettingsSection({
   initialCategories,
   initialUsage,
-  userId: _userId,
   available,
 }: Props) {
   const router = useRouter();

@@ -2,7 +2,14 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Globe2, Layers3, ShieldCheck, Store } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Building2,
+  Globe2,
+  Network,
+  ShieldCheck,
+  Store,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,23 +30,93 @@ const BUSINESS_TYPES = [
 
 const BASE_CURRENCIES = ["PKR", "USD", "INR", "EUR", "GBP", "JPY", "CNY"] as const;
 
+export type BusinessProductTier =
+  | "solo_business"
+  | "retail_pos"
+  | "growing_business"
+  | "enterprise";
+
 type WorkspaceMode = "simple_shop" | "advanced_company";
 
-export default function CreateBusinessWorkspaceForm() {
+type BusinessProductOption = {
+  key: BusinessProductTier;
+  label: string;
+  copy: string;
+  icon: typeof Building2;
+  defaultBusinessType: (typeof BUSINESS_TYPES)[number]["value"];
+  workspaceMode: WorkspaceMode;
+};
+
+const BUSINESS_PRODUCTS: readonly BusinessProductOption[] = [
+  {
+    key: "solo_business",
+    label: "Solo Business",
+    copy: "For freelancers, consultants, and owner-operated services with optional staff invitations later.",
+    icon: BriefcaseBusiness,
+    defaultBusinessType: "professional_services",
+    workspaceMode: "advanced_company",
+  },
+  {
+    key: "retail_pos",
+    label: "Retail & POS",
+    copy: "For shops, restaurants, counters, registers, stock, daily cash, and scoped cashier access.",
+    icon: Store,
+    defaultBusinessType: "retail",
+    workspaceMode: "simple_shop",
+  },
+  {
+    key: "growing_business",
+    label: "Growing Business",
+    copy: "For small and mid-sized teams using accounting, CRM, inventory, payroll, branches, and approvals.",
+    icon: Building2,
+    defaultBusinessType: "other",
+    workspaceMode: "advanced_company",
+  },
+  {
+    key: "enterprise",
+    label: "Enterprise Operations",
+    copy: "For departments, advanced controls, audit requirements, approval chains, and future SSO provisioning.",
+    icon: Network,
+    defaultBusinessType: "other",
+    workspaceMode: "advanced_company",
+  },
+];
+
+function getProductOption(product: BusinessProductTier) {
+  return BUSINESS_PRODUCTS.find((option) => option.key === product) ?? BUSINESS_PRODUCTS[2];
+}
+
+export default function CreateBusinessWorkspaceForm({
+  initialProduct = "growing_business",
+}: {
+  initialProduct?: BusinessProductTier;
+}) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const initialOption = getProductOption(initialProduct);
   const [name, setName] = useState("");
-  const [businessType, setBusinessType] = useState("retail");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("simple_shop");
+  const [productTier, setProductTier] = useState<BusinessProductTier>(initialOption.key);
+  const [businessType, setBusinessType] = useState(initialOption.defaultBusinessType);
   const [countryCode, setCountryCode] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("PKR");
   const [timezone, setTimezone] = useState("UTC");
   const [saving, setSaving] = useState(false);
 
+  const selectedProduct = getProductOption(productTier);
+  const workspaceMode = selectedProduct.workspaceMode;
+  const ProductIcon = selectedProduct.icon;
+
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (detected) setTimezone(detected);
   }, []);
+
+  function chooseProduct(product: BusinessProductTier) {
+    if (saving) return;
+    const option = getProductOption(product);
+    setProductTier(product);
+    setBusinessType(option.defaultBusinessType);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +139,7 @@ export default function CreateBusinessWorkspaceForm() {
 
     try {
       const { data: businessId, error } = await supabase.rpc(
-        "create_business_workspace_with_mode",
+        "create_business_organization",
         {
           p_name: cleanName,
           p_business_type: businessType,
@@ -70,12 +147,13 @@ export default function CreateBusinessWorkspaceForm() {
           p_country_code: cleanCountry || null,
           p_base_currency: baseCurrency,
           p_timezone: timezone,
+          p_product_tier: productTier,
         },
       );
 
       if (error || typeof businessId !== "string") {
-        console.error("Business workspace creation failed", { code: error?.code });
-        toast.error("Business workspace could not be created. Please try again.");
+        console.error("Business organization creation failed", { code: error?.code });
+        toast.error("Business organization could not be created. Please try again.");
         return;
       }
 
@@ -89,18 +167,14 @@ export default function CreateBusinessWorkspaceForm() {
         console.error("Created business could not be resolved", {
           code: businessError?.code,
         });
-        toast.success("Business workspace created.");
+        toast.success(`${selectedProduct.label} organization created.`);
         router.replace("/business");
         router.refresh();
         return;
       }
 
       setName("");
-      toast.success(
-        workspaceMode === "simple_shop"
-          ? "Simple Shop created with stock, cash, and accounting ready."
-          : "Advanced Company created with its ERP foundation.",
-      );
+      toast.success(`${selectedProduct.label} organization created. You are the Organization Owner.`);
       router.replace(
         business.workspace_mode === "simple_shop"
           ? `/business/${business.slug}/shop`
@@ -108,7 +182,7 @@ export default function CreateBusinessWorkspaceForm() {
       );
       router.refresh();
     } catch {
-      toast.error("Business workspace could not be created. Check your connection and try again.");
+      toast.error("Business organization could not be created. Check your connection and try again.");
     } finally {
       setSaving(false);
     }
@@ -118,73 +192,57 @@ export default function CreateBusinessWorkspaceForm() {
     <section className="rounded-[var(--radius-card)] bg-surface px-4 py-5 shadow-[var(--shadow-sm)] sm:px-6 sm:py-6">
       <div className="flex items-start gap-3">
         <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-primary-soft text-primary">
-          {workspaceMode === "simple_shop" ? (
-            <Store aria-hidden="true" className="size-5" />
-          ) : (
-            <Building2 aria-hidden="true" className="size-5" />
-          )}
+          <ProductIcon aria-hidden="true" className="size-5" />
         </span>
         <div className="min-w-0">
           <h2 className="text-base font-black tracking-tight text-text-primary sm:text-lg">
-            Create a business workspace
+            Register the organization
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Choose a fast shop workflow or the full company ERP. Both use isolated tenants,
-            verified accounting, inventory, currency, and roles.
+            This signed-in identity becomes Organization Owner. Administrators, managers, and
+            employees are invited after the organization is created.
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <fieldset className="space-y-3">
-          <legend className="text-sm font-bold text-text-primary">Workspace style</legend>
+          <legend className="text-sm font-bold text-text-primary">Business product</legend>
           <div className="grid gap-3 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode("simple_shop")}
-              disabled={saving}
-              className={`finance-focus rounded-[var(--radius-button)] px-4 py-4 text-left transition-colors ${
-                workspaceMode === "simple_shop"
-                  ? "bg-primary-soft text-primary"
-                  : "bg-surface-secondary text-text-secondary"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Store aria-hidden="true" className="size-5 shrink-0" />
-                <strong className="text-sm">Simple Shop</strong>
-              </span>
-              <span className="mt-2 block text-xs leading-5 opacity-80">
-                Quick sale, purchase, stock, expenses, balances, returns, daily cash, and profit.
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode("advanced_company")}
-              disabled={saving}
-              className={`finance-focus rounded-[var(--radius-button)] px-4 py-4 text-left transition-colors ${
-                workspaceMode === "advanced_company"
-                  ? "bg-primary-soft text-primary"
-                  : "bg-surface-secondary text-text-secondary"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Layers3 aria-hidden="true" className="size-5 shrink-0" />
-                <strong className="text-sm">Advanced Company</strong>
-              </span>
-              <span className="mt-2 block text-xs leading-5 opacity-80">
-                Full accounting, contacts, sales, purchases, inventory, CRM, and reports modules.
-              </span>
-            </button>
+            {BUSINESS_PRODUCTS.map((option) => {
+              const Icon = option.icon;
+              const selected = option.key === productTier;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => chooseProduct(option.key)}
+                  disabled={saving}
+                  aria-pressed={selected}
+                  className={`finance-focus rounded-[var(--radius-button)] px-4 py-4 text-left transition-colors ${
+                    selected
+                      ? "bg-primary-soft text-primary"
+                      : "bg-surface-secondary text-text-secondary"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon aria-hidden="true" className="size-5 shrink-0" />
+                    <strong className="text-sm">{option.label}</strong>
+                  </span>
+                  <span className="mt-2 block text-xs leading-5 opacity-80">{option.copy}</span>
+                </button>
+              );
+            })}
           </div>
         </fieldset>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm font-bold text-text-primary">Business name</span>
+            <span className="text-sm font-bold text-text-primary">Organization name</span>
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={workspaceMode === "simple_shop" ? "Example: Jamal General Store" : "Example: Jamal Traders"}
+              placeholder={productTier === "retail_pos" ? "Example: Jamal General Store" : "Example: Jamal Traders"}
               autoComplete="organization"
               maxLength={120}
               disabled={saving}
@@ -196,7 +254,11 @@ export default function CreateBusinessWorkspaceForm() {
             <span className="text-sm font-bold text-text-primary">Nature of business</span>
             <select
               value={businessType}
-              onChange={(event) => setBusinessType(event.target.value)}
+              onChange={(event) =>
+                setBusinessType(
+                  event.target.value as (typeof BUSINESS_TYPES)[number]["value"],
+                )
+              }
               className="field-input min-h-11 w-full"
               disabled={saving}
             >
@@ -254,7 +316,7 @@ export default function CreateBusinessWorkspaceForm() {
         <div className="grid gap-3 rounded-[var(--radius-button)] bg-surface-secondary px-4 py-4 text-sm text-text-secondary sm:grid-cols-2">
           <span className="flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="size-4 text-success" />
-            Tenant-isolated data and accounting
+            Organization tenant and owner membership
           </span>
           <span className="flex items-center gap-2">
             <Globe2 aria-hidden="true" className="size-4 text-primary" />
@@ -266,15 +328,11 @@ export default function CreateBusinessWorkspaceForm() {
           type="submit"
           size="lg"
           loading={saving}
-          loadingLabel="Creating workspace..."
+          loadingLabel="Creating organization..."
           className="w-full sm:w-auto"
         >
-          {workspaceMode === "simple_shop" ? (
-            <Store aria-hidden="true" />
-          ) : (
-            <Building2 aria-hidden="true" />
-          )}
-          Create {workspaceMode === "simple_shop" ? "Simple Shop" : "Advanced Company"}
+          <ProductIcon aria-hidden="true" />
+          Create {selectedProduct.label}
         </Button>
       </form>
     </section>

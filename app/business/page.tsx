@@ -1,3 +1,4 @@
+import { accountRealmAllows, loadAccountRealm } from "@/lib/account-realm/server";
 import { brand } from "@/lib/brand";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -13,7 +14,9 @@ import {
   UsersRound,
 } from "lucide-react";
 
-import CreateBusinessWorkspaceForm from "@/components/business/CreateBusinessWorkspaceForm";
+import CreateBusinessWorkspaceForm, {
+  type BusinessProductTier,
+} from "@/components/business/CreateBusinessWorkspaceForm";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -46,19 +49,43 @@ function firstRelation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+type BusinessWorkspacesPageProps = {
+  searchParams: Promise<{ product?: string }>;
+};
+
+function normalizeBusinessProduct(value: string | undefined): BusinessProductTier {
+  if (
+    value === "solo_business" ||
+    value === "retail_pos" ||
+    value === "growing_business" ||
+    value === "enterprise"
+  ) {
+    return value;
+  }
+  return "growing_business";
+}
+
 function formatLabel(value: string) {
   return value
     .replace(/_/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export default async function BusinessWorkspacesPage() {
+export default async function BusinessWorkspacesPage({
+  searchParams,
+}: BusinessWorkspacesPageProps) {
+  const query = await searchParams;
+  const initialProduct = normalizeBusinessProduct(query.product);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login?next=/business");
+  if (!user) redirect("/business/login?next=%2Fbusiness");
+
+  const realm = await loadAccountRealm(supabase);
+  if (!realm) redirect("/start?mode=login&error=realm_unavailable");
+  if (!accountRealmAllows(realm, "business")) redirect("/dashboard");
 
   const membershipResult = await supabase
     .from("business_members")
@@ -90,11 +117,11 @@ export default async function BusinessWorkspacesPage() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/dashboard"
+            href="/start?mode=login"
             className="finance-focus inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-button)] px-2 text-sm font-bold text-text-secondary transition-colors hover:text-text-primary"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
-            Personal finance
+            Account access
           </Link>
 
           <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3 py-1.5 text-xs font-black text-success">
@@ -118,8 +145,9 @@ export default async function BusinessWorkspacesPage() {
             </div>
           </div>
           <p className="mt-4 text-sm leading-7 text-text-secondary sm:text-base">
-            Personal finance stays unchanged. Create a fast Simple Shop or a complete Advanced
-            Company, each with independent data, members, currency, stock, and accounting.
+            Open an organization you belong to or register a new one as its authorized owner.
+            Managers and employees receive access from inside the organization instead of public
+            self-registration.
           </p>
         </header>
 
@@ -225,13 +253,13 @@ export default async function BusinessWorkspacesPage() {
           </section>
         ) : (
           <section className="mt-8 rounded-[var(--radius-card)] bg-surface-secondary px-5 py-5 text-sm text-text-secondary sm:px-6">
-            No business workspace exists yet. Create the first shop or company below without
-            changing your personal tracker.
+            No Business organization is connected to this account yet. An authorized owner can
+            register one below; invited staff should ask their administrator to complete the invitation.
           </section>
         )}
 
         <div className="mt-8">
-          <CreateBusinessWorkspaceForm />
+          <CreateBusinessWorkspaceForm initialProduct={initialProduct} />
         </div>
       </div>
     </main>

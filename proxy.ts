@@ -13,6 +13,16 @@ const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
   "/api/security/password-check",
 ]);
 
+const PUBLIC_AUTH_ENTRY_ROUTES = new Set([
+  "/start",
+  "/individual/login",
+  "/individual/signup",
+  "/business/login",
+  "/business/register",
+  "/business/signup",
+  "/business/invitations/register",
+]);
+
 function getAIRewritePath(request: NextRequest) {
   if (request.nextUrl.pathname !== "/api/ai-insights") return null;
   if (request.method === "POST") return "/api/ai-insights/advanced";
@@ -20,8 +30,49 @@ function getAIRewritePath(request: NextRequest) {
   return null;
 }
 
+function getLegacyLoginRedirect(request: NextRequest) {
+  if (request.nextUrl.pathname !== "/login") return null;
+
+  const mode = request.nextUrl.searchParams.get("mode");
+  if (mode === "forgot") return null;
+
+  const requestedNext = request.nextUrl.searchParams.get("next") ?? "";
+  const destination = request.nextUrl.clone();
+  destination.search = "";
+
+  if (mode === "signup") {
+    destination.pathname = "/start";
+    return destination;
+  }
+
+  if (requestedNext === "/business" || requestedNext.startsWith("/business/")) {
+    destination.pathname = "/business/login";
+    destination.searchParams.set("next", requestedNext);
+    return destination;
+  }
+
+  if (requestedNext === "/dashboard" || requestedNext.startsWith("/dashboard/")) {
+    destination.pathname = "/individual/login";
+    destination.searchParams.set("next", requestedNext);
+    return destination;
+  }
+
+  destination.pathname = "/start";
+  destination.searchParams.set("mode", "login");
+  return destination;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const legacyLoginRedirect = getLegacyLoginRedirect(request);
+  if (legacyLoginRedirect) {
+    return NextResponse.redirect(legacyLoginRedirect);
+  }
+
+  if (PUBLIC_AUTH_ENTRY_ROUTES.has(pathname)) {
+    return NextResponse.next();
+  }
 
   if (pathname === "/control-invite") {
     const response = NextResponse.next();

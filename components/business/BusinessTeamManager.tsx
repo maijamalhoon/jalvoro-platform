@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Ban,
-  Check,
   ChevronRight,
   Clipboard,
   Crown,
@@ -16,12 +15,20 @@ import {
   UserCog,
   UserRoundCheck,
   UserRoundX,
-  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  BUSINESS_TEAM_ASSIGNABLE_ROLES,
+  businessRoleLabel,
+  isPrivilegedBusinessRole,
+  isSensitiveBusinessPermission,
+  suggestedBusinessPermissions,
+  visibleBusinessPermissionGroups,
+  type BusinessPermissionGroup,
+} from "@/lib/business/team-access";
 import { createClient } from "@/lib/supabase/client";
 
 type WorkspaceMode = "advanced_company" | "simple_shop";
@@ -89,79 +96,6 @@ type BusinessTeamManagerProps = {
   snapshot: TeamSnapshot;
 };
 
-const ROLES = [
-  { value: "admin", label: "Admin", detail: "Broad operational control; owner manages admin access." },
-  { value: "accountant", label: "Accountant", detail: "Accounting, purchases, reports, and financial review." },
-  { value: "manager", label: "Manager", detail: "Daily operations without ownership or manual owner controls." },
-  { value: "sales", label: "Sales", detail: "Customers, invoices, collections, and CRM workflows." },
-  { value: "cashier", label: "Cashier", detail: "Payments and Simple Shop counter workflows." },
-  { value: "inventory", label: "Inventory", detail: "Products, stock, counts, and Simple Shop purchases." },
-  { value: "viewer", label: "Viewer", detail: "Read-only operational and reporting access." },
-] as const;
-
-const PERMISSION_GROUPS = [
-  {
-    label: "Team",
-    permissions: [
-      ["team.view", "View team"],
-      ["team.manage", "Manage team"],
-    ],
-  },
-  {
-    label: "Accounting & reports",
-    permissions: [
-      ["accounting.view", "View accounting"],
-      ["accounting.manage", "Manage accounting"],
-      ["reports.view", "View reports"],
-    ],
-  },
-  {
-    label: "Contacts & sales",
-    permissions: [
-      ["contacts.view", "View contacts"],
-      ["contacts.manage", "Manage contacts"],
-      ["sales.view", "View sales"],
-      ["sales.manage", "Manage sales"],
-      ["sales.collect", "Collect payments"],
-      ["sales.return", "Process sales returns"],
-    ],
-  },
-  {
-    label: "Purchases",
-    permissions: [
-      ["purchases.view", "View purchases"],
-      ["purchases.manage", "Manage purchases"],
-      ["purchases.pay", "Pay suppliers"],
-      ["purchases.return", "Process purchase returns"],
-    ],
-  },
-  {
-    label: "Inventory",
-    permissions: [
-      ["inventory.view", "View inventory"],
-      ["inventory.manage", "Manage products and stock"],
-      ["inventory.transfer", "Transfer stock"],
-      ["inventory.adjust", "Adjust physical stock"],
-    ],
-  },
-  {
-    label: "CRM",
-    permissions: [
-      ["crm.view", "View CRM"],
-      ["crm.manage", "Manage CRM"],
-    ],
-  },
-  {
-    label: "Simple Shop",
-    permissions: [
-      ["shop.view", "View shop"],
-      ["shop.sell", "Post sales"],
-      ["shop.purchase", "Post purchases"],
-      ["shop.expense", "Post expenses"],
-    ],
-  },
-] as const;
-
 function displayDate(value: string | null, includeTime = false) {
   if (!value) return "Not yet";
   return new Intl.DateTimeFormat("en", {
@@ -170,10 +104,6 @@ function displayDate(value: string | null, includeTime = false) {
     year: "numeric",
     ...(includeTime ? { hour: "2-digit", minute: "2-digit" } : {}),
   }).format(new Date(value));
-}
-
-function roleLabel(value: string) {
-  return ROLES.find((role) => role.value === value)?.label ?? value.replace(/_/g, " ");
 }
 
 function statusTone(status: string) {
@@ -204,29 +134,6 @@ function auditLabel(action: string) {
   return labels[action] ?? action.replace(/_/g, " ");
 }
 
-function suggestedPermissions(role: string, mode: WorkspaceMode) {
-  if (mode === "simple_shop") {
-    if (role === "cashier") return ["shop.sell", "shop.expense"];
-    if (role === "inventory") return ["shop.purchase", "inventory.manage"];
-    if (role === "accountant") return ["accounting.view", "reports.view"];
-    if (role === "viewer") return ["shop.view", "reports.view"];
-    if (role === "sales") return ["shop.sell", "contacts.manage"];
-  }
-
-  if (role === "sales") return ["contacts.manage", "sales.manage", "sales.collect", "crm.manage"];
-  if (role === "accountant") return ["accounting.manage", "purchases.manage", "purchases.pay", "reports.view"];
-  if (role === "inventory") return ["inventory.manage", "inventory.transfer", "inventory.adjust"];
-  if (role === "viewer") return ["accounting.view", "reports.view"];
-  return [];
-}
-
-function visiblePermissionGroups(mode: WorkspaceMode) {
-  if (mode === "advanced_company") return PERMISSION_GROUPS;
-  return PERMISSION_GROUPS.filter((group) =>
-    ["Team", "Accounting & reports", "Contacts & sales", "Inventory", "Simple Shop"].includes(group.label),
-  );
-}
-
 async function copyText(value: string) {
   try {
     await navigator.clipboard.writeText(value);
@@ -248,9 +155,9 @@ export default function BusinessTeamManager({
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState(workspaceMode === "simple_shop" ? "cashier" : "sales");
+  const [role, setRole] = useState(workspaceMode === "simple_shop" ? "cashier" : "employee");
   const [permissions, setPermissions] = useState<string[]>(
-    suggestedPermissions(workspaceMode === "simple_shop" ? "cashier" : "sales", workspaceMode),
+    suggestedBusinessPermissions(workspaceMode === "simple_shop" ? "cashier" : "employee", workspaceMode),
   );
   const [expiresDays, setExpiresDays] = useState("7");
   const [sending, setSending] = useState(false);
@@ -263,11 +170,11 @@ export default function BusinessTeamManager({
   const historicalInvitations = snapshot.invitations.filter(
     (invitation) => !["pending", "expired"].includes(invitation.status),
   );
-  const groups = visiblePermissionGroups(workspaceMode);
+  const groups = visibleBusinessPermissionGroups(workspaceMode);
 
   function changeInviteRole(nextRole: string) {
     setRole(nextRole);
-    setPermissions(suggestedPermissions(nextRole, workspaceMode));
+    setPermissions(suggestedBusinessPermissions(nextRole, workspaceMode));
   }
 
   function togglePermission(permission: string) {
@@ -409,7 +316,7 @@ export default function BusinessTeamManager({
                   className="field-input min-h-11 w-full"
                   disabled={sending}
                 >
-                  {ROLES.filter((option) => isPrimaryOwner || option.value !== "admin").map((option) => (
+                  {BUSINESS_TEAM_ASSIGNABLE_ROLES.filter((option) => isPrimaryOwner || !isPrivilegedBusinessRole(option.value)).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -437,7 +344,7 @@ export default function BusinessTeamManager({
                 <div>
                   <h3 className="text-sm font-black text-text-primary">Additional permissions</h3>
                   <p className="mt-1 text-xs text-text-secondary">
-                    The selected role already carries its standard access. These controls add precise exceptions.
+                    The least-privilege role template is preselected. Customize only when the job requires an exception.
                   </p>
                 </div>
                 <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-black text-primary">
@@ -449,7 +356,7 @@ export default function BusinessTeamManager({
                 selected={permissions}
                 onToggle={togglePermission}
                 disabled={sending}
-                canGrantTeamManagement={isPrimaryOwner}
+                canGrantSensitivePermissions={isPrimaryOwner}
               />
             </div>
 
@@ -532,7 +439,7 @@ export default function BusinessTeamManager({
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-text-secondary">
-                        {roleLabel(invitation.role)} · expires {displayDate(invitation.expires_at)} · resent {invitation.resend_count} times
+                        {businessRoleLabel(invitation.role)} · expires {displayDate(invitation.expires_at)} · resent {invitation.resend_count} times
                       </p>
                     </div>
                     {canManage && ["pending", "expired"].includes(invitation.status) ? (
@@ -609,13 +516,13 @@ function PermissionGrid({
   selected,
   onToggle,
   disabled,
-  canGrantTeamManagement,
+  canGrantSensitivePermissions,
 }: {
-  groups: readonly (typeof PERMISSION_GROUPS)[number][];
+  groups: readonly BusinessPermissionGroup[];
   selected: string[];
   onToggle: (permission: string) => void;
   disabled: boolean;
-  canGrantTeamManagement: boolean;
+  canGrantSensitivePermissions: boolean;
 }) {
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -623,7 +530,8 @@ function PermissionGrid({
         <fieldset key={group.label} className="space-y-2">
           <legend className="text-xs font-black uppercase tracking-[0.08em] text-text-secondary">{group.label}</legend>
           {group.permissions.map(([permission, label]) => {
-            const protectedPermission = permission === "team.manage" && !canGrantTeamManagement;
+            const protectedPermission =
+              isSensitiveBusinessPermission(permission) && !canGrantSensitivePermissions;
             const checked = selected.includes(permission);
             return (
               <label
@@ -667,7 +575,7 @@ function MemberEditor({
   isPrimaryOwner: boolean;
   canManage: boolean;
   member: TeamMember;
-  groups: readonly (typeof PERMISSION_GROUPS)[number][];
+  groups: readonly BusinessPermissionGroup[];
   permissionCatalog: string[];
 }) {
   const router = useRouter();
@@ -789,8 +697,17 @@ function MemberEditor({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-2">
               <span className="text-xs font-bold text-text-secondary">Role</span>
-              <select value={role} onChange={(event) => setRole(event.target.value)} className="field-input min-h-11 w-full" disabled={saving}>
-                {ROLES.filter((option) => isPrimaryOwner || option.value !== "admin").map((option) => (
+              <select
+                value={role}
+                onChange={(event) => {
+                  const nextRole = event.target.value;
+                  setRole(nextRole);
+                  setPermissions(suggestedBusinessPermissions(nextRole, workspaceMode));
+                }}
+                className="field-input min-h-11 w-full"
+                disabled={saving}
+              >
+                {BUSINESS_TEAM_ASSIGNABLE_ROLES.filter((option) => isPrimaryOwner || !isPrivilegedBusinessRole(option.value)).map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -816,7 +733,7 @@ function MemberEditor({
               selected={permissions}
               onToggle={toggle}
               disabled={saving}
-              canGrantTeamManagement={isPrimaryOwner}
+              canGrantSensitivePermissions={isPrimaryOwner}
             />
           </details>
 
@@ -847,7 +764,7 @@ function MemberEditor({
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-[var(--radius-button)] bg-surface-secondary px-4 py-3">
             <span className="text-xs font-bold text-text-secondary">Role</span>
-            <strong className="mt-1 block text-sm text-text-primary">{roleLabel(member.role)}</strong>
+            <strong className="mt-1 block text-sm text-text-primary">{businessRoleLabel(member.role)}</strong>
           </div>
           <div className="rounded-[var(--radius-button)] bg-surface-secondary px-4 py-3">
             <span className="text-xs font-bold text-text-secondary">Joined</span>
@@ -858,7 +775,7 @@ function MemberEditor({
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
         {member.status === "active" ? <UserRoundCheck className="size-4 text-success" aria-hidden="true" /> : <UserRoundX className="size-4 text-warning" aria-hidden="true" />}
-        <span>{roleLabel(member.role)}</span>
+        <span>{businessRoleLabel(member.role)}</span>
         <span>·</span>
         <span>{member.permissions.includes("*") ? "Full access" : `${member.permissions.length} custom permissions`}</span>
       </div>

@@ -76,8 +76,8 @@ function renderNode(
   strokeWidth: number,
 ): ReactElement {
   const width = strokeWidth * (node.strokeScale ?? 1);
+  const key = `${node.kind}-${index}`;
   const common = {
-    key: `${node.kind}-${index}`,
     opacity: node.opacity,
     stroke: node.filled ? "none" : "currentColor",
     fill: node.filled ? "currentColor" : "none",
@@ -88,12 +88,13 @@ function renderNode(
 
   switch (node.kind) {
     case "path":
-      return <path {...common} d={node.d} />;
+      return <path key={key} {...common} d={node.d} />;
     case "circle":
-      return <circle {...common} cx={node.cx} cy={node.cy} r={node.r} />;
+      return <circle key={key} {...common} cx={node.cx} cy={node.cy} r={node.r} />;
     case "rect":
       return (
         <rect
+          key={key}
           {...common}
           x={node.x}
           y={node.y}
@@ -105,6 +106,7 @@ function renderNode(
     case "line":
       return (
         <line
+          key={key}
           {...common}
           x1={node.x1}
           y1={node.y1}
@@ -113,7 +115,7 @@ function renderNode(
         />
       );
     case "polyline":
-      return <polyline {...common} points={node.points} />;
+      return <polyline key={key} {...common} points={node.points} />;
   }
 }
 

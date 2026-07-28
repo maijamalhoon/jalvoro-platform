@@ -225,7 +225,7 @@ proxy.ts                  Route and session boundary logic
 
 ### Prerequisites
 
-- Node.js 20 or newer
+- Node.js 24.x (matching `package.json` and CI)
 - npm
 - A Supabase project for authenticated, persistent data
 

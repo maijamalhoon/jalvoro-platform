@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 import ChartTooltipAutoDismiss from "@/components/charts/ChartTooltipAutoDismiss";
 import { CurrencyProvider } from "@/components/currency/CurrencyProvider";
@@ -28,6 +29,7 @@ import {
   EMPTY_NEW_USER_EXPERIENCE_STATE,
   loadNewUserExperienceState,
 } from "@/lib/new-user-experience";
+import { accountRealmAllows, loadAccountRealm } from "@/lib/account-realm/server";
 import type { NotificationState } from "@/lib/notifications";
 import { loadDashboardNotifications } from "@/lib/notifications-server";
 import { createClient } from "@/lib/supabase/server";
@@ -124,6 +126,7 @@ import "./mobile-sidebar-edge-lock.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
   alternates: {
     canonical: "/dashboard",
   },
@@ -152,6 +155,18 @@ export default async function DashboardLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/individual/login?next=%2Fdashboard");
+  }
+
+  const realm = await loadAccountRealm(supabase);
+  if (!realm) {
+    redirect("/start?mode=login&error=realm_unavailable");
+  }
+  if (!accountRealmAllows(realm, "individual")) {
+    redirect("/business");
+  }
 
   let accountPreference: SupportedCurrency | null = null;
   let newUserExperience = EMPTY_NEW_USER_EXPERIENCE_STATE;
