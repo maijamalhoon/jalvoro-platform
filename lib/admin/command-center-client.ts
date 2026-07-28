@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 import {
@@ -8,7 +9,6 @@ import {
   CONTROL_PLANE_SUPABASE_URL,
   parseControlPlaneAccess,
 } from "@/lib/control-plane/config";
-import { createClient as createApplicationClient } from "@/lib/supabase/server";
 
 type RpcError = {
   code: string;
@@ -20,6 +20,29 @@ type RpcError = {
 type GatewayEnvelope =
   | { ok: true; data: unknown }
   | { ok: false; error: RpcError };
+
+const COMMAND_CENTER_OPERATIONS = new Set([
+  "get_platform_admin_snapshot",
+  "get_command_center_navigation",
+  "get_command_center_organization_operations_snapshot",
+  "create_command_center_organization_by_email",
+  "transition_command_center_organization",
+  "create_command_center_organization_membership_by_email",
+  "transition_command_center_organization_membership",
+  "grant_command_center_organization_permission_by_email",
+  "revoke_command_center_permission",
+  "apply_billing_plan_operation",
+  "apply_privacy_request_workflow",
+  "approve_admin_release",
+  "revoke_admin_release",
+  "create_platform_security_incident",
+  "apply_platform_security_incident_workflow",
+  "apply_admin_compliance_review",
+  "create_platform_admin_invitation",
+  "apply_platform_admin_member_action",
+  "revoke_platform_admin_invitation",
+  "accept_platform_admin_invitation",
+]);
 
 const forbidden: RpcError = {
   code: "42501",
@@ -62,9 +85,20 @@ function parseEnvelope(value: unknown): GatewayEnvelope | null {
   };
 }
 
-export async function createCommandCenterClient() {
+export function isCommandCenterOperation(operation: string) {
+  return COMMAND_CENTER_OPERATIONS.has(operation);
+}
+
+export async function invokeCommandCenterRpc(
+  application: SupabaseClient,
+  operation: string,
+  args: unknown,
+) {
+  if (!isCommandCenterOperation(operation)) {
+    return { data: null, error: unavailable };
+  }
+
   const cookieStore = await cookies();
-  const application = await createApplicationClient();
   const controlPlane = createServerClient(
     CONTROL_PLANE_SUPABASE_URL,
     CONTROL_PLANE_SUPABASE_PUBLISHABLE_KEY,
@@ -92,7 +126,6 @@ export async function createCommandCenterClient() {
       controlPlane.auth.getSession(),
     ]);
 
-  let proofError: RpcError | null = null;
   const mainUser = applicationUser.data.user;
   const controlUserValue = controlUser.data.user;
   const mainToken = applicationSession.data.session?.access_token ?? "";
@@ -108,49 +141,41 @@ export async function createCommandCenterClient() {
     !normalizeEmail(mainUser.email) ||
     normalizeEmail(mainUser.email) !== normalizeEmail(controlUserValue.email)
   ) {
-    proofError = forbidden;
+    return { data: null, error: forbidden };
   }
 
-  if (!proofError) {
-    const assurance = await controlPlane.auth.mfa
-      .getAuthenticatorAssuranceLevel()
-      .catch(() => ({ data: null, error: new Error("assurance_unavailable") }));
-    const access = await controlPlane.rpc("get_my_control_plane_access");
+  const assurance = await controlPlane.auth.mfa
+    .getAuthenticatorAssuranceLevel()
+    .catch(() => ({ data: null, error: new Error("assurance_unavailable") }));
+  const access = await controlPlane.rpc("get_my_control_plane_access");
 
-    if (
-      assurance.error ||
-      assurance.data?.currentLevel !== "aal2" ||
-      access.error ||
-      !parseControlPlaneAccess(access.data)
-    ) {
-      proofError = forbidden;
-    }
+  if (
+    assurance.error ||
+    assurance.data?.currentLevel !== "aal2" ||
+    access.error ||
+    !parseControlPlaneAccess(access.data)
+  ) {
+    return { data: null, error: forbidden };
   }
 
-  return {
-    auth: application.auth,
-    async rpc(operation: string, args: Record<string, unknown> = {}) {
-      if (proofError || !mainToken || !controlToken) {
-        return { data: null, error: proofError ?? forbidden };
-      }
-
-      const invocation = await application.functions.invoke(
-        "command-center-gateway",
-        {
-          body: { operation, arguments: args },
-          headers: {
-            Authorization: `Bearer ${mainToken}`,
-            "x-control-plane-authorization": `Bearer ${controlToken}`,
-          },
-        },
-      );
-
-      if (invocation.error) return { data: null, error: unavailable };
-      const envelope = parseEnvelope(invocation.data);
-      if (!envelope) return { data: null, error: unavailable };
-      return envelope.ok
-        ? { data: envelope.data, error: null }
-        : { data: null, error: envelope.error };
+  const invocation = await application.functions.invoke(
+    "command-center-gateway",
+    {
+      body: {
+        operation,
+        arguments: isRecord(args) ? args : {},
+      },
+      headers: {
+        Authorization: `Bearer ${mainToken}`,
+        "x-control-plane-authorization": `Bearer ${controlToken}`,
+      },
     },
-  };
+  );
+
+  if (invocation.error) return { data: null, error: unavailable };
+  const envelope = parseEnvelope(invocation.data);
+  if (!envelope) return { data: null, error: unavailable };
+  return envelope.ok
+    ? { data: envelope.data, error: null }
+    : { data: null, error: envelope.error };
 }
