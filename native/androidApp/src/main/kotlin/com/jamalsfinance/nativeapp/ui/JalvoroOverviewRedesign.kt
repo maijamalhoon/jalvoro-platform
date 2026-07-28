@@ -4,19 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -41,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.util.Locale
-import kotlin.math.abs
 
 private val RedesignIncome = Color(0xFF17845F)
 private val RedesignExpense = Color(0xFFC5524D)
@@ -67,14 +54,14 @@ internal fun JalvoroOverviewTopBar(
         shadowElevation = 2.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 58.dp)
+                .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OverviewTopBarAction(
-                label = "Open navigation menu",
-                onClick = onMenu,
-            ) {
+            OverviewTopBarAction("Open navigation menu", onMenu) {
                 val lineColor = MaterialTheme.colorScheme.onSurface
                 Canvas(modifier = Modifier.fillMaxSize().padding(13.dp)) {
                     val stroke = 2.2.dp.toPx()
@@ -112,24 +99,13 @@ internal fun JalvoroOverviewTopBar(
             }
             OverviewTopBarAction(
                 label = if (refreshing) "Refreshing data" else "Refresh data",
-                enabled = !refreshing,
                 onClick = onRefresh,
+                enabled = !refreshing,
             ) {
-                Icon(
-                    imageVector = JalvoroIcons.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
+                Icon(JalvoroIcons.Refresh, null, Modifier.size(20.dp))
             }
-            OverviewTopBarAction(
-                label = "Open profile and settings",
-                onClick = onSettings,
-            ) {
-                Icon(
-                    imageVector = JalvoroIcons.User,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
+            OverviewTopBarAction("Open profile and settings", onSettings) {
+                Icon(JalvoroIcons.User, null, Modifier.size(20.dp))
             }
         }
     }
@@ -150,7 +126,7 @@ private fun OverviewTopBarAction(
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Box(contentAlignment = Alignment.Center, content = { content() })
+        Box(contentAlignment = Alignment.Center) { content() }
     }
 }
 
@@ -166,26 +142,22 @@ internal fun JalvoroOverviewHeroCard(
     onInvest: () -> Unit,
 ) {
     val primary = MaterialTheme.colorScheme.primary
-    val tertiary = MaterialTheme.colorScheme.tertiary
     val shape = RoundedCornerShape(26.dp)
+    val balanceText = redesignPkr(totalBalance)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(
-                        primary.copy(alpha = 0.28f),
-                        tertiary.copy(alpha = 0.16f),
+                    listOf(
+                        primary.copy(alpha = 0.30f),
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
                         MaterialTheme.colorScheme.surfaceContainer,
                     ),
                 ),
                 shape = shape,
             )
-            .border(
-                width = 1.dp,
-                color = primary.copy(alpha = 0.32f),
-                shape = shape,
-            )
+            .border(1.dp, primary.copy(alpha = 0.34f), shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -201,16 +173,16 @@ internal fun JalvoroOverviewHeroCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = redesignPkr(totalBalance),
+                text = balanceText,
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = when {
-                        totalBalance == null -> 28.sp
-                        abs(totalBalance) >= 1_000_000_000 -> if (compact) 34.sp else 44.sp
-                        else -> if (compact) 40.sp else 48.sp
+                        balanceText.length > 20 -> if (compact) 28.sp else 38.sp
+                        balanceText.length > 16 -> if (compact) 32.sp else 42.sp
+                        else -> if (compact) 38.sp else 48.sp
                     },
                     lineHeight = 46.sp,
-                    letterSpacing = (-1.2).sp,
+                    letterSpacing = (-1.1).sp,
                 ),
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
@@ -222,18 +194,8 @@ internal fun JalvoroOverviewHeroCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            OverviewBalancePart(
-                label = "Accounts",
-                value = redesignPkr(accountBalance),
-                tone = RedesignTransfer,
-                modifier = Modifier.weight(1f),
-            )
-            OverviewBalancePart(
-                label = "Investments",
-                value = redesignPkr(portfolioValue),
-                tone = RedesignInvestment,
-                modifier = Modifier.weight(1f),
-            )
+            OverviewBalancePart("Accounts", redesignPkr(accountBalance), RedesignTransfer, Modifier.weight(1f))
+            OverviewBalancePart("Investments", redesignPkr(portfolioValue), RedesignInvestment, Modifier.weight(1f))
         }
 
         Row(
@@ -265,13 +227,12 @@ private fun OverviewBalancePart(
             modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                Surface(modifier = Modifier.size(7.dp), shape = CircleShape, color = tone) {}
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Surface(Modifier.size(7.dp), CircleShape, tone) {}
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
                 text = value,
@@ -294,10 +255,9 @@ private fun OverviewDockAction(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(64.dp).semantics { contentDescription = label },
+        modifier = modifier.height(62.dp).semantics { contentDescription = label },
         shape = RoundedCornerShape(15.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.56f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
     ) {
         Column(
@@ -305,13 +265,8 @@ private fun OverviewDockAction(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(21.dp), tint = tone)
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
+            Icon(icon, null, Modifier.size(21.dp), tint = tone)
+            Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -324,24 +279,20 @@ internal fun JalvoroOverviewMonthlyPanel(
     investment: Double?,
 ) {
     JalvoroSurfaceCard {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text("This month", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
             Text(
-                text = "This month",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = "Verified month-to-date totals",
+                "Verified month-to-date totals",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
             OverviewSummaryRow("Net savings", savings, if ((savings ?: 0.0) < 0) RedesignExpense else RedesignIncome)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            OverviewPanelDivider()
             OverviewSummaryRow("Income", income, RedesignIncome)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            OverviewPanelDivider()
             OverviewSummaryRow("Expenses", expenses, RedesignExpense)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            OverviewPanelDivider()
             OverviewSummaryRow("Investment contributions", investment, RedesignInvestment)
         }
     }
@@ -350,28 +301,27 @@ internal fun JalvoroOverviewMonthlyPanel(
 @Composable
 private fun OverviewSummaryRow(label: String, value: Double?, tone: Color) {
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Surface(
-            modifier = Modifier.size(36.dp),
-            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.size(34.dp),
+            shape = RoundedCornerShape(11.dp),
             color = tone.copy(alpha = 0.13f),
-            contentColor = tone,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = tone) {}
+                Surface(Modifier.size(9.dp), CircleShape, tone) {}
             }
         }
         Text(
-            text = label,
+            label,
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = redesignPkr(value),
+            redesignPkr(value),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.End,
@@ -389,24 +339,20 @@ internal fun JalvoroOverviewTodayPanel(
     daysRemaining: Int,
 ) {
     JalvoroSurfaceCard {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("Today", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
             Text(
-                text = "Today",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text = "Live activity and month timing",
+                "Live activity and month timing",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth()) {
                 OverviewTodayCell("Income", redesignPkr(income), "Recorded today", RedesignIncome, Modifier.weight(1f))
                 OverviewTodayCell("Expenses", redesignPkr(expenses), "Refund adjusted", RedesignExpense, Modifier.weight(1f))
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Row(modifier = Modifier.fillMaxWidth()) {
+            OverviewPanelDivider()
+            Row(Modifier.fillMaxWidth()) {
                 OverviewTodayCell(
                     "Net",
                     redesignPkr(net),
@@ -440,27 +386,36 @@ private fun OverviewTodayCell(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+        modifier = modifier.padding(horizontal = 8.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            Surface(modifier = Modifier.size(7.dp), shape = CircleShape, color = tone) {}
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Surface(Modifier.size(7.dp), CircleShape, tone) {}
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
-            text = value,
+            value,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = helper,
+            helper,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+@Composable
+private fun OverviewPanelDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 private fun redesignPkr(value: Double?): String {
