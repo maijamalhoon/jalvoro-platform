@@ -23,7 +23,7 @@ describe("Command Center dual authorization gateway", () => {
 
   it("adds a service-only compatibility gateway and preserves the verified actor", () => {
     const migration = read(
-      "supabase/migrations/20260728110000_command_center_dual_auth_gateway.sql",
+      "supabase/migrations/20260728110549_command_center_dual_auth_gateway.sql",
     );
 
     expect(migration).toContain("execute_command_center_operation");
