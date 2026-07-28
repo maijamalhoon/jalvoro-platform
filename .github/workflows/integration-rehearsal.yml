@@ -90,20 +90,18 @@ jobs:
           path = Path("supabase/tests/business_pos_operations_bridge.sql")
           text = path.read_text()
           declaration = "declare state pos_operation_state; first_result jsonb; replay jsonb; bill_count bigint;"
-          diagnostic_declaration = declaration[:-1] + "; failure_code text;"
-          failure = """  if not coalesce((first_result->>'ok')::boolean,false) then
-            raise exception 'Valid POS purchase did not post.';
-          end if;"""
-          diagnostic_failure = """  if not coalesce((first_result->>'ok')::boolean,false) then
-            select request.error_code into failure_code
-            from public.business_pos_operation_requests request
-            where request.business_id=state.business_id
-              and request.request_key='84444444-4444-4444-8444-444444444444'::uuid;
-            raise exception 'Valid POS purchase did not post: result=%, sqlstate=%', first_result, failure_code;
-          end if;"""
+          failure = "    raise exception 'Valid POS purchase did not post.';"
+          diagnostic_failure = """    select request.error_code into failure_code
+              from public.business_pos_operation_requests request
+              where request.business_id=state.business_id
+                and request.request_key='84444444-4444-4444-8444-444444444444'::uuid;
+              raise exception 'Valid POS purchase did not post: result=%, sqlstate=%', first_result, failure_code;"""
           if declaration not in text or failure not in text:
               raise SystemExit("POS purchase diagnostic patch target changed")
-          path.write_text(text.replace(declaration, diagnostic_declaration, 1).replace(failure, diagnostic_failure, 1))
+          path.write_text(
+              text.replace(declaration, declaration + " failure_code text;", 1)
+                  .replace(failure, diagnostic_failure, 1)
+          )
           PY
           log_path="${GITHUB_WORKSPACE}/integration-rehearsal.log"
           set +e
