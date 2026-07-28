@@ -34,25 +34,15 @@ describe("Command Center dual authorization gateway", () => {
     expect(migration).toContain("email_confirmed_at is not null");
   });
 
-  it("routes every Admin source RPC through the gateway client", () => {
-    const sourceFiles = [
-      "app/admin/page.tsx",
-      "app/admin/access-actions.ts",
-      "app/admin/billing-actions.ts",
-      "app/admin/privacy-actions.ts",
-      "app/admin/compliance-actions.ts",
-      "app/admin/incident-actions.ts",
-      "app/admin/release-actions.ts",
-      "app/admin/organizations/page.tsx",
-      "app/admin/organizations/actions.ts",
-      "components/admin/AdminCommandCenterShell.tsx",
-      "components/admin/AdminSectionNav.tsx",
-    ];
+  it("intercepts only the bounded Command Center RPC allowlist", () => {
+    const server = read("lib/supabase/server.ts");
+    const client = read("lib/admin/command-center-client.ts");
 
-    for (const path of sourceFiles) {
-      const source = read(path);
-      expect(source).toContain("command-center-client");
-      expect(source).not.toContain('from "@/lib/supabase/server"');
-    }
+    expect(server).toContain("isCommandCenterOperation(operation)");
+    expect(server).toContain("invokeCommandCenterRpc(client, operation, args)");
+    expect(server).toContain("return directRpc(operation, args, options)");
+    expect(client).toContain('"get_platform_admin_snapshot"');
+    expect(client).toContain('"approve_admin_release"');
+    expect(client).toContain('"accept_platform_admin_invitation"');
   });
 });
