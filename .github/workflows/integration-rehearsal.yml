@@ -56,6 +56,7 @@ jobs:
             20260727043000_pos_workforce_security.sql
             20260727060000_pos_sale_transaction_bridge.sql
             20260727070000_pos_operations_transaction_bridge.sql
+            20260728054500_seed_primary_branch_during_business_registration.sql
           )
           for migration in "${expected[@]}"; do
             test -f "supabase/migrations/$migration" || {
