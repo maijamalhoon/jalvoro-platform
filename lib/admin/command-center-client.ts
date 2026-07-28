@@ -118,26 +118,29 @@ export async function invokeCommandCenterRpc(
     },
   );
 
-  const [applicationUser, applicationSession, controlUser, controlSession] =
-    await Promise.all([
-      application.auth.getUser(),
-      application.auth.getSession(),
-      controlPlane.auth.getUser(),
-      controlPlane.auth.getSession(),
-    ]);
-
-  const mainUser = applicationUser.data.user;
-  const controlUserValue = controlUser.data.user;
+  const [applicationSession, controlSession] = await Promise.all([
+    application.auth.getSession(),
+    controlPlane.auth.getSession(),
+  ]);
   const mainToken = applicationSession.data.session?.access_token ?? "";
   const controlToken = controlSession.data.session?.access_token ?? "";
+
+  if (applicationSession.error || controlSession.error || !mainToken || !controlToken) {
+    return { data: null, error: forbidden };
+  }
+
+  const [applicationUser, controlUser] = await Promise.all([
+    application.auth.getUser(mainToken),
+    controlPlane.auth.getUser(controlToken),
+  ]);
+  const mainUser = applicationUser.data.user;
+  const controlUserValue = controlUser.data.user;
 
   if (
     applicationUser.error ||
     controlUser.error ||
     !mainUser ||
     !controlUserValue ||
-    !mainToken ||
-    !controlToken ||
     !normalizeEmail(mainUser.email) ||
     normalizeEmail(mainUser.email) !== normalizeEmail(controlUserValue.email)
   ) {
