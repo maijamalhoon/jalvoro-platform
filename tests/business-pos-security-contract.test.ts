@@ -90,6 +90,19 @@ describe("Retail POS workforce security contract", () => {
     expect(edgeFunction).not.toContain("mfa_factors");
   });
 
+  it("uses unbiased rejection sampling for POS codes and temporary PINs", () => {
+    expect(edgeFunction).toContain("function randomIndex(upperExclusive: number)");
+    expect(edgeFunction).toContain("const acceptedRange = bucketSize * upperExclusive");
+    expect(edgeFunction).toContain("Math.floor(value / bucketSize)");
+    expect(edgeFunction).toContain(
+      "DEVICE_ALPHABET[randomIndex(DEVICE_ALPHABET.length)]",
+    );
+    expect(edgeFunction).toContain("String(randomIndex(10))");
+    expect(edgeFunction).not.toContain(
+      "value % DEVICE_ALPHABET.length",
+    );
+    expect(edgeFunction).not.toContain("value % 10");
+  });
   it("ships a tenant-authorized management page without exposing secrets after issuance", () => {
     expect(page).toContain('business.workspace_mode !== "simple_shop"');
     expect(page).toContain('["pos.view", "pos.manage", "pos.approve"].includes(permission)');

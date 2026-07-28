@@ -301,17 +301,39 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
 }
 
+function randomIndex(upperExclusive: number): number {
+  if (
+    !Number.isSafeInteger(upperExclusive) ||
+    upperExclusive < 2 ||
+    upperExclusive > 256
+  ) {
+    throw new Error("invalid_secure_random_range");
+  }
+
+  const bucketSize = Math.floor(256 / upperExclusive);
+  const acceptedRange = bucketSize * upperExclusive;
+  for (let attempt = 0; attempt < 128; attempt += 1) {
+    const value = randomBytes(1)[0];
+    if (value < acceptedRange) return Math.floor(value / bucketSize);
+  }
+
+  throw new Error("secure_random_generation_failed");
+}
+
 function randomCode(prefix: string, length = 6): string {
-  const bytes = randomBytes(length);
   let result = `${prefix}-`;
-  for (const value of bytes) result += DEVICE_ALPHABET[value % DEVICE_ALPHABET.length];
+  for (let index = 0; index < length; index += 1) {
+    result += DEVICE_ALPHABET[randomIndex(DEVICE_ALPHABET.length)];
+  }
   return result;
 }
 
 function temporaryPin(): string {
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    const values = randomBytes(6);
-    const pin = Array.from(values, (value) => String(value % 10)).join("");
+    const pin = Array.from(
+      { length: 6 },
+      () => String(randomIndex(10)),
+    ).join("");
     if (!PIN_REJECT_LIST.has(pin)) return pin;
   }
   throw new Error("secure_pin_generation_failed");
