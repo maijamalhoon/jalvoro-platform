@@ -13,6 +13,16 @@ const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
   "/api/security/password-check",
 ]);
 
+const PUBLIC_AUTH_ENTRY_ROUTES = new Set([
+  "/start",
+  "/individual/login",
+  "/individual/signup",
+  "/business/login",
+  "/business/register",
+  "/business/signup",
+  "/business/invitations/register",
+]);
+
 function getAIRewritePath(request: NextRequest) {
   if (request.nextUrl.pathname !== "/api/ai-insights") return null;
   if (request.method === "POST") return "/api/ai-insights/advanced";
@@ -58,6 +68,10 @@ export async function proxy(request: NextRequest) {
   const legacyLoginRedirect = getLegacyLoginRedirect(request);
   if (legacyLoginRedirect) {
     return NextResponse.redirect(legacyLoginRedirect);
+  }
+
+  if (PUBLIC_AUTH_ENTRY_ROUTES.has(pathname)) {
+    return NextResponse.next();
   }
 
   if (pathname === "/control-invite") {
