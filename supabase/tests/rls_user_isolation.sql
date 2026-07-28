@@ -199,6 +199,10 @@ begin
   exception
     when foreign_key_violation or insufficient_privilege or check_violation then
       null;
+    when raise_exception then
+      if sqlerrm <> 'Choose an active account.' then
+        raise;
+      end if;
   end;
 end;
 $$;
