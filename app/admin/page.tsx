@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import AdminComplianceAuditPanel from "@/components/admin/AdminComplianceAuditPanel";
 import AdminControlCenter from "@/components/admin/AdminControlCenter";
@@ -10,6 +10,7 @@ import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePa
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
 import BillingPlanOperations from "@/components/admin/BillingPlanOperations";
+import ControlPlaneLogin from "@/components/control-plane/ControlPlaneLogin";
 import PrivacyGovernancePanel from "@/components/admin/PrivacyGovernancePanel";
 import PrivacyRequestOperations from "@/components/admin/PrivacyRequestOperations";
 import { parseAdminAccessSnapshot } from "@/lib/admin/access-operations";
@@ -28,6 +29,8 @@ import {
 } from "@/lib/admin/release-readiness";
 import { deriveAdminSecurityPosture } from "@/lib/admin/security-posture";
 import { parseAdminUserOperationsSnapshot } from "@/lib/admin/user-operations";
+import { parseControlPlaneAccess } from "@/lib/control-plane/config";
+import { createControlPlaneServerClient } from "@/lib/control-plane/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -102,16 +105,29 @@ type AdminPageProps = {
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const controlPlane = await createControlPlaneServerClient();
+  const userResult = await controlPlane.auth.getUser();
 
-  if (userError || !user) {
-    redirect("/login?next=%2Fadmin");
+  if (userResult.error || !userResult.data.user) {
+    return <ControlPlaneLogin />;
   }
 
+  const [assurance, accessResult] = await Promise.all([
+    controlPlane.auth.mfa.getAuthenticatorAssuranceLevel(),
+    controlPlane.rpc("get_my_control_plane_access"),
+  ]);
+  const access = parseControlPlaneAccess(accessResult.data);
+
+  if (
+    assurance.error ||
+    assurance.data?.currentLevel !== "aal2" ||
+    accessResult.error ||
+    !access
+  ) {
+    return <ControlPlaneLogin />;
+  }
+
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_platform_admin_snapshot");
 
   if (error?.code === "42501") {
