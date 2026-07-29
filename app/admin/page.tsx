@@ -87,7 +87,7 @@ function single(value: string | string[] | undefined) {
 
 function actionResult<T extends string>(
   value: string | null,
-  allowed: Set<T> | Set<string>,
+  allowed: ReadonlySet<string>,
 ): T | null {
   return value && allowed.has(value) ? (value as T) : null;
 }
