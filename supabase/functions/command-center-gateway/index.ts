@@ -7,6 +7,7 @@ const CONTROL_PLANE_PUBLISHABLE_KEY =
 const MAX_REQUEST_BYTES = 16_384;
 const allowedOperations = new Set([
   "get_platform_admin_snapshot",
+  "get_command_center_user_360",
   "get_command_center_navigation",
   "get_command_center_organization_operations_snapshot",
   "create_command_center_organization_by_email",

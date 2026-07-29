@@ -76,7 +76,11 @@ function privacySignalsAllowTelemetry() {
 }
 
 function isProtectedProductRoute(route: string) {
-  return route === "/onboarding" || route.startsWith("/dashboard");
+  return (
+    route === "/onboarding" ||
+    route.startsWith("/dashboard") ||
+    route.startsWith("/business")
+  );
 }
 
 function currentRoute() {
