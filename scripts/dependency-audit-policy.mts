@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
+// Keep the CI exception narrow, auditable, and self-expiring.
 const TEMPORARY_ADVISORY_URL =
   "https://github.com/advisories/GHSA-mh99-v99m-4gvg";
 const TEMPORARY_ADVISORY_SOURCE = 1124334;

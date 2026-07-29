@@ -1,6 +1,6 @@
 # Repository Governance
 
-This document defines the maintenance workflow for Jamal's Finance. It complements [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and the pull request template.
+This document defines the maintenance workflow for JALVORO. It complements [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and the pull request template.
 
 ## Protected mainline
 
@@ -86,7 +86,7 @@ npm run build
 git diff --check
 ```
 
-Run feature-specific tests and manual browser checks as needed. Do not mark a check as complete unless it was actually executed. A Vercel preview or production deployment does not replace lint, typecheck, tests, or manual verification.
+Run feature-specific tests and manual browser checks as needed. Do not mark a check as complete unless it was actually executed. A preview or production deployment does not replace lint, typecheck, tests, or manual verification.
 
 Documentation-only and governance-only pull requests may omit runtime tests when no executable path changes, but the omission must be stated and formatting, links, YAML, and diff scope should still be reviewed.
 

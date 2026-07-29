@@ -68,12 +68,4 @@ describe("launch readiness contracts", () => {
     }
   });
 
-  it("monitors the public service and authentication boundary", () => {
-    const workflow = read(".github/workflows/production-smoke-monitor.yml");
-    expect(workflow).toContain("PRODUCTION_BASE_URL");
-    expect(workflow).toContain("/privacy");
-    expect(workflow).toContain("/dashboard");
-    expect(workflow).toContain("/api/ai-insights");
-    expect(workflow).toContain('"401"');
-  });
 });

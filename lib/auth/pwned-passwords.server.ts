@@ -51,7 +51,7 @@ export async function getPwnedPasswordCount(password: string) {
       headers: {
         Accept: "text/plain",
         "Add-Padding": "true",
-        "User-Agent": "Jamals-Finance-Password-Protection",
+        "User-Agent": "JALVORO-Password-Protection",
       },
       signal: controller.signal,
       next: { revalidate: RANGE_CACHE_SECONDS },

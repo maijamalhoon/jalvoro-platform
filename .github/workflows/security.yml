@@ -19,8 +19,7 @@ jobs:
     if: >-
       (
         github.event_name != 'pull_request' ||
-        github.event.pull_request.draft == false ||
-        github.head_ref == 'integration/product-realms-pos-rehearsal-20260727'
+        github.event.pull_request.draft == false
       ) &&
       github.event.repository.private == false
     runs-on: ubuntu-latest
@@ -51,8 +50,7 @@ jobs:
     if: >-
       (
         github.event_name != 'pull_request' ||
-        github.event.pull_request.draft == false ||
-        github.head_ref == 'integration/product-realms-pos-rehearsal-20260727'
+        github.event.pull_request.draft == false
       ) &&
       github.event.repository.private == true
     runs-on: ubuntu-latest
@@ -98,10 +96,7 @@ jobs:
     name: Dependency Review
     if: >-
       github.event_name == 'pull_request' &&
-      (
-        github.event.pull_request.draft == false ||
-        github.head_ref == 'integration/product-realms-pos-rehearsal-20260727'
-      )
+      github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

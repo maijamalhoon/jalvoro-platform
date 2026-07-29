@@ -1,4 +1,4 @@
-# Validates every main release candidate before deployment.
+# Validates every main release candidate before publication.
 name: CI
 
 on:
@@ -21,8 +21,7 @@ jobs:
     name: Validate
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.draft == false ||
-      github.head_ref == 'integration/product-realms-pos-rehearsal-20260727'
+      github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

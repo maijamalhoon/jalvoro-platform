@@ -112,8 +112,8 @@ function stopLocalStack({ preserveData = false } = {}) {
 }
 
 function removeGeneratedConfig() {
-  if (generatedConfig && fs.existsSync(configPath)) {
-    fs.rmSync(configPath);
+  if (generatedConfig) {
+    fs.rmSync(configPath, { force: true });
   }
   generatedConfig = false;
 }
