@@ -22,15 +22,17 @@ describe("zero-trust Command Center source contracts", () => {
     expect(source).toContain('destination.pathname = "/admin"');
   });
 
-  it("requires AAL2 and bounded access in middleware and the /admin page", () => {
+  it("requires AAL2 and bounded access before rendering /admin", () => {
     const middleware = read("lib/control-plane/proxy.ts");
     const page = read("app/admin/page.tsx");
+    const session = read("lib/admin/command-center-session.ts");
     const shell = read("components/admin/AdminCommandCenterShell.tsx");
 
     expect(middleware).toContain('currentLevel !== "aal2"');
     expect(middleware).toContain('rpc("get_my_control_plane_access")');
-    expect(page).toContain('currentLevel !== "aal2"');
-    expect(page).toContain('rpc("get_my_control_plane_access")');
+    expect(session).toContain('currentLevel !== "aal2"');
+    expect(session).toContain('rpc("get_my_control_plane_access")');
+    expect(page).toContain("getCommandCenterSession");
     expect(page).toContain("<ControlPlaneLogin />");
     expect(shell).toContain('rpc("get_command_center_navigation"');
   });
