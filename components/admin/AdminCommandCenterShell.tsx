@@ -6,8 +6,7 @@ import {
   parseResolvedCommandCenterNavigation,
   resolveCommandCenterEnvironment,
 } from "@/lib/admin/command-center-navigation";
-import { parseControlPlaneAccess } from "@/lib/control-plane/config";
-import { createControlPlaneServerClient } from "@/lib/control-plane/server";
+import { getCommandCenterSession } from "@/lib/admin/command-center-session";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminCommandCenterShell({
@@ -15,24 +14,8 @@ export default async function AdminCommandCenterShell({
 }: {
   children: ReactNode;
 }) {
-  const controlPlane = await createControlPlaneServerClient();
-  const userResult = await controlPlane.auth.getUser();
-
-  if (userResult.error || !userResult.data.user) {
-    return <>{children}</>;
-  }
-
-  const [assurance, accessResult] = await Promise.all([
-    controlPlane.auth.mfa.getAuthenticatorAssuranceLevel(),
-    controlPlane.rpc("get_my_control_plane_access"),
-  ]);
-
-  if (
-    assurance.error ||
-    assurance.data?.currentLevel !== "aal2" ||
-    accessResult.error ||
-    !parseControlPlaneAccess(accessResult.data)
-  ) {
+  const commandCenterSession = await getCommandCenterSession();
+  if (!commandCenterSession) {
     return <>{children}</>;
   }
 
