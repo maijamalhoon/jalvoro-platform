@@ -20,6 +20,8 @@ describe("product entry and Business registration contract", () => {
   it("routes landing authentication through product selection", () => {
     expect(landing).toContain('href="/start"');
     expect(landing).toContain('href="/start?mode=login"');
+    expect(landing).toContain('prefetch={false}');
+    expect(landing).toContain("with {APP_NAME}");
     expect(landing).not.toContain('href="/login?mode=signup"');
   });
 
