@@ -1,13 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import {
   invokeCommandCenterRpc,
   isCommandCenterOperation,
 } from "@/lib/admin/command-center-client";
+import { createControlPlaneServerClient } from "@/lib/control-plane/server";
 
 export const createClient = async () => {
-  const cookieStore = await cookies();
+  const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
   const client = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,6 +27,22 @@ export const createClient = async () => {
       },
     },
   );
+
+  const isCommandCenterRequest =
+    requestHeaders.get("x-jalvoro-command-center") === "1";
+
+  if (isCommandCenterRequest) {
+    const controlPlane = await createControlPlaneServerClient();
+    client.auth.getUser = controlPlane.auth.getUser.bind(
+      controlPlane.auth,
+    ) as typeof client.auth.getUser;
+    client.auth.getSession = controlPlane.auth.getSession.bind(
+      controlPlane.auth,
+    ) as typeof client.auth.getSession;
+    client.auth.getClaims = controlPlane.auth.getClaims.bind(
+      controlPlane.auth,
+    ) as typeof client.auth.getClaims;
+  }
 
   const directRpc = client.rpc.bind(client);
   client.rpc = ((operation, args, options) => {
