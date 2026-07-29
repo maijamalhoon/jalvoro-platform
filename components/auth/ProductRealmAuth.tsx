@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Building2,
@@ -132,6 +132,7 @@ export default function ProductRealmAuth({
           : "",
   );
   const [checkEmail, setCheckEmail] = useState(false);
+  const passwordSubmitInFlight = useRef(false);
 
   const isSignup = mode === "signup";
   const isBusiness = realm === "business";
@@ -251,7 +252,7 @@ export default function ProductRealmAuth({
 
   async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isBusy) return;
+    if (passwordSubmitInFlight.current || isBusy) return;
 
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedName = fullName.trim();
@@ -280,6 +281,7 @@ export default function ProductRealmAuth({
       }
     }
 
+    passwordSubmitInFlight.current = true;
     setLoading("password");
 
     try {
@@ -344,6 +346,7 @@ export default function ProductRealmAuth({
               : "Account setup could not be completed. Check your connection and try again.",
       );
     } finally {
+      passwordSubmitInFlight.current = false;
       setLoading(null);
     }
   }

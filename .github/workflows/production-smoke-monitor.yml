@@ -2,6 +2,11 @@ name: Production smoke monitor
 
 on:
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Temporary HTTPS base URL override"
+        required: false
+        type: string
   schedule:
     - cron: "7,37 * * * *"
 
@@ -18,8 +23,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      BASE_URL: https://jamals-finance-sable.vercel.app
+      BASE_URL: ${{ inputs.base_url || vars.PRODUCTION_BASE_URL }}
     steps:
+      - name: Validate production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${BASE_URL}" =~ ^https://[^/]+/?$ ]]; then
+            echo "Configure the PRODUCTION_BASE_URL repository variable with the active HTTPS origin."
+            exit 1
+          fi
+
       - name: Check public routes
         shell: bash
         run: |

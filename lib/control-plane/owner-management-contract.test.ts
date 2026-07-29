@@ -11,10 +11,15 @@ describe("Control Plane owner management contracts", () => {
       "supabase/control-plane/functions/control-plane-create-operator/index.ts",
     );
     expect(source).toContain('rpc("get_my_control_plane_access")');
-    expect(source).toContain("auth.admin.listUsers");
     expect(source).toContain("auth.admin.generateLink");
+    expect(source).toContain("isExistingUserError");
     expect(source).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
     expect(source).toContain("create_control_plane_invitation");
+    expect(source).toContain("CONTROL_PLANE_ALLOWED_ORIGINS");
+    expect(source).toContain("MAX_REQUEST_BYTES = 4_096");
+    expect(source).toContain("json_required");
+    expect(source).toContain("request_too_large");
+    expect(source).not.toContain('"Access-Control-Allow-Origin": "*"');
     expect(source).not.toMatch(/sb_secret_[A-Za-z0-9_-]+/);
   });
 

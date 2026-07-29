@@ -107,8 +107,13 @@ export default function PWARegister() {
     let refreshing = false;
     let idleHandle: number | null = null;
     let fallbackHandle: number | null = null;
+    const hadController = Boolean(navigator.serviceWorker.controller);
 
     const onControllerChange = () => {
+      // A first-time install may claim this page. Reloading at that point can
+      // erase in-progress signup or finance form input; only existing clients
+      // need a reload when an updated worker takes control.
+      if (!hadController) return;
       if (refreshing) return;
       refreshing = true;
       window.location.reload();

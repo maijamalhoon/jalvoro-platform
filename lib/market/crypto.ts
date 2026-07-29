@@ -79,7 +79,11 @@ export function normalizeCryptoIds(ids: string[]) {
     new Set(
       ids
         .map((id) => id.trim().toLowerCase())
-        .filter((id) => /^[a-z0-9._-]+$/.test(id)),
+        .filter(
+          (id) =>
+            /^[a-z0-9._-]+$/.test(id) &&
+            !["__proto__", "constructor", "prototype"].includes(id),
+        ),
     ),
   ).slice(0, MAX_PRICE_IDS);
 }
@@ -146,22 +150,25 @@ export async function getCryptoPrices(ids: string[]): Promise<CryptoPriceRespons
       .map((row) => [String(row.id).trim().toLowerCase(), row]),
   );
 
-  const prices = cryptoIds.reduce<Record<string, CryptoPrice>>((acc, id) => {
-    const row = marketRows.get(id);
-    const usd = toNumberOrNull(row?.current_price);
+  const prices = Object.fromEntries(
+    cryptoIds.map((id) => {
+      const row = marketRows.get(id);
+      const usd = toNumberOrNull(row?.current_price);
 
-    acc[id] = {
-      usd,
-      pkr: usd === null ? null : usd * exchangeRate.rate,
-      change24h: toNumberOrNull(row?.price_change_percentage_24h),
-      lastUpdatedAt: isNonEmptyString(row?.last_updated)
-        ? row.last_updated
-        : null,
-      imageUrl: isNonEmptyString(row?.image) ? row.image : null,
-    };
-
-    return acc;
-  }, {});
+      return [
+        id,
+        {
+          usd,
+          pkr: usd === null ? null : usd * exchangeRate.rate,
+          change24h: toNumberOrNull(row?.price_change_percentage_24h),
+          lastUpdatedAt: isNonEmptyString(row?.last_updated)
+            ? row.last_updated
+            : null,
+          imageUrl: isNonEmptyString(row?.image) ? row.image : null,
+        },
+      ];
+    }),
+  ) as Record<string, CryptoPrice>;
 
   return { prices, live: marketResponse.ok };
 }

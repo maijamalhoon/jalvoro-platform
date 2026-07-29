@@ -70,7 +70,8 @@ jobs:
             supabase/control-plane/functions/control-plane-create-operator/index.ts
           deno check --config supabase/functions/deno.json \
             supabase/functions/business-identity-recovery/index.ts \
-            supabase/functions/business-pos-security/index.ts
+            supabase/functions/business-pos-security/index.ts \
+            supabase/functions/command-center-gateway/index.ts
 
       - name: Run security contract tests
         run: |

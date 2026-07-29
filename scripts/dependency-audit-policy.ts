@@ -124,10 +124,14 @@ export function evaluateAuditReports(
 }
 
 function runNpmAudit(extraArguments: string[]): AuditReport {
-  const executable = process.platform === "win32" ? "npm.cmd" : "npm";
+  const npmCliPath = process.env.npm_execpath;
+  const executable = npmCliPath ? process.execPath : "npm";
+  const commandArguments = npmCliPath
+    ? [npmCliPath, "audit", "--audit-level=low", "--json", ...extraArguments]
+    : ["audit", "--audit-level=low", "--json", ...extraArguments];
   const result = spawnSync(
     executable,
-    ["audit", "--audit-level=low", "--json", ...extraArguments],
+    commandArguments,
     {
       encoding: "utf8",
       maxBuffer: 20 * 1024 * 1024,

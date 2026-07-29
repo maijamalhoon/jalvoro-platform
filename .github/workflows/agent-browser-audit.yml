@@ -464,7 +464,7 @@ jobs:
 
       - name: Upload browser and Lighthouse evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: browser-and-lighthouse-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
