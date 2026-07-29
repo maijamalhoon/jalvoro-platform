@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CONTROL_PLANE_HOME_PATH,
+  CONTROL_PLANE_LOGIN_PATH,
   CONTROL_PLANE_PROJECT_REF,
   isAdminControlPlanePath,
   isControlPlaneOnlyPath,
@@ -9,10 +11,12 @@ import {
 } from "@/lib/control-plane/config";
 
 describe("Control Plane configuration", () => {
-  it("uses the isolated project and accepts only deployed control destinations", () => {
+  it("uses one isolated /admin entry and only deployed destinations", () => {
     expect(CONTROL_PLANE_PROJECT_REF).toBe("zzvpovvuybfihwgjrder");
-    expect(sanitizeControlDestination("/control")).toBe("/control");
-    expect(sanitizeControlDestination("/control/operators")).toBe("/control");
+    expect(CONTROL_PLANE_LOGIN_PATH).toBe("/admin");
+    expect(CONTROL_PLANE_HOME_PATH).toBe("/admin");
+    expect(sanitizeControlDestination("/control")).toBe("/admin");
+    expect(sanitizeControlDestination("/control/operators")).toBe("/admin");
     expect(
       sanitizeControlDestination("/admin/organizations?region=ap-south-1"),
     ).toBe("/admin/organizations?region=ap-south-1");
@@ -20,18 +24,18 @@ describe("Control Plane configuration", () => {
       "/admin",
     );
     expect(sanitizeControlDestination("https://evil.example/admin")).toBe(
-      "/control",
+      "/admin",
     );
-    expect(sanitizeControlDestination("//evil.example/admin")).toBe("/control");
-    expect(sanitizeControlDestination("/dashboard")).toBe("/control");
-    expect(sanitizeControlDestination("/control-login")).toBe("/control");
+    expect(sanitizeControlDestination("//evil.example/admin")).toBe("/admin");
+    expect(sanitizeControlDestination("/dashboard")).toBe("/admin");
+    expect(sanitizeControlDestination("/control-login")).toBe("/admin");
   });
 
-  it("classifies dedicated and dual-gated routes", () => {
-    expect(isControlPlaneOnlyPath("/control-login")).toBe(true);
-    expect(isControlPlaneOnlyPath("/control")).toBe(true);
-    expect(isControlPlaneOnlyPath("/control/operators")).toBe(true);
-    expect(isControlPlaneOnlyPath("/admin")).toBe(false);
+  it("classifies /admin as the isolated Command Center world", () => {
+    expect(isControlPlaneOnlyPath("/control-login")).toBe(false);
+    expect(isControlPlaneOnlyPath("/control")).toBe(false);
+    expect(isControlPlaneOnlyPath("/admin")).toBe(true);
+    expect(isControlPlaneOnlyPath("/admin/organizations")).toBe(true);
     expect(isAdminControlPlanePath("/admin")).toBe(true);
     expect(isAdminControlPlanePath("/admin/users")).toBe(true);
     expect(isAdminControlPlanePath("/dashboard")).toBe(false);
