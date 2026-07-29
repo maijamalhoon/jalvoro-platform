@@ -23,6 +23,7 @@ type GatewayEnvelope =
 
 const COMMAND_CENTER_OPERATIONS = new Set([
   "get_platform_admin_snapshot",
+  "get_command_center_user_360",
   "get_command_center_navigation",
   "get_command_center_organization_operations_snapshot",
   "create_command_center_organization_by_email",
