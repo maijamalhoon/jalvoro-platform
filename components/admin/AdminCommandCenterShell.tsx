@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 
 import AdminCommandCenterShellClient from "@/components/admin/AdminCommandCenterShellClient";
+import CommandCenterLockButton from "@/components/admin/CommandCenterLockButton";
 import {
   parseResolvedCommandCenterNavigation,
   resolveCommandCenterEnvironment,
 } from "@/lib/admin/command-center-navigation";
+import { getCommandCenterSession } from "@/lib/admin/command-center-session";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminCommandCenterShell({
@@ -12,30 +14,18 @@ export default async function AdminCommandCenterShell({
 }: {
   children: ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return (
-      <AdminCommandCenterShellClient sections={[]}>
-        {children}
-      </AdminCommandCenterShellClient>
-    );
+  const commandCenterSession = await getCommandCenterSession();
+  if (!commandCenterSession) {
+    return <>{children}</>;
   }
 
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_command_center_navigation", {
     p_environment: resolveCommandCenterEnvironment(),
   });
 
   if (error?.code === "42501") {
-    return (
-      <AdminCommandCenterShellClient sections={[]}>
-        {children}
-      </AdminCommandCenterShellClient>
-    );
+    return <>{children}</>;
   }
 
   if (error) {
@@ -50,8 +40,11 @@ export default async function AdminCommandCenterShell({
   }
 
   return (
-    <AdminCommandCenterShellClient sections={sections}>
-      {children}
-    </AdminCommandCenterShellClient>
+    <>
+      <AdminCommandCenterShellClient sections={sections}>
+        {children}
+      </AdminCommandCenterShellClient>
+      <CommandCenterLockButton />
+    </>
   );
 }

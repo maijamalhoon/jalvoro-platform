@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 const root = resolve(process.cwd());
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-describe("Command Center dual authorization gateway", () => {
-  it("verifies two project sessions, binds email, and requires Control Plane AAL2", () => {
+describe("Command Center isolated authorization gateway", () => {
+  it("requires the dedicated AAL2 session without a customer application login", () => {
     const client = read("lib/admin/command-center-client.ts");
     const edge = read(
       "supabase/functions/command-center-gateway/index.ts",
@@ -15,30 +15,34 @@ describe("Command Center dual authorization gateway", () => {
     expect(client).toContain("x-control-plane-authorization");
     expect(client).toContain('currentLevel !== "aal2"');
     expect(client).toContain("parseControlPlaneAccess");
-    expect(edge).toContain("mainEmail !== controlEmail");
+    expect(client).not.toContain("application.auth.getSession");
+    expect(edge).toContain("resolve_command_center_actor_by_email");
     expect(edge).toContain('sessionAssurance !== "aal2"');
+    expect(edge).not.toContain("mainEmail !== controlEmail");
+    expect(edge).not.toContain("mainUserClient");
     expect(edge).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
     expect(edge).not.toContain("console.log");
   });
 
-  it("adds a service-only compatibility gateway and preserves the verified actor", () => {
+  it("maps the isolated verified email to an active platform administrator", () => {
     const migration = read(
-      "supabase/migrations/20260728110549_command_center_dual_auth_gateway.sql",
+      "supabase/migrations/20260729204500_command_center_isolated_admin_entry.sql",
     );
 
-    expect(migration).toContain("execute_command_center_operation");
+    expect(migration).toContain("resolve_command_center_actor_by_email");
+    expect(migration).toContain("private.platform_admins");
+    expect(migration).toContain("pa.disabled_at is null");
+    expect(migration).toContain("email_confirmed_at is not null");
     expect(migration).toContain("auth.jwt()->>'role'");
-    expect(migration).toContain("set_config('request.jwt.claims'");
     expect(migration).toContain("from public, anon, authenticated");
     expect(migration).toContain("to service_role");
-    expect(migration).toContain("email_confirmed_at is not null");
-    expect(migration).toContain("without revoking the currently live application RPC surface");
   });
 
   it("intercepts only the bounded Command Center RPC allowlist", () => {
     const server = read("lib/supabase/server.ts");
     const client = read("lib/admin/command-center-client.ts");
 
+    expect(server).toContain("x-jalvoro-command-center");
     expect(server).toContain("isCommandCenterOperation(operation)");
     expect(server).toContain("invokeCommandCenterRpc(client, operation, args)");
     expect(server).toContain("return directRpc(operation, args, options)");

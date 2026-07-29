@@ -103,42 +103,69 @@ async function readBody(request: Request) {
 
 Deno.serve(async (request) => {
   const requestOrigin = resolveOrigin(request);
-  if (!requestOrigin.allowed) return json({ ok: false, error: { code: "42501", message: "Origin not allowed." } }, null, 403);
+  if (!requestOrigin.allowed) {
+    return json(
+      { ok: false, error: { code: "42501", message: "Origin not allowed." } },
+      null,
+      403,
+    );
+  }
   const origin = requestOrigin.origin;
 
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: headers(origin) });
   }
   if (request.method !== "POST") {
-    return json({ ok: false, error: { code: "405", message: "Method not allowed." } }, origin, 405);
+    return json(
+      { ok: false, error: { code: "405", message: "Method not allowed." } },
+      origin,
+      405,
+    );
   }
 
-  const mainToken = bearer(request.headers.get("Authorization"));
   const controlToken = bearer(
     request.headers.get("x-control-plane-authorization"),
   );
-  if (!mainToken || !controlToken) {
-    return json({ ok: false, error: { code: "42501", message: "Dual authorization required." } }, origin, 401);
+  if (!controlToken) {
+    return json(
+      {
+        ok: false,
+        error: {
+          code: "42501",
+          message: "Isolated Command Center authorization is required.",
+        },
+      },
+      origin,
+      401,
+    );
   }
 
   const body = await readBody(request);
   const operation = typeof body?.operation === "string" ? body.operation : "";
   const args = isRecord(body?.arguments) ? body.arguments : {};
   if (!body || !allowedOperations.has(operation)) {
-    return json({ ok: false, error: { code: "22023", message: "Unsupported Command Center operation." } }, origin);
+    return json(
+      {
+        ok: false,
+        error: { code: "22023", message: "Unsupported Command Center operation." },
+      },
+      origin,
+    );
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
-    return json({ ok: false, error: { code: "CCG02", message: "Gateway configuration unavailable." } }, origin, 503);
+  if (!supabaseUrl || !serviceRoleKey) {
+    return json(
+      {
+        ok: false,
+        error: { code: "CCG02", message: "Gateway configuration unavailable." },
+      },
+      origin,
+      503,
+    );
   }
 
-  const mainUserClient = createClient(supabaseUrl, publishableKey, {
-    global: { headers: { Authorization: `Bearer ${mainToken}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   const controlClient = createClient(
     CONTROL_PLANE_URL,
     CONTROL_PLANE_PUBLISHABLE_KEY,
@@ -148,39 +175,63 @@ Deno.serve(async (request) => {
     },
   );
 
-  const [mainUserResult, controlUserResult, controlAccessResult] =
-    await Promise.all([
-      mainUserClient.auth.getUser(mainToken),
-      controlClient.auth.getUser(controlToken),
-      controlClient.rpc("get_my_control_plane_access"),
-    ]);
+  const [controlUserResult, controlAccessResult] = await Promise.all([
+    controlClient.auth.getUser(controlToken),
+    controlClient.rpc("get_my_control_plane_access"),
+  ]);
 
-  const mainUser = mainUserResult.data.user;
   const controlUser = controlUserResult.data.user;
   const controlAccess = controlAccessResult.data as
     | { sessionAssurance?: unknown }
     | null;
-  const mainEmail = normalizeEmail(mainUser?.email);
   const controlEmail = normalizeEmail(controlUser?.email);
 
   if (
-    mainUserResult.error ||
     controlUserResult.error ||
     controlAccessResult.error ||
-    !mainUser ||
     !controlUser ||
-    !mainEmail ||
-    mainEmail !== controlEmail ||
+    !controlEmail ||
     controlAccess?.sessionAssurance !== "aal2"
   ) {
-    return json({ ok: false, error: { code: "42501", message: "Command Center identity proof rejected." } }, origin, 403);
+    return json(
+      {
+        ok: false,
+        error: {
+          code: "42501",
+          message: "Command Center identity proof rejected.",
+        },
+      },
+      origin,
+      403,
+    );
   }
 
   const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const actorResult = await serviceClient.rpc(
+    "resolve_command_center_actor_by_email",
+    { p_email: controlEmail },
+  );
+  const actor = isRecord(actorResult.data) ? actorResult.data : null;
+  const actorUserId = typeof actor?.userId === "string" ? actor.userId : "";
+
+  if (actorResult.error || !actorUserId) {
+    return json(
+      {
+        ok: false,
+        error: {
+          code: "42501",
+          message: "This isolated identity is not an active platform administrator.",
+        },
+      },
+      origin,
+      403,
+    );
+  }
+
   const result = await serviceClient.rpc("execute_command_center_operation", {
-    p_actor_user_id: mainUser.id,
+    p_actor_user_id: actorUserId,
     p_operation: operation,
     p_arguments: args,
   });

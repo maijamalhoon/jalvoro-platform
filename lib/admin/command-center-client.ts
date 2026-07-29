@@ -46,17 +46,13 @@ const COMMAND_CENTER_OPERATIONS = new Set([
 
 const forbidden: RpcError = {
   code: "42501",
-  message: "Command Center dual authorization is required.",
+  message: "A verified isolated Command Center session is required.",
 };
 
 const unavailable: RpcError = {
   code: "CCG01",
   message: "Command Center security gateway is unavailable.",
 };
-
-function normalizeEmail(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? "";
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -118,41 +114,23 @@ export async function invokeCommandCenterRpc(
     },
   );
 
-  const [applicationSession, controlSession] = await Promise.all([
-    application.auth.getSession(),
-    controlPlane.auth.getSession(),
-  ]);
-  const mainToken = applicationSession.data.session?.access_token ?? "";
+  const controlSession = await controlPlane.auth.getSession();
   const controlToken = controlSession.data.session?.access_token ?? "";
-
-  if (applicationSession.error || controlSession.error || !mainToken || !controlToken) {
+  if (controlSession.error || !controlToken) {
     return { data: null, error: forbidden };
   }
 
-  const [applicationUser, controlUser] = await Promise.all([
-    application.auth.getUser(mainToken),
+  const [controlUser, assurance, access] = await Promise.all([
     controlPlane.auth.getUser(controlToken),
+    controlPlane.auth.mfa
+      .getAuthenticatorAssuranceLevel()
+      .catch(() => ({ data: null, error: new Error("assurance_unavailable") })),
+    controlPlane.rpc("get_my_control_plane_access"),
   ]);
-  const mainUser = applicationUser.data.user;
-  const controlUserValue = controlUser.data.user;
 
   if (
-    applicationUser.error ||
     controlUser.error ||
-    !mainUser ||
-    !controlUserValue ||
-    !normalizeEmail(mainUser.email) ||
-    normalizeEmail(mainUser.email) !== normalizeEmail(controlUserValue.email)
-  ) {
-    return { data: null, error: forbidden };
-  }
-
-  const assurance = await controlPlane.auth.mfa
-    .getAuthenticatorAssuranceLevel()
-    .catch(() => ({ data: null, error: new Error("assurance_unavailable") }));
-  const access = await controlPlane.rpc("get_my_control_plane_access");
-
-  if (
+    !controlUser.data.user ||
     assurance.error ||
     assurance.data?.currentLevel !== "aal2" ||
     access.error ||
@@ -169,7 +147,6 @@ export async function invokeCommandCenterRpc(
         arguments: isRecord(args) ? args : {},
       },
       headers: {
-        Authorization: `Bearer ${mainToken}`,
         "x-control-plane-authorization": `Bearer ${controlToken}`,
       },
     },

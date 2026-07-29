@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import AdminComplianceAuditPanel from "@/components/admin/AdminComplianceAuditPanel";
 import AdminControlCenter from "@/components/admin/AdminControlCenter";
@@ -10,6 +10,7 @@ import AdminSecurityPosturePanel from "@/components/admin/AdminSecurityPosturePa
 import AdminTeamAccessPanel from "@/components/admin/AdminTeamAccessPanel";
 import AdminUserOperationsPanel from "@/components/admin/AdminUserOperationsPanel";
 import BillingPlanOperations from "@/components/admin/BillingPlanOperations";
+import ControlPlaneLogin from "@/components/control-plane/ControlPlaneLogin";
 import PrivacyGovernancePanel from "@/components/admin/PrivacyGovernancePanel";
 import PrivacyRequestOperations from "@/components/admin/PrivacyRequestOperations";
 import { parseAdminAccessSnapshot } from "@/lib/admin/access-operations";
@@ -19,6 +20,7 @@ import {
   type ComplianceAuditDomain,
   type ComplianceReviewStatus,
 } from "@/lib/admin/compliance-audit";
+import { getCommandCenterSession } from "@/lib/admin/command-center-session";
 import { parseAdminControlCenterSnapshot } from "@/lib/admin/control-center";
 import { parseAdminIncidentOperationsSnapshot } from "@/lib/admin/incident-operations";
 import {
@@ -102,16 +104,12 @@ type AdminPageProps = {
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login?next=%2Fadmin");
+  const commandCenterSession = await getCommandCenterSession();
+  if (!commandCenterSession) {
+    return <ControlPlaneLogin />;
   }
 
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_platform_admin_snapshot");
 
   if (error?.code === "42501") {
