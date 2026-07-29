@@ -31,6 +31,9 @@ const controlPlaneSupabaseOrigin = safeOrigin(
 const controlPlaneSupabaseWebSocketOrigin =
   controlPlaneSupabaseOrigin.replace(/^http/, "ws");
 const sentryOrigin = safeSentryOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN);
+const telemetryEnabled =
+  process.env.NEXT_PUBLIC_TELEMETRY_ENABLED ??
+  (process.env.NODE_ENV === "production" ? "true" : "false");
 const productionScriptSources = ["'self'", "'unsafe-inline'"];
 const scriptSources =
   process.env.NODE_ENV === "production"
@@ -142,6 +145,9 @@ const forexMarketCacheHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: {
+    NEXT_PUBLIC_TELEMETRY_ENABLED: telemetryEnabled,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
