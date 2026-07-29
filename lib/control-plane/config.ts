@@ -7,8 +7,8 @@ export const CONTROL_PLANE_SUPABASE_URL =
 export const CONTROL_PLANE_SUPABASE_PUBLISHABLE_KEY =
   "sb_publishable_U-iYfkTi8yfRN4gKPdRDhQ_Rlnlxkql";
 
-export const CONTROL_PLANE_LOGIN_PATH = "/control-login";
-export const CONTROL_PLANE_HOME_PATH = "/control";
+export const CONTROL_PLANE_LOGIN_PATH = "/admin";
+export const CONTROL_PLANE_HOME_PATH = "/admin";
 
 const ADMIN_DESTINATIONS = new Set([
   "/admin",
@@ -204,23 +204,17 @@ export function sanitizeControlDestination(value: string | null | undefined) {
     }
 
     const pathname = destination.pathname;
-
-    if (pathname === CONTROL_PLANE_HOME_PATH) {
-      return `${CONTROL_PLANE_HOME_PATH}${destination.search}`;
-    }
-
     if (ADMIN_DESTINATIONS.has(pathname)) {
       return `${pathname}${destination.search}`;
     }
 
-    // Unknown or retired Command Center URLs must never strand an authenticated
-    // operator on the application 404 page. Keep the security gate broad, but
-    // normalize navigation to a route that is present in the production build.
     if (
-      pathname.startsWith(`${CONTROL_PLANE_HOME_PATH}/`) ||
-      pathname.startsWith("/admin/")
+      pathname.startsWith("/admin/") ||
+      pathname === "/control" ||
+      pathname.startsWith("/control/") ||
+      pathname === "/control-login"
     ) {
-      return pathname.startsWith("/admin/") ? "/admin" : CONTROL_PLANE_HOME_PATH;
+      return CONTROL_PLANE_HOME_PATH;
     }
 
     return CONTROL_PLANE_HOME_PATH;
@@ -230,11 +224,7 @@ export function sanitizeControlDestination(value: string | null | undefined) {
 }
 
 export function isControlPlaneOnlyPath(pathname: string) {
-  return (
-    pathname === CONTROL_PLANE_LOGIN_PATH ||
-    pathname === CONTROL_PLANE_HOME_PATH ||
-    pathname.startsWith(`${CONTROL_PLANE_HOME_PATH}/`)
-  );
+  return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
 export function isAdminControlPlanePath(pathname: string) {
