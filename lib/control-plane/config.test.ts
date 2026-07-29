@@ -9,11 +9,15 @@ import {
 } from "@/lib/control-plane/config";
 
 describe("Control Plane configuration", () => {
-  it("uses the isolated project and accepts only control destinations", () => {
+  it("uses the isolated project and accepts only deployed control destinations", () => {
     expect(CONTROL_PLANE_PROJECT_REF).toBe("zzvpovvuybfihwgjrder");
     expect(sanitizeControlDestination("/control")).toBe("/control");
+    expect(sanitizeControlDestination("/control/operators")).toBe("/control");
+    expect(
+      sanitizeControlDestination("/admin/organizations?region=ap-south-1"),
+    ).toBe("/admin/organizations?region=ap-south-1");
     expect(sanitizeControlDestination("/admin/users?state=active")).toBe(
-      "/admin/users?state=active",
+      "/admin",
     );
     expect(sanitizeControlDestination("https://evil.example/admin")).toBe(
       "/control",
