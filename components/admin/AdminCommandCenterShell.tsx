@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import AdminCommandCenterShellClient from "@/components/admin/AdminCommandCenterShellClient";
+import CommandCenterLockButton from "@/components/admin/CommandCenterLockButton";
 import {
   parseResolvedCommandCenterNavigation,
   resolveCommandCenterEnvironment,
@@ -56,8 +57,11 @@ export default async function AdminCommandCenterShell({
   }
 
   return (
-    <AdminCommandCenterShellClient sections={sections}>
-      {children}
-    </AdminCommandCenterShellClient>
+    <>
+      <AdminCommandCenterShellClient sections={sections}>
+        {children}
+      </AdminCommandCenterShellClient>
+      <CommandCenterLockButton />
+    </>
   );
 }
