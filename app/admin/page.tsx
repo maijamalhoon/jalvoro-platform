@@ -141,7 +141,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     view === "organizations" && selectedOrganization?.match(ORGANIZATION_CODE)
       ? selectedOrganization
       : null;
-  const { data: organizationData, error: organizationError } = await supabase.rpc(
+  const { data: organizationData, error: organizationError } = await supabase.rpc (
     "get_command_center_organization_operations_snapshot",
     {
       p_organization_code: organizationReference,
@@ -174,7 +174,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     if (!USER_REFERENCE.test(selectedUser)) {
       userLookupState = "invalid";
     } else {
-      const { data: userData, error: userError } = await supabase.rpc(
+      const { data: userData, error: userError } = await supabase.rpc (
         "get_command_center_user_360",
         { p_user_reference: selectedUser },
       );
