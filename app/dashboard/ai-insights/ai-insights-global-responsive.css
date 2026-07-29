@@ -1,0 +1,699 @@
+/*
+ * JALVORO AI Insights — global responsive reset.
+ *
+ * This final presentation layer deliberately removes visual noise from the
+ * earlier command/premium layers. It changes no finance logic, API behavior,
+ * consent boundary, saved state, scenario calculation, or chat routing.
+ */
+
+[data-ai-insights-page] {
+  --jf-ai-reset-radius-lg: clamp(1.25rem, 2vw, 1.75rem);
+  --jf-ai-reset-radius-md: 1rem;
+  --jf-ai-reset-gap: clamp(0.85rem, 1.8vw, 1.4rem);
+  --jf-ai-reset-border: color-mix(in srgb, var(--border) 88%, transparent);
+  --jf-ai-reset-shadow: 0 14px 40px
+    color-mix(in srgb, var(--text-primary) 5%, transparent);
+  width: 100%;
+  max-width: 96rem;
+  margin-inline: auto;
+  padding-inline: clamp(0.25rem, 1.4vw, 1rem);
+  padding-bottom: clamp(2rem, 4vw, 3.5rem) !important;
+}
+
+[data-ai-insights-page]::before,
+[data-ai-insights-page]::after,
+[data-ai-insights-command-hero]::before,
+[data-ai-insights-command-hero]::after,
+[data-ai-command-controls]::before,
+[data-ai-intelligence-workspace]::before {
+  display: none !important;
+}
+
+[data-ai-command-world] {
+  display: grid;
+  gap: var(--jf-ai-reset-gap) !important;
+}
+
+/* Compact global header */
+[data-ai-insights-command-hero] {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem) !important;
+  min-height: 0 !important;
+  gap: clamp(1.25rem, 3vw, 2.5rem) !important;
+  align-items: center !important;
+  overflow: visible !important;
+  padding: clamp(1.1rem, 2.8vw, 2rem) !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-lg) !important;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface) 98%, var(--active) 2%),
+    var(--surface)
+  ) !important;
+  box-shadow: var(--jf-ai-reset-shadow) !important;
+}
+
+[data-ai-command-copy] h1 {
+  max-width: 16ch !important;
+  margin-top: 0.9rem !important;
+  font-size: clamp(1.75rem, 4vw, 3.25rem) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.052em !important;
+}
+
+[data-ai-command-brand] {
+  width: fit-content;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-ai-command-description] {
+  display: -webkit-box;
+  max-width: 42rem !important;
+  margin-top: 0.8rem !important;
+  overflow: hidden;
+  font-size: 0.83rem !important;
+  line-height: 1.45rem !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+[data-ai-command-status] {
+  margin-top: 1rem !important;
+}
+
+[data-ai-command-status] > span {
+  min-height: 2rem !important;
+  padding-inline: 0.7rem !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  font-size: 0.61rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.045em !important;
+}
+
+[data-ai-command-controls] {
+  display: grid !important;
+  gap: 0.65rem !important;
+  padding: 0.75rem !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: 1.1rem !important;
+  background: var(--background) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-ai-command-settings],
+[data-ai-command-settings] > button,
+[data-ai-command-settings] > div,
+[data-ai-command-settings] > div > button {
+  width: 100%;
+}
+
+[data-ai-command-settings] > button,
+[data-ai-command-settings] > div > button {
+  min-height: 2.75rem !important;
+  justify-content: center !important;
+  border-color: var(--jf-ai-reset-border) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-ai-command-actions] {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem !important;
+}
+
+[data-ai-command-actions] a {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.75rem !important;
+  align-items: center;
+  justify-content: center !important;
+  gap: 0.45rem;
+  padding-inline: 0.75rem !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: 0.85rem !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+  font-size: 0.7rem !important;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+[data-ai-command-actions] a:first-child {
+  border-color: color-mix(in srgb, var(--active) 36%, var(--border)) !important;
+  background: var(--active) !important;
+  color: var(--text-inverse) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ai-command-actions] a:hover {
+    transform: translateY(-1px) !important;
+  }
+}
+
+/* Information order: intelligence first, trust last. */
+[data-ai-insights-experience] {
+  order: 2;
+  min-width: 0;
+  scroll-margin-top: 1rem;
+}
+
+[data-ai-trust-zone] {
+  order: 3;
+  min-width: 0;
+  scroll-margin-top: 1rem;
+}
+
+[data-ai-insights-experience] > div {
+  gap: var(--jf-ai-reset-gap) !important;
+}
+
+/* Supporting intelligence tools */
+[data-ai-intelligence-workspace] {
+  overflow: visible !important;
+  padding: clamp(0.9rem, 2vw, 1.35rem) !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-lg) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--jf-ai-reset-shadow) !important;
+}
+
+[data-ai-workspace-header] {
+  gap: 0.65rem !important;
+}
+
+[data-ai-workspace-header] h2 {
+  margin-top: 0.35rem !important;
+  font-size: clamp(1.05rem, 2vw, 1.35rem) !important;
+  line-height: 1.2 !important;
+}
+
+[data-ai-workspace-header] h2 + p {
+  display: none;
+}
+
+[data-ai-workspace-header] > span {
+  min-height: 2rem;
+  padding: 0.4rem 0.65rem !important;
+  font-size: 0.58rem !important;
+}
+
+[data-ai-workspace-overview] {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.65rem !important;
+  margin-top: 0.85rem !important;
+}
+
+[data-ai-quality-card],
+[data-ai-timeline-card],
+[data-ai-saved-card] {
+  grid-column: auto !important;
+  min-height: 12.5rem;
+  padding: 0.85rem !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-md) !important;
+  background: var(--background) !important;
+  box-shadow: none !important;
+}
+
+[data-ai-quality-card] > div:first-child > div:first-child > p:last-child,
+[data-ai-timeline-card] > div:first-child > div:first-child > p:last-child,
+[data-ai-saved-card] > div:first-child > div:first-child > p:last-child {
+  display: none;
+}
+
+[data-ai-quality-score] {
+  width: 3.7rem !important;
+  height: 3.7rem !important;
+}
+
+[data-ai-quality-score] > span {
+  font-size: 1.05rem !important;
+}
+
+[data-ai-quality-card] li:nth-child(n + 3),
+[data-ai-timeline-card] [class~="space-y-2.5"] > *:nth-child(n + 4),
+[data-ai-saved-card] > div:nth-of-type(2) > *:nth-child(n + 3) {
+  display: none !important;
+}
+
+[data-ai-timeline-card] [class~="space-y-2.5"] > div,
+[data-ai-saved-card] > div:nth-of-type(2) > div {
+  padding: 0.55rem 0.65rem !important;
+  border-radius: 0.75rem !important;
+}
+
+[data-ai-saved-card] > div:nth-of-type(2) p:nth-of-type(2) {
+  display: none;
+}
+
+[data-ai-saved-card] [data-ai-insight-state-controls] {
+  margin-top: 0.55rem !important;
+}
+
+[data-ai-saved-card] [data-ai-insight-state-controls] button {
+  min-height: 2rem !important;
+  padding-inline: 0.55rem !important;
+  font-size: 0.58rem !important;
+}
+
+/* Scenario tools stay useful without reading like documentation. */
+[data-ai-scenario-lab] {
+  margin-top: 0.7rem !important;
+  padding: 0.85rem !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-md) !important;
+  background: var(--background) !important;
+}
+
+[data-ai-scenario-lab] > div:first-child > div > p:last-child,
+[data-ai-scenario-lab] > div:first-child > span {
+  display: none !important;
+}
+
+[data-ai-scenario-grid] {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.65rem !important;
+  margin-top: 0.7rem !important;
+}
+
+[data-ai-scenario-card],
+[data-ai-scenario-card]:last-child {
+  grid-column: auto !important;
+  padding: 0.8rem !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: 0.9rem !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+
+[data-ai-scenario-card] > p {
+  display: none;
+}
+
+[data-ai-scenario-card] > label {
+  margin-top: 0.65rem !important;
+  padding: 0.65rem !important;
+  background: var(--background) !important;
+}
+
+[data-ai-scenario-card] > dl {
+  gap: 0.35rem !important;
+  margin-top: 0.55rem !important;
+}
+
+[data-ai-scenario-card] > dl > div {
+  padding-top: 0.4rem !important;
+}
+
+/* Main briefing: values first, explanations on demand. */
+[data-ai-insights-experience] > div > section:first-child {
+  padding: clamp(0.85rem, 2vw, 1.3rem) !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-lg) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--jf-ai-reset-shadow) !important;
+}
+
+[data-ai-insights-experience] > div > section:first-child::before {
+  display: none !important;
+}
+
+[data-ai-insights-experience] [role="progressbar"] {
+  width: 4.75rem !important;
+  height: 4.75rem !important;
+  filter: none !important;
+}
+
+[data-ai-insights-experience] [role="progressbar"] span {
+  font-size: 1.35rem !important;
+}
+
+[data-mobile-summary-grid] {
+  gap: 0.55rem !important;
+}
+
+[data-mobile-summary-grid] > div {
+  min-height: 4.8rem !important;
+  justify-content: center !important;
+  padding: 0.7rem !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: 0.85rem !important;
+  background: var(--background) !important;
+}
+
+[data-mobile-summary-grid] > div::after,
+[data-mobile-summary-grid] > div > p:last-child {
+  display: none !important;
+}
+
+[data-ai-insights-experience] > div > div.grid:first-of-type {
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem) !important;
+  gap: 0.75rem !important;
+}
+
+[data-ai-insights-experience] > div > div.grid:first-of-type > section,
+[data-ai-insights-experience] > div > div.grid:first-of-type > aside {
+  padding: clamp(0.85rem, 1.8vw, 1.2rem) !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-lg) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--jf-ai-reset-shadow) !important;
+}
+
+[data-ai-priority-queue] > div:first-child > p,
+[data-ai-priority-bucket] > div:first-child > div > p,
+[data-ai-priority-bucket] article a + p {
+  display: none !important;
+}
+
+[data-ai-priority-queue] > div.grid {
+  gap: 0.55rem !important;
+}
+
+[data-ai-priority-bucket] {
+  padding: 0.7rem !important;
+  border-color: var(--jf-ai-reset-border) !important;
+  border-radius: 0.9rem !important;
+  background: var(--background) !important;
+}
+
+[data-ai-priority-bucket] article {
+  padding: 0.75rem !important;
+  border-radius: 0.8rem !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+
+[data-ai-priority-bucket] article p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+[data-ai-insights-experience] aside li p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+[data-ai-insights-experience] > div > section.grid {
+  gap: 0.75rem !important;
+  padding: clamp(0.85rem, 1.8vw, 1.2rem) !important;
+  border: 1px solid var(--jf-ai-reset-border);
+  border-radius: var(--jf-ai-reset-radius-lg);
+  background: var(--surface);
+  box-shadow: var(--jf-ai-reset-shadow);
+}
+
+/* Chat is the primary interactive finish, not another decorative card. */
+[data-ai-insights-experience] > div > section:last-child {
+  padding: clamp(0.9rem, 2vw, 1.35rem) !important;
+  border: 1px solid color-mix(in srgb, var(--active) 24%, var(--border));
+  border-radius: var(--jf-ai-reset-radius-lg);
+  background: var(--surface);
+  box-shadow: var(--jf-ai-reset-shadow);
+}
+
+[data-ai-insights-experience] > div > section:last-child > h2 {
+  margin-bottom: 0.75rem !important;
+}
+
+[data-ai-insights-experience] > div > section:last-child [aria-live="polite"] {
+  max-height: min(48vh, 28rem) !important;
+  margin-bottom: 0.65rem !important;
+}
+
+[data-ai-insights-experience] > div > section:last-child form {
+  border: 1px solid var(--jf-ai-reset-border);
+  background: var(--background) !important;
+}
+
+/* Trust is present, but no longer blocks the main product experience. */
+[data-ai-trust-zone] [data-ai-insights-trust-center] {
+  margin: 0 !important;
+  padding: clamp(0.85rem, 1.8vw, 1.2rem) !important;
+  border: 1px solid var(--jf-ai-reset-border) !important;
+  border-radius: var(--jf-ai-reset-radius-lg) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+
+[data-ai-trust-zone] [data-ai-insights-trust-center]::before {
+  display: none !important;
+}
+
+[data-ai-trust-zone] [data-ai-insights-trust-center] > div:nth-of-type(2) > div {
+  min-height: 0 !important;
+  padding: 0.7rem !important;
+  background: var(--background) !important;
+}
+
+/* Dark mode: solid contrast beats glass and glow. */
+.dark [data-ai-insights-page] {
+  --jf-ai-reset-border: color-mix(in srgb, var(--border) 94%, transparent);
+  --jf-ai-reset-shadow: 0 16px 44px rgb(0 0 0 / 22%);
+}
+
+.dark [data-ai-insights-command-hero],
+.dark [data-ai-intelligence-workspace],
+.dark [data-ai-insights-experience] > div > section:first-child,
+.dark [data-ai-insights-experience] > div > div.grid:first-of-type > section,
+.dark [data-ai-insights-experience] > div > div.grid:first-of-type > aside,
+.dark [data-ai-insights-experience] > div > section.grid,
+.dark [data-ai-insights-experience] > div > section:last-child,
+.dark [data-ai-trust-zone] [data-ai-insights-trust-center] {
+  background: color-mix(in srgb, var(--surface) 97%, black 3%) !important;
+  box-shadow: var(--jf-ai-reset-shadow) !important;
+}
+
+.dark [data-ai-command-controls],
+.dark [data-ai-quality-card],
+.dark [data-ai-timeline-card],
+.dark [data-ai-saved-card],
+.dark [data-ai-scenario-lab],
+.dark [data-mobile-summary-grid] > div,
+.dark [data-ai-priority-bucket] {
+  background: color-mix(in srgb, var(--background) 94%, black 6%) !important;
+}
+
+/* Tablet */
+@media (max-width: 63.999rem) {
+  [data-ai-insights-command-hero] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-ai-command-controls] {
+    grid-template-columns: minmax(12rem, 0.75fr) minmax(0, 1.25fr);
+    align-items: center;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.25fr) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside > h2 {
+    margin: 0 !important;
+  }
+}
+
+/* Mobile and small tablets */
+@media (max-width: 47.999rem) {
+  [data-ai-insights-page] {
+    padding-inline: 0 !important;
+  }
+
+  [data-ai-command-world] {
+    gap: 0.75rem !important;
+  }
+
+  [data-ai-insights-command-hero] {
+    padding: 1rem !important;
+    border-radius: 1.1rem !important;
+  }
+
+  [data-ai-command-copy] h1 {
+    max-width: 18ch !important;
+    font-size: clamp(1.7rem, 9vw, 2.45rem) !important;
+  }
+
+  [data-ai-command-description] {
+    -webkit-line-clamp: 1;
+  }
+
+  [data-ai-command-controls] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 0.6rem !important;
+  }
+
+  [data-ai-command-actions] a,
+  [data-ai-command-settings] > button,
+  [data-ai-command-settings] > div > button {
+    min-height: 2.75rem !important;
+  }
+
+  [data-ai-intelligence-workspace],
+  [data-ai-insights-experience] > div > section:first-child,
+  [data-ai-insights-experience] > div > div.grid:first-of-type > section,
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside,
+  [data-ai-insights-experience] > div > section.grid,
+  [data-ai-insights-experience] > div > section:last-child,
+  [data-ai-trust-zone] [data-ai-insights-trust-center] {
+    padding: 0.85rem !important;
+    border-radius: 1.05rem !important;
+    box-shadow: none !important;
+  }
+
+  [data-ai-workspace-header] > span {
+    display: none;
+  }
+
+  [data-ai-workspace-overview],
+  [data-ai-scenario-grid] {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(82vw, 1fr);
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.35rem;
+    scroll-snap-type: inline mandatory;
+    scrollbar-width: none;
+  }
+
+  [data-ai-workspace-overview]::-webkit-scrollbar,
+  [data-ai-scenario-grid]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-ai-quality-card],
+  [data-ai-timeline-card],
+  [data-ai-saved-card],
+  [data-ai-scenario-card] {
+    min-height: 11.5rem;
+    scroll-snap-align: start;
+  }
+
+  [data-ai-insights-experience] > div > section:first-child {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.8rem !important;
+  }
+
+  [data-ai-insights-experience] [role="progressbar"] {
+    width: 4rem !important;
+    height: 4rem !important;
+  }
+
+  [data-mobile-summary-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside {
+    display: block;
+  }
+
+  [data-ai-insights-experience] > div > div.grid:first-of-type > aside > h2 {
+    margin-bottom: 0.7rem !important;
+  }
+
+  [data-ai-priority-queue] > div.grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(84vw, 1fr);
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.35rem;
+    scroll-snap-type: inline mandatory;
+    scrollbar-width: none;
+  }
+
+  [data-ai-priority-queue] > div.grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-ai-priority-bucket] {
+    scroll-snap-align: start;
+  }
+
+  [data-ai-insights-experience] > div > section.grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-ai-insights-experience] > div > section:last-child [aria-live="polite"] {
+    max-height: 52vh !important;
+  }
+
+  [data-ai-insights-experience] > div > section:last-child form {
+    position: sticky;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    z-index: 4;
+  }
+}
+
+/* Wide screens: use width without stretching reading lines. */
+@media (min-width: 80rem) {
+  [data-ai-priority-queue] > div.grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  [data-ai-insights-experience] > div > section.grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr) !important;
+  }
+}
+
+/* RTL uses logical flow and reverses horizontal starting points naturally. */
+[dir="rtl"] [data-ai-workspace-overview],
+[dir="rtl"] [data-ai-scenario-grid],
+[dir="rtl"] [data-ai-priority-queue] > div.grid {
+  direction: rtl;
+}
+
+/* No decorative motion. Keep only functional loaders unless motion is reduced. */
+[data-ai-insights-page] a,
+[data-ai-insights-page] button,
+[data-ai-insights-page] input,
+[data-ai-insights-page] details {
+  transition-duration: 160ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ai-insights-page] *,
+  [data-ai-insights-page] *::before,
+  [data-ai-insights-page] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html[data-animation-mode="none"] [data-ai-insights-page] *,
+html[data-animation-mode="none"] [data-ai-insights-page] *::before,
+html[data-animation-mode="none"] [data-ai-insights-page] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
