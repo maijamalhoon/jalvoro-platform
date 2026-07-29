@@ -3,10 +3,7 @@ import {
   isAdminControlPlanePath,
   isControlPlaneOnlyPath,
 } from "@/lib/control-plane/config";
-import {
-  mergeControlPlaneResponseState,
-  updateControlPlaneSession,
-} from "@/lib/control-plane/proxy";
+import { updateControlPlaneSession } from "@/lib/control-plane/proxy";
 import { updateSession } from "@/lib/supabase/proxy";
 
 const PUBLIC_SELF_PROTECTED_API_ROUTES = new Set([
@@ -30,6 +27,22 @@ function getAIRewritePath(request: NextRequest) {
   return null;
 }
 
+function getLegacyCommandCenterRedirect(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (
+    pathname !== "/control" &&
+    pathname !== "/control-login" &&
+    !pathname.startsWith("/control/")
+  ) {
+    return null;
+  }
+
+  const destination = request.nextUrl.clone();
+  destination.pathname = "/admin";
+  destination.search = "";
+  return destination;
+}
+
 function getLegacyLoginRedirect(request: NextRequest) {
   if (request.nextUrl.pathname !== "/login") return null;
 
@@ -39,6 +52,11 @@ function getLegacyLoginRedirect(request: NextRequest) {
   const requestedNext = request.nextUrl.searchParams.get("next") ?? "";
   const destination = request.nextUrl.clone();
   destination.search = "";
+
+  if (requestedNext === "/admin" || requestedNext.startsWith("/admin/")) {
+    destination.pathname = "/admin";
+    return destination;
+  }
 
   if (mode === "signup") {
     destination.pathname = "/start";
@@ -65,6 +83,11 @@ function getLegacyLoginRedirect(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const legacyCommandCenterRedirect = getLegacyCommandCenterRedirect(request);
+  if (legacyCommandCenterRedirect) {
+    return NextResponse.redirect(legacyCommandCenterRedirect);
+  }
+
   const legacyLoginRedirect = getLegacyLoginRedirect(request);
   if (legacyLoginRedirect) {
     return NextResponse.redirect(legacyLoginRedirect);
@@ -83,18 +106,8 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (isControlPlaneOnlyPath(pathname)) {
+  if (isControlPlaneOnlyPath(pathname) || isAdminControlPlanePath(pathname)) {
     return updateControlPlaneSession(request);
-  }
-
-  if (isAdminControlPlanePath(pathname)) {
-    const controlResponse = await updateControlPlaneSession(request);
-    if (controlResponse.headers.get("x-middleware-next") !== "1") {
-      return controlResponse;
-    }
-
-    const applicationResponse = await updateSession(request);
-    return mergeControlPlaneResponseState(controlResponse, applicationResponse);
   }
 
   if (PUBLIC_SELF_PROTECTED_API_ROUTES.has(pathname)) {
