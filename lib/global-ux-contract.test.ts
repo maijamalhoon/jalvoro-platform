@@ -16,6 +16,17 @@ const authStyles = [
   "auth-adornment-alignment-fix.css",
 ] as const;
 
+const authRouteLayouts = [
+  "app/login/layout.tsx",
+  "app/onboarding/layout.tsx",
+  "app/reset-password/layout.tsx",
+  "app/individual/layout.tsx",
+  "app/business/login/layout.tsx",
+  "app/business/signup/layout.tsx",
+  "app/business/invitations/register/layout.tsx",
+  "app/auth/realm-setup/layout.tsx",
+] as const;
+
 describe("global UI/UX and performance contracts", () => {
   it("does not globally block native text selection or context menus", () => {
     const layout = read("app/layout.tsx");
@@ -32,11 +43,7 @@ describe("global UI/UX and performance contracts", () => {
       expect(rootLayout).not.toContain(style);
     }
 
-    for (const routeLayout of [
-      "app/login/layout.tsx",
-      "app/onboarding/layout.tsx",
-      "app/reset-password/layout.tsx",
-    ]) {
+    for (const routeLayout of authRouteLayouts) {
       const source = read(routeLayout);
       for (const style of authStyles) {
         expect(source).toContain(style);
