@@ -41,6 +41,17 @@ describe("zero-trust Control Plane source contracts", () => {
     );
   });
 
+  it("allows browser auth and RPC traffic to the isolated project in CSP", () => {
+    const nextConfig = read("next.config.ts");
+
+    expect(nextConfig).toContain("controlPlaneSupabaseOrigin");
+    expect(nextConfig).toContain("controlPlaneSupabaseWebSocketOrigin");
+    expect(nextConfig).toContain("https://zzvpovvuybfihwgjrder.supabase.co");
+    expect(nextConfig).toMatch(
+      /connect-src 'self'[\s\S]*controlPlaneSupabaseOrigin[\s\S]*controlPlaneSupabaseWebSocketOrigin/,
+    );
+  });
+
   it("does not offer public signup or OAuth in the Control Plane login", () => {
     const login = read("components/control-plane/ControlPlaneLogin.tsx");
 
