@@ -1,0 +1,8 @@
+project_id = "jalvoro-platform"
+
+# This gateway receives the administrator JWT from the isolated Command Center
+# project in x-control-plane-authorization. Supabase's platform JWT check can
+# validate only this main project's JWTs, so authentication is performed inside
+# the function before any privileged operation is dispatched.
+[functions.command-center-gateway]
+verify_jwt = false

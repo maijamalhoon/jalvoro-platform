@@ -24,6 +24,19 @@ describe("Command Center isolated authorization gateway", () => {
     expect(edge).not.toContain("console.log");
   });
 
+  it("lets the custom isolated-token verifier run before rejecting a request", () => {
+    const config = read("supabase/config.toml");
+    const edge = read(
+      "supabase/functions/command-center-gateway/index.ts",
+    );
+
+    expect(config).toContain("[functions.command-center-gateway]");
+    expect(config).toContain("verify_jwt = false");
+    expect(edge).toContain('request.headers.get("x-control-plane-authorization")');
+    expect(edge).toContain("controlClient.auth.getUser(controlToken)");
+    expect(edge).toContain('controlClient.rpc("get_my_control_plane_access")');
+  });
+
   it("maps the isolated verified email to an active platform administrator", () => {
     const migration = read(
       "supabase/migrations/20260729204500_command_center_isolated_admin_entry.sql",
