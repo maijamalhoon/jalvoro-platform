@@ -60,12 +60,6 @@ function requireSuccess(result, label) {
 }
 
 function createIsolatedConfig() {
-  if (fs.existsSync(configPath)) {
-    throw new Error(
-      "Refusing to replace an existing supabase/config.toml. The E2E harness is local-only.",
-    );
-  }
-
   const temporaryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), "jalvoro-local-e2e-"),
   );
@@ -85,7 +79,22 @@ function createIsolatedConfig() {
         /^additional_redirect_urls\s*=\s*\[[^\]]*\]/m,
         'additional_redirect_urls = ["http://127.0.0.1:3100/**"]',
       );
-    fs.writeFileSync(configPath, config, { encoding: "utf8", flag: "wx" });
+    try {
+      fs.writeFileSync(configPath, config, { encoding: "utf8", flag: "wx" });
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "EEXIST"
+      ) {
+        throw new Error(
+          "Refusing to replace an existing supabase/config.toml. The E2E harness is local-only.",
+          { cause: error },
+        );
+      }
+      throw error;
+    }
     generatedConfig = true;
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
