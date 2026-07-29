@@ -35,6 +35,7 @@ describe("zero-trust Control Plane source contracts", () => {
 
     expect(config).toContain("zzvpovvuybfihwgjrder");
     expect(config).toContain("sb_publishable_");
+    expect(client).toContain("isSingleton: false");
     expect(`${config}\n${client}\n${server}`).not.toMatch(
       /SUPABASE_SERVICE_ROLE_KEY|sb_secret_|service_role/,
     );

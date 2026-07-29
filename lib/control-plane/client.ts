@@ -10,6 +10,9 @@ export function createControlPlaneBrowserClient() {
     CONTROL_PLANE_SUPABASE_URL,
     CONTROL_PLANE_SUPABASE_PUBLISHABLE_KEY,
     {
+      // The application and Control Plane use different Supabase projects.
+      // Never reuse the application's browser singleton for this security realm.
+      isSingleton: false,
       auth: {
         detectSessionInUrl: false,
         persistSession: true,
