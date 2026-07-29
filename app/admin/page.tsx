@@ -20,6 +20,7 @@ import {
   type ComplianceAuditDomain,
   type ComplianceReviewStatus,
 } from "@/lib/admin/compliance-audit";
+import { getCommandCenterSession } from "@/lib/admin/command-center-session";
 import { parseAdminControlCenterSnapshot } from "@/lib/admin/control-center";
 import { parseAdminIncidentOperationsSnapshot } from "@/lib/admin/incident-operations";
 import {
@@ -29,8 +30,6 @@ import {
 } from "@/lib/admin/release-readiness";
 import { deriveAdminSecurityPosture } from "@/lib/admin/security-posture";
 import { parseAdminUserOperationsSnapshot } from "@/lib/admin/user-operations";
-import { parseControlPlaneAccess } from "@/lib/control-plane/config";
-import { createControlPlaneServerClient } from "@/lib/control-plane/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -105,25 +104,8 @@ type AdminPageProps = {
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const controlPlane = await createControlPlaneServerClient();
-  const userResult = await controlPlane.auth.getUser();
-
-  if (userResult.error || !userResult.data.user) {
-    return <ControlPlaneLogin />;
-  }
-
-  const [assurance, accessResult] = await Promise.all([
-    controlPlane.auth.mfa.getAuthenticatorAssuranceLevel(),
-    controlPlane.rpc("get_my_control_plane_access"),
-  ]);
-  const access = parseControlPlaneAccess(accessResult.data);
-
-  if (
-    assurance.error ||
-    assurance.data?.currentLevel !== "aal2" ||
-    accessResult.error ||
-    !access
-  ) {
+  const commandCenterSession = await getCommandCenterSession();
+  if (!commandCenterSession) {
     return <ControlPlaneLogin />;
   }
 
