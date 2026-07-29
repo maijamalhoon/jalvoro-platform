@@ -54,7 +54,7 @@ let icon = await readText(iconPath);
 icon = icon.replace(/aria-label="[^"]* app icon"/, `aria-label="${escapeHtml(config.name)} app icon"`);
 await syncText(iconPath, icon);
 
-const showcasePath = "public/readme/jamals-finance-hero.svg";
+const showcasePath = "public/readme/jalvoro-platform-hero.svg";
 let showcase = await readText(showcasePath);
 showcase = showcase
   .replace(/<title id="title">[^<]+ product showcase<\/title>/, `<title id="title">${escapeHtml(config.name)} product showcase</title>`)

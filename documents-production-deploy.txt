@@ -1,4 +1,0 @@
-Deploy the verified Documents & Records workspace from the latest Jamals Finance main branch.
-This marker changes no UI, business logic, financial data, storage data, or permissions.
-Independent strict build commit: 7d3684cf93408223248cbb6dfcbee16fd0b51213
-Latest document migration: 20260723061054

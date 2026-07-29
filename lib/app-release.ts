@@ -13,9 +13,9 @@ export const ANDROID_RELEASE_FALLBACK: AndroidRelease = {
   version: "1.0.1",
   versionCode: 2,
   apkUrl:
-    "https://github.com/maijamalhoon/Jamals-finance/releases/download/v1.0.1/jamals-finance-v1.0.1.apk",
+    "https://github.com/maijamalhoon/jalvoro-platform/releases/download/v1.0.1/jamals-finance-v1.0.1.apk",
   releaseUrl:
-    "https://github.com/maijamalhoon/Jamals-finance/releases/tag/v1.0.1",
+    "https://github.com/maijamalhoon/jalvoro-platform/releases/tag/v1.0.1",
   sha256: "80da1813b6d787ba37b58f9d76395f6d6eb036e84c8518934ec8b219cc0fd8f3",
   fileSizeBytes: 1084893,
   minimumAndroid: "Android 6",

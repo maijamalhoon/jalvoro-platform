@@ -1,17 +1,16 @@
 {
-  "name": "jamals-finance",
+  "name": "jalvoro-platform",
   "version": "0.1.0",
   "description": "A privacy-minded platform for personal finance, shops, teams, and business operations.",
   "private": true,
   "license": "UNLICENSED",
   "author": "Jamal Yaqoob",
-  "homepage": "https://jamals-finance-sable.vercel.app",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/maijamalhoon/Jamals-finance.git"
+    "url": "git+https://github.com/maijamalhoon/jalvoro-platform.git"
   },
   "bugs": {
-    "url": "https://github.com/maijamalhoon/Jamals-finance/issues"
+    "url": "https://github.com/maijamalhoon/jalvoro-platform/issues"
   },
   "engines": {
     "node": "24.x"
@@ -24,7 +23,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "audit:ci": "node scripts/dependency-audit-policy.ts",
+    "audit:ci": "node scripts/dependency-audit-policy.mts",
     "brand:sync": "node scripts/sync-brand.mjs",
     "check": "npm run check:brand && npm run lint && npm run typecheck && npm test",
     "check:brand": "node scripts/sync-brand.mjs --check && node scripts/check-brand.mjs",

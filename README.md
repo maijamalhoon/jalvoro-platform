@@ -1,23 +1,21 @@
 <div align="center">
 
-<img src="./public/readme/jamals-finance-hero.svg" alt="Jamal's Finance product showcase" width="100%" />
+<img src="./public/readme/jalvoro-platform-hero.svg" alt="JALVORO product showcase" width="100%" />
 
 <sub>Concept illustration. Financial values shown in the artwork are illustrative only.</sub>
 
-# Jamal's Finance
+# JALVORO
 
-### Understand your money. Plan with clarity.
+### Everything you run. One place.
 
-A privacy-minded personal finance workspace for tracking income, expenses, accounts, goals, payables, investments, and truthful financial trends from one calm dashboard.
+One connected platform for personal finance, shops, teams, and business operations.
 
-[![Live application](https://img.shields.io/badge/Live%20Application-Open-2457d6?style=for-the-badge)](https://jamals-finance-sable.vercel.app)
 [![Next.js](https://img.shields.io/badge/Next.js-16-111827?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-087ea4?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-1f9d73?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
-[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-111827?style=for-the-badge&logo=vercel)](https://vercel.com/)
 
-[Live app](https://jamals-finance-sable.vercel.app) | [Security](SECURITY.md) | [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md) | [Local setup](#local-development)
+[Security](SECURITY.md) | [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md) | [Local setup](#local-development)
 
 </div>
 
@@ -26,7 +24,7 @@ A privacy-minded personal finance workspace for tracking income, expenses, accou
 
 ## Why this project exists
 
-Personal-finance software should make money clearer without pretending to know more than the data actually says. Jamal's Finance is being built around four product principles:
+Connected operations software should make work clearer without pretending to know more than the data actually says. JALVORO is built around four product principles:
 
 | Principle | What it means in practice |
 | --- | --- |
@@ -56,7 +54,7 @@ Personal-finance software should make money clearer without pretending to know m
 - Responsive desktop and mobile navigation
 - Supabase-backed persistence with owner-scoped Row Level Security
 - Sentry integration points for production monitoring
-- Vercel production deployment
+- Provider-neutral production build and release controls
 
 Some visible modules are still evolving. A control is not considered complete merely because it renders; it must also have truthful behavior, safe failure states, accessibility, responsive states, and production verification.
 
@@ -158,7 +156,7 @@ flowchart TB
     CALC[Deterministic financial calculations]
     MARKET[Optional market-data helpers]
     MONITOR[Sentry integration points]
-    DEPLOY[Vercel]
+    HOST[Maintainer-controlled hosting]
 
     UI --> AUTH
     UI --> DB
@@ -167,7 +165,7 @@ flowchart TB
     UI --> CALC
     UI --> MARKET
     UI --> MONITOR
-    UI --> DEPLOY
+    UI --> HOST
 ```
 
 ## Technology
@@ -182,7 +180,7 @@ flowchart TB
 | Security | Row Level Security, protected server/client data access |
 | Monitoring | Sentry integration points |
 | Testing and quality | Vitest, TypeScript, ESLint, production builds |
-| Deployment | Vercel |
+| Deployment | Provider-neutral Next.js production build |
 
 ## Repository structure
 
@@ -232,8 +230,8 @@ proxy.ts                  Route and session boundary logic
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/maijamalhoon/Jamals-finance.git
-cd Jamals-finance
+git clone https://github.com/maijamalhoon/jalvoro-platform.git
+cd jalvoro-platform
 ```
 
 ### 2. Install dependencies
@@ -356,10 +354,7 @@ Please follow [SECURITY.md](SECURITY.md) for responsible disclosure. Do not publ
 
 ## Deployment
 
-Production is deployed through Vercel from the reviewed `main` branch:
-
-- **Application:** [jamals-finance-sable.vercel.app](https://jamals-finance-sable.vercel.app)
-- **Deployment source:** reviewed and merged `main` commits
+Hosting is maintainer-controlled and deliberately separate from repository CI. No production provider or live endpoint is advertised until the maintainer completes final release verification.
 
 Environment variables must be configured separately for local, preview, and production environments. A deployment is complete only after the expected commit SHA is live and the affected flow is manually verified.
 

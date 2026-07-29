@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateAuditReports,
   type AuditReport,
-} from "../scripts/dependency-audit-policy";
+} from "../scripts/dependency-audit-policy.mjs";
 
 const cleanReport: AuditReport = {
   auditReportVersion: 2,

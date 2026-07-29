@@ -1,5 +1,0 @@
-Deploy the verified Banking and Reconciliation Engine from the current Jamals Finance main branch.
-This marker changes no application UI, business logic, financial data, performance behavior, or animation.
-Verified source commit: 86030a07619c195a7194bfcdce50a2d6534dafed
-Verified preview deployment: 2jtwM5nRBRofbwqifK6h7Fvf12bK
-Final production retry: 2026-07-22.

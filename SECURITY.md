@@ -1,6 +1,6 @@
 # Security Policy
 
-Jamal's Finance handles authentication and personal finance data. Security reports should be handled privately and with enough detail to reproduce the issue safely.
+JALVORO handles authentication, financial data, and business operations. Security reports should be handled privately and with enough detail to reproduce the issue safely.
 
 ## Supported version
 
@@ -48,7 +48,7 @@ Do not publicly disclose a confirmed vulnerability until the owner has had a rea
 
 ## Incident response checklist
 
-1. Preserve relevant Vercel, Supabase Auth/API/Postgres/Storage, and GitHub audit records.
+1. Preserve relevant hosting, Supabase Auth/API/Postgres/Storage, and GitHub audit records.
 2. Revoke affected sessions and disable compromised integrations.
 3. Rotate exposed credentials, signing secrets, deployment hooks, API keys, and service-role keys.
 4. Identify the first affected deployment, migration, workflow, and commit.
@@ -66,7 +66,7 @@ Real credentials must never be committed. If a credential is accidentally expose
 3. Review logs and provider activity.
 4. Treat Git history cleanup as secondary to rotation; deleting a commit does not invalidate a leaked secret.
 
-Only browser-safe publishable values may use `NEXT_PUBLIC_*`. Service-role keys, database passwords, provider secrets, signing keys, GitHub tokens, Vercel tokens, webhook secrets, and reset links must never be committed, logged, returned to the browser, or embedded in generated files.
+Only browser-safe publishable values may use `NEXT_PUBLIC_*`. Service-role keys, database passwords, provider secrets, signing keys, GitHub tokens, hosting tokens, webhook secrets, and reset links must never be committed, logged, returned to the browser, or embedded in generated files.
 
 ## Security boundaries
 

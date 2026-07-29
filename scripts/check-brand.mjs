@@ -38,7 +38,7 @@ const generatedPublicFiles = [
   "public/manifest.json",
   "public/offline.html",
   "public/icons/icon.svg",
-  "public/readme/jamals-finance-hero.svg",
+  "public/readme/jalvoro-platform-hero.svg",
 ];
 
 const forbiddenPatterns = [

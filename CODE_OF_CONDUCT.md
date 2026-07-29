@@ -2,7 +2,7 @@
 
 ## Our standard
 
-Jamal's Finance welcomes focused, respectful collaboration. Participants are expected to communicate clearly, critique ideas rather than people, respect project scope, and protect the privacy of anyone whose data could appear in a report, screenshot, fixture, or discussion.
+JALVORO welcomes focused, respectful collaboration. Participants are expected to communicate clearly, critique ideas rather than people, respect project scope, and protect the privacy of anyone whose data could appear in a report, screenshot, fixture, or discussion.
 
 Examples of positive participation include:
 
