@@ -16,6 +16,18 @@ const CONTROL_RESPONSE_HEADERS = {
   "Referrer-Policy": "no-referrer",
 } as const;
 
+function commandCenterRequestHeaders(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set("x-jalvoro-command-center", "1");
+  return headers;
+}
+
+function nextCommandCenterResponse(request: NextRequest) {
+  return NextResponse.next({
+    request: { headers: commandCenterRequestHeaders(request) },
+  });
+}
+
 function harden(response: NextResponse) {
   Object.entries(CONTROL_RESPONSE_HEADERS).forEach(([name, value]) =>
     response.headers.set(name, value),
@@ -56,7 +68,7 @@ export function mergeControlPlaneResponseState(
 }
 
 export async function updateControlPlaneSession(request: NextRequest) {
-  let response = harden(NextResponse.next({ request }));
+  let response = harden(nextCommandCenterResponse(request));
   const isLoginRoute = request.nextUrl.pathname === CONTROL_PLANE_LOGIN_PATH;
 
   const supabase = createServerClient(
@@ -71,7 +83,7 @@ export async function updateControlPlaneSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          const refreshed = harden(NextResponse.next({ request }));
+          const refreshed = harden(nextCommandCenterResponse(request));
           response.cookies.getAll().forEach((cookie) =>
             refreshed.cookies.set(cookie),
           );
@@ -101,6 +113,9 @@ export async function updateControlPlaneSession(request: NextRequest) {
       : controlLoginRedirect(request, response, "authentication_required");
   }
 
+  // /admin is both the login surface and the authenticated Command Center home.
+  // The page itself resolves AAL2 and either shows the isolated challenge or the
+  // full console, keeping the browser on one stable URL throughout the flow.
   if (isLoginRoute) return response;
 
   const assurance = await supabase.auth.mfa
