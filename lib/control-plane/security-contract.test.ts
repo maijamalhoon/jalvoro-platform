@@ -44,6 +44,12 @@ describe("zero-trust Control Plane source contracts", () => {
     const login = read("components/control-plane/ControlPlaneLogin.tsx");
 
     expect(login).toContain("signInWithPassword");
+    expect(login).toContain("resetPasswordForEmail");
+    expect(login).toContain("isConfirmedRecoveryAuthEvent");
+    expect(login).toContain("CONTROL_PLANE_RECOVERY_MARKER");
+    expect(login).toContain("checkPasswordProtection");
+    expect(login).toContain("auth.updateUser");
+    expect(login).toContain('signOut({ scope: "local" })');
     expect(login).toContain("mfa.enroll");
     expect(login).toContain("mfa.challenge");
     expect(login).toContain("mfa.verify");
