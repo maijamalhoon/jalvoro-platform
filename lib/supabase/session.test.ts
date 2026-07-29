@@ -20,6 +20,7 @@ import {
   isSupabaseSessionCookie,
   mergePreservedResponseHeaders,
   normalizeLoginReason,
+  normalizeRecoveryCode,
   parseValidRecoveryMarker,
   sanitizeInternalRedirect,
   shouldClearRecoveryMarkerAfterPasswordUpdate,
@@ -68,6 +69,22 @@ describe("sanitizeInternalRedirect", () => {
   it("rejects an encoded reset-password loop", () => expect(sanitizeInternalRedirect("/reset%2Dpassword")).toBe("/dashboard"));
   it("rejects a mixed-case encoded auth route", () => expect(sanitizeInternalRedirect("/%4CoGiN")).toBe("/dashboard"));
   it("preserves a legitimate encoded query value", () => expect(sanitizeInternalRedirect("/dashboard?next=%2Faccounts%2Fcash#summary")).toBe("/dashboard?next=%2Faccounts%2Fcash#summary"));
+});
+
+describe("normalizeRecoveryCode", () => {
+  it("accepts a URL-safe one-time code", () => {
+    expect(normalizeRecoveryCode("pkce_code-123.~")).toBe("pkce_code-123.~");
+  });
+
+  it("rejects whitespace and decoded delimiter injection", () => {
+    expect(normalizeRecoveryCode("code with space")).toBeNull();
+    expect(normalizeRecoveryCode("code/next")).toBeNull();
+  });
+
+  it("rejects empty and oversized codes", () => {
+    expect(normalizeRecoveryCode("")).toBeNull();
+    expect(normalizeRecoveryCode("a".repeat(2_049))).toBeNull();
+  });
 });
 
 describe("Supabase auth cookies", () => {

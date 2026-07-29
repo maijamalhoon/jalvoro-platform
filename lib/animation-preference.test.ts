@@ -26,6 +26,11 @@ const motionProviderSource = readFileSync(
   "utf8",
 );
 
+const routeMotionProviderSource = readFileSync(
+  new URL("../components/motion/RouteMotionProvider.tsx", import.meta.url),
+  "utf8",
+);
+
 const motionConfigSource = readFileSync(
   new URL("../components/motion/animation-config.ts", import.meta.url),
   "utf8",
@@ -215,6 +220,14 @@ describe("animation preference contracts", () => {
     expect(acceleratedPerformanceSource).not.toContain("standardMotionTier");
   });
 
+  it("keeps the public landing route off the full Framer Motion runtime", () => {
+    expect(routeMotionProviderSource).toContain('if (pathname === "/")');
+    expect(routeMotionProviderSource).toContain("<StandardMotionPerformance />");
+    expect(routeMotionProviderSource).toContain(
+      '() => import("@/components/motion/MotionProvider")',
+    );
+  });
+
   it("adapts fast motion and pauses non-visible continuous work", () => {
     expect(acceleratedPerformanceSource).toContain("fastMotionTier");
     expect(acceleratedPerformanceSource).toContain(
@@ -250,8 +263,10 @@ describe("animation preference contracts", () => {
     expect(pwaRuntimeSource).toContain(
       'import("@/components/performance/AcceleratedMotionPerformance")',
     );
-    expect(pwaRuntimeSource).toContain("deferredRuntimeReady");
+    expect(pwaRuntimeSource).toContain("motionRuntimeReady");
     expect(pwaRuntimeSource).toContain("<AcceleratedMotionPerformance />");
+    expect(pwaRuntimeSource).toContain('installRuntime === "android"');
+    expect(pwaRuntimeSource).toContain('installRuntime === "windows"');
   });
 
   it("bounds automatic preloading and keeps standard intent-only", () => {

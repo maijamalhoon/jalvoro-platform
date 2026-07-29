@@ -41,6 +41,10 @@ describe("continuous runtime performance contracts", () => {
     expect(runtime).toContain("requestIdleCallback");
     expect(runtime).toContain('navigator.serviceWorker.register("/sw.js"');
     expect(runtime).toContain('document.readyState === "complete"');
+    expect(runtime).toContain(
+      "const hadController = Boolean(navigator.serviceWorker.controller)",
+    );
+    expect(runtime).toContain("if (!hadController) return");
   });
 
   it("preserves auth action presentation without global observers", () => {

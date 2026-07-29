@@ -8,11 +8,23 @@ function safeOrigin(value: string | undefined, fallback: string) {
   }
 }
 
+function safeSentryOrigin(value: string | undefined) {
+  try {
+    const url = new URL(value ?? "");
+    const trustedHost =
+      url.hostname === "sentry.io" || url.hostname.endsWith(".sentry.io");
+    return url.protocol === "https:" && trustedHost ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
 const supabaseOrigin = safeOrigin(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   "https://tdagzmgcgjlyqzegmizg.supabase.co",
 );
 const supabaseWebSocketOrigin = supabaseOrigin.replace(/^http/, "ws");
+const sentryOrigin = safeSentryOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN);
 const productionScriptSources = ["'self'", "'unsafe-inline'"];
 const scriptSources =
   process.env.NODE_ENV === "production"
@@ -47,7 +59,7 @@ const contentSecurityPolicy = [
     supabaseWebSocketOrigin,
     "wss://stream.binance.com:9443",
     "wss://data-stream.binance.vision",
-    "https://*.ingest.sentry.io",
+    ...(sentryOrigin ? [sentryOrigin] : []),
   ].join(" "),
   "frame-src 'none'",
   "child-src 'self' blob:",

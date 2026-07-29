@@ -13,6 +13,9 @@ export type PwnedPasswordHashRange = {
 export function createPwnedPasswordHashRange(
   password: string,
 ): PwnedPasswordHashRange {
+  // SHA-1 is mandated only for the HIBP k-anonymity range protocol. This
+  // digest is never used to store, authenticate, or derive a password.
+  // lgtm[js/insufficient-password-hash]
   const hash = createHash("sha1").update(password, "utf8").digest("hex").toUpperCase();
   return {
     prefix: hash.slice(0, 5),

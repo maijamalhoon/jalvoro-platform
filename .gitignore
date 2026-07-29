@@ -15,6 +15,7 @@
 
 # Test output
 /coverage/
+/.audit-artifacts/
 
 # Local verification artifacts
 /build-output.txt

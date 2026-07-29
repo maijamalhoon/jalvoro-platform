@@ -110,7 +110,11 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
 
 function PrimaryButton({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="finance-focus jf-button jf-button-primary">
+    <Link
+      href={href}
+      prefetch={false}
+      className="finance-focus jf-button jf-button-primary"
+    >
       <span>{children}</span>
       <ArrowRight aria-hidden="true" />
     </Link>
@@ -119,7 +123,11 @@ function PrimaryButton({ href, children }: { href: string; children: React.React
 
 function SecondaryButton({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="finance-focus jf-button jf-button-secondary">
+    <Link
+      href={href}
+      prefetch={false}
+      className="finance-focus jf-button jf-button-secondary"
+    >
       <span>{children}</span>
     </Link>
   );
@@ -303,10 +311,12 @@ export default function PremiumLandingPage() {
           </nav>
 
           <div className="jf-header-actions">
-            <Link href="/start?mode=login" className="finance-focus jf-header-login">Sign in</Link>
-            <Link href="/start" className="finance-focus jf-header-cta">
+            <Link href="/start?mode=login" prefetch={false} className="finance-focus jf-header-login">Sign in</Link>
+            <Link href="/start" prefetch={false} className="finance-focus jf-header-cta">
               <span className="hidden sm:inline">Get started</span>
-              <span className="sm:hidden">Start</span>
+              <span className="sm:hidden">
+                Start<span className="sr-only"> with {APP_NAME}</span>
+              </span>
               <ArrowRight aria-hidden="true" />
             </Link>
           </div>
@@ -482,9 +492,9 @@ export default function PremiumLandingPage() {
             </div>
             <div>
               <strong>Workspace</strong>
-              <Link href="/start?mode=login">Sign in</Link>
-              <Link href="/start">Create account</Link>
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/start?mode=login" prefetch={false}>Sign in</Link>
+              <Link href="/start" prefetch={false}>Create account</Link>
+              <Link href="/dashboard" prefetch={false}>Dashboard</Link>
             </div>
           </nav>
 

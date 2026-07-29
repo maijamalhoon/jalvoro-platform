@@ -21,6 +21,10 @@ const authControlsSource = readFileSync(
   new URL("../components/auth/AuthControls.tsx", import.meta.url),
   "utf8",
 );
+const productRealmAuthSource = readFileSync(
+  new URL("../components/auth/ProductRealmAuth.tsx", import.meta.url),
+  "utf8",
+);
 const globalsCssSource = readFileSync(
   new URL("../app/globals.css", import.meta.url),
   "utf8",
@@ -211,6 +215,15 @@ describe("Node 8 authentication experience contracts", () => {
     expect(onboardingSource).toContain("const saveInFlight = useRef(false)");
     expect(onboardingSource.match(/catch \{/g)?.length ?? 0).toBeGreaterThanOrEqual(6);
     expect(resetPasswordSource).toContain('if (recoveryState !== "ready") return');
+    expect(productRealmAuthSource).toContain(
+      "const passwordSubmitInFlight = useRef(false)",
+    );
+    expect(productRealmAuthSource).toContain(
+      "if (passwordSubmitInFlight.current || isBusy) return",
+    );
+    expect(productRealmAuthSource).toContain(
+      "passwordSubmitInFlight.current = false",
+    );
   });
 
   it("uses AuthShell for all three routes without adding a theme control", () => {

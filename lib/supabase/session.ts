@@ -143,6 +143,11 @@ export function sanitizeInternalRedirect(
   return createsAuthLoop ? fallback : value;
 }
 
+export function normalizeRecoveryCode(value: string | null | undefined) {
+  if (!value || value.length > 2_048) return null;
+  return /^[A-Za-z0-9._~-]+$/.test(value) ? value : null;
+}
+
 export function isSupabaseSessionCookie(name: string) {
   return /^sb-[a-z0-9_-]+-auth-token(?:\.\d+)?$/i.test(name);
 }

@@ -25,7 +25,7 @@ import "./global-ux-foundation.css";
 import { Toaster } from "sonner";
 import LanguageProvider from "@/components/i18n/LanguageProvider";
 import DeferredDesktopOverscrollBounce from "@/components/motion/DeferredDesktopOverscrollBounce";
-import MotionProvider from "@/components/motion/MotionProvider";
+import RouteMotionProvider from "@/components/motion/RouteMotionProvider";
 import { ANIMATION_BOOTSTRAP_SCRIPT } from "@/lib/animation-preference";
 import {
   APP_DESCRIPTION,
@@ -286,7 +286,7 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground antialiased">
         <LanguageProvider>
-          <MotionProvider>
+          <RouteMotionProvider>
             {children}
             <DeferredDesktopOverscrollBounce />
             <PWARegister />
@@ -298,7 +298,7 @@ export default function RootLayout({
                 },
               }}
             />
-          </MotionProvider>
+          </RouteMotionProvider>
         </LanguageProvider>
       </body>
     </html>

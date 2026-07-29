@@ -58,7 +58,10 @@ function needsFinanceFormRuntime(pathname: string) {
 
 export default function PWARegister() {
   const pathname = usePathname();
-  const [deferredRuntimeReady, setDeferredRuntimeReady] = useState(false);
+  const [motionRuntimeReady, setMotionRuntimeReady] = useState(false);
+  const [installRuntime, setInstallRuntime] = useState<
+    "android" | "windows" | "other" | null
+  >(null);
   const needsFormRuntime = needsFinanceFormRuntime(pathname);
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function PWARegister() {
     const enableDeferredRuntime = () => {
       idleHandle = null;
       fallbackHandle = null;
-      if (!cancelled) setDeferredRuntimeReady(true);
+      if (!cancelled) setMotionRuntimeReady(true);
     };
 
     const scheduleDeferredRuntime = () => {
@@ -100,6 +103,56 @@ export default function PWARegister() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let delayHandle: number | null = null;
+    let idleHandle: number | null = null;
+
+    const resolveInstallRuntime = () => {
+      idleHandle = null;
+      if (cancelled) return;
+
+      const navigatorWithData = window.navigator as Navigator & {
+        userAgentData?: { platform?: string };
+      };
+      const platform =
+        navigatorWithData.userAgentData?.platform ??
+        window.navigator.userAgent;
+
+      if (/Android/i.test(platform)) setInstallRuntime("android");
+      else if (/Windows/i.test(platform)) setInstallRuntime("windows");
+      else setInstallRuntime("other");
+    };
+
+    const scheduleInstallRuntime = () => {
+      delayHandle = window.setTimeout(() => {
+        delayHandle = null;
+        if (typeof window.requestIdleCallback === "function") {
+          idleHandle = window.requestIdleCallback(resolveInstallRuntime, {
+            timeout: 4_000,
+          });
+        } else {
+          resolveInstallRuntime();
+        }
+      }, 8_000);
+    };
+
+    if (document.readyState === "complete") scheduleInstallRuntime();
+    else window.addEventListener("load", scheduleInstallRuntime, { once: true });
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", scheduleInstallRuntime);
+      if (delayHandle !== null) window.clearTimeout(delayHandle);
+      if (
+        idleHandle !== null &&
+        typeof window.cancelIdleCallback === "function"
+      ) {
+        window.cancelIdleCallback(idleHandle);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!canUseServiceWorker()) return;
     if (window.__jamalsFinancePwaRegistered) return;
 
@@ -107,8 +160,13 @@ export default function PWARegister() {
     let refreshing = false;
     let idleHandle: number | null = null;
     let fallbackHandle: number | null = null;
+    const hadController = Boolean(navigator.serviceWorker.controller);
 
     const onControllerChange = () => {
+      // A first-time install may claim this page. Reloading at that point can
+      // erase in-progress signup or finance form input; only existing clients
+      // need a reload when an updated worker takes control.
+      if (!hadController) return;
       if (refreshing) return;
       refreshing = true;
       window.location.reload();
@@ -199,14 +257,10 @@ export default function PWARegister() {
           <GlobalAccountAmountMaxAuthority />
         </>
       ) : null}
-      {deferredRuntimeReady ? (
-        <>
-          <AcceleratedMotionPerformance />
-          <AndroidAppManager />
-          <WindowsAppManager />
-          <AppUpdateManager />
-        </>
-      ) : null}
+      {motionRuntimeReady ? <AcceleratedMotionPerformance /> : null}
+      {installRuntime === "android" ? <AndroidAppManager /> : null}
+      {installRuntime === "windows" ? <WindowsAppManager /> : null}
+      {installRuntime !== null ? <AppUpdateManager /> : null}
     </>
   );
 }

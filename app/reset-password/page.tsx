@@ -41,6 +41,7 @@ import {
   getPasswordUpdateExceptionMessage,
   getRecoveryRetryOperation,
   isConfirmedRecoveryAuthEvent,
+  normalizeRecoveryCode,
   parseValidRecoveryMarker,
   shouldClearRecoveryMarkerAfterPasswordUpdate,
   type PasswordUpdateOutcome,
@@ -319,7 +320,9 @@ export default function ResetPasswordPage() {
     let cancelled = false;
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const search = new URLSearchParams(window.location.search);
-    const code = search.get("code");
+    const rawCode = search.get("code");
+    const code = normalizeRecoveryCode(rawCode);
+    const malformedRecoveryCode = rawCode !== null && code === null;
     const hasSensitiveHash = hasSensitiveRecoveryHash(hash);
     const initialSignal = code ? getOrCreateRecoverySignal(code) : null;
 
@@ -400,7 +403,7 @@ export default function ResetPasswordPage() {
           search.get("error_description") ?? hash.get("error_description"),
       });
 
-      if (recoveryLinkFailure) {
+      if (recoveryLinkFailure || malformedRecoveryCode) {
         clearRecoveryRetry();
         clearRecoveryMarker();
         if (code && initialSignal) {
@@ -408,7 +411,9 @@ export default function ResetPasswordPage() {
           recoverySignalRef.current = null;
         }
         removeRecoveryParameters();
-        if (!cancelled) setRecoveryState(recoveryLinkFailure);
+        if (!cancelled) {
+          setRecoveryState(recoveryLinkFailure ?? "invalid");
+        }
         return;
       }
 

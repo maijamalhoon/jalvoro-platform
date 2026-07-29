@@ -426,16 +426,31 @@ jobs:
             log=".browser-audit/lighthouse/${name}.log"
             report=".browser-audit/lighthouse/${name}.json"
 
-            ./node_modules/.bin/lighthouse "http://127.0.0.1:3000${route}" \
-              --quiet \
-              --preset=desktop \
-              --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
-              --only-categories=performance,accessibility,best-practices,seo \
-              --output=json \
-              --output-path="$report" \
-              > "$log" 2>&1
-            lighthouse_code=$?
-            cat "$log"
+            : > "$log"
+            lighthouse_code=1
+
+            for attempt in 1 2; do
+              attempt_log=".browser-audit/lighthouse/${name}-attempt-${attempt}.log"
+
+              ./node_modules/.bin/lighthouse "http://127.0.0.1:3000${route}" \
+                --quiet \
+                --preset=desktop \
+                --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+                --only-categories=performance,accessibility,best-practices,seo \
+                --output=json \
+                --output-path="$report" \
+                > "$attempt_log" 2>&1
+              lighthouse_code=$?
+              cat "$attempt_log" | tee -a "$log"
+
+              if [ "$lighthouse_code" -eq 0 ]; then
+                break
+              fi
+
+              if [ "$attempt" -eq 1 ]; then
+                echo "Lighthouse command failed for ${name}; retrying once." | tee -a "$log"
+              fi
+            done
 
             if [ "$lighthouse_code" -ne 0 ]; then
               lighthouse_failed=1
@@ -464,7 +479,7 @@ jobs:
 
       - name: Upload browser and Lighthouse evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: browser-and-lighthouse-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

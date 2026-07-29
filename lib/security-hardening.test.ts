@@ -83,6 +83,9 @@ describe("security hardening contracts", () => {
     expect(config).toContain('"object-src \'none\'"');
     expect(config).toContain("productionScriptSources");
     expect(config).not.toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' https:");
+    expect(config).toContain("safeSentryOrigin");
+    expect(config).toContain("url.hostname.endsWith(\".sentry.io\")");
+    expect(config).toContain("...(sentryOrigin ? [sentryOrigin] : [])");
     expect(config).toContain('"Vercel-CDN-Cache-Control"');
   });
 
