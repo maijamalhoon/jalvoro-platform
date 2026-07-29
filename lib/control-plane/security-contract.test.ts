@@ -5,27 +5,34 @@ import { describe, expect, it } from "vitest";
 const root = resolve(process.cwd());
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
-describe("zero-trust Control Plane source contracts", () => {
-  it("gates every admin route with Control Plane authority before app auth", () => {
+describe("zero-trust Command Center source contracts", () => {
+  it("gates every admin route only with the isolated administrator realm", () => {
     const source = read("proxy.ts");
-    const controlGate = source.indexOf("updateControlPlaneSession(request)");
-    const applicationGate = source.indexOf("updateSession(request)", controlGate);
+    const adminGate = source.indexOf(
+      "isControlPlaneOnlyPath(pathname) || isAdminControlPlanePath(pathname)",
+    );
+    const applicationGate = source.indexOf("updateSession(request)", adminGate);
 
-    expect(source).toContain("isAdminControlPlanePath(pathname)");
-    expect(controlGate).toBeGreaterThan(-1);
-    expect(applicationGate).toBeGreaterThan(controlGate);
-    expect(source).toContain("mergeControlPlaneResponseState");
+    expect(adminGate).toBeGreaterThan(-1);
+    expect(source.slice(adminGate, applicationGate)).not.toContain(
+      "updateSession(request)",
+    );
+    expect(source).not.toContain("mergeControlPlaneResponseState");
+    expect(source).toContain("getLegacyCommandCenterRedirect");
+    expect(source).toContain('destination.pathname = "/admin"');
   });
 
-  it("requires AAL2 and the bounded access RPC in middleware and SSR", () => {
+  it("requires AAL2 and bounded access in middleware and the /admin page", () => {
     const middleware = read("lib/control-plane/proxy.ts");
-    const page = read("app/control/page.tsx");
+    const page = read("app/admin/page.tsx");
+    const shell = read("components/admin/AdminCommandCenterShell.tsx");
 
     expect(middleware).toContain('currentLevel !== "aal2"');
     expect(middleware).toContain('rpc("get_my_control_plane_access")');
     expect(page).toContain('currentLevel !== "aal2"');
     expect(page).toContain('rpc("get_my_control_plane_access")');
-    expect(page).toContain('rpc("get_control_plane_directory")');
+    expect(page).toContain("<ControlPlaneLogin />");
+    expect(shell).toContain('rpc("get_command_center_navigation"');
   });
 
   it("uses only a publishable browser credential for the isolated project", () => {
@@ -52,7 +59,7 @@ describe("zero-trust Control Plane source contracts", () => {
     );
   });
 
-  it("does not offer public signup or OAuth in the Control Plane login", () => {
+  it("does not offer public signup or OAuth in the Command Center login", () => {
     const login = read("components/control-plane/ControlPlaneLogin.tsx");
 
     expect(login).toContain("signInWithPassword");
