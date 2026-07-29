@@ -1,0 +1,59 @@
+/* The Command Center is an isolated administrator product. Public workspace exits
+   are intentionally removed so the only lifecycle is /admin sign-in -> console -> lock. */
+.cc-exit-link,
+.cc-topbar-exit,
+.cc-command-quick-grid .cc-command-action:last-child {
+  display: none !important;
+}
+
+.cc-isolated-lock {
+  position: fixed;
+  z-index: 70;
+  right: 20px;
+  bottom: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--cc-border-strong, #87a6ff) 68%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cc-surface-strong, #14233f) 92%, transparent);
+  color: var(--cc-text, #eef4ff);
+  box-shadow: 0 14px 38px rgb(0 0 0 / 28%);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 760;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  backdrop-filter: blur(18px);
+}
+
+.cc-isolated-lock:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--cc-accent, #8ea7ff);
+}
+
+.cc-isolated-lock:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--cc-accent, #8ea7ff) 45%, transparent);
+  outline-offset: 3px;
+}
+
+.cc-isolated-lock:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+@media (max-width: 760px) {
+  .cc-isolated-lock {
+    right: 14px;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    min-height: 42px;
+    padding-inline: 13px;
+  }
+
+  .cc-isolated-lock span {
+    display: none;
+  }
+}
