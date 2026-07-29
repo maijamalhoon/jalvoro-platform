@@ -31,14 +31,39 @@ type TotpFactor = {
   status?: string | null;
 };
 
+type AuthFailure = {
+  code?: string;
+  message?: string;
+  status?: number;
+};
+
 const reasonMessages = {
-  authentication_required: "Authenticate with the dedicated Control Plane account.",
+  authentication_required: "Authenticate with the dedicated Command Center account.",
   mfa_required: "Complete authenticator verification before continuing.",
-  access_denied: "Control Plane access could not be verified.",
+  access_denied: "Command Center access could not be verified.",
 } as const;
 
 function genericError() {
-  return "Credentials or verification could not be accepted. Check the details and try again.";
+  return "The Command Center request could not be completed. Check the details and try again.";
+}
+
+function getSignInError(error?: AuthFailure) {
+  const details = `${error?.code ?? ""} ${error?.message ?? ""}`.toLowerCase();
+
+  if (details.includes("rate") || details.includes("too many")) {
+    return "Too many sign-in attempts. Wait a moment before trying again.";
+  }
+
+  if (
+    (error?.status ?? 0) >= 500 ||
+    details.includes("network") ||
+    details.includes("fetch") ||
+    details.includes("timeout")
+  ) {
+    return "The isolated authentication service is temporarily unavailable. Check your connection and try again.";
+  }
+
+  return "The Command Center email or password is incorrect. Use the credentials created in the isolated Command Center project, not your normal JALVORO account.";
 }
 
 export default function ControlPlaneLogin() {
@@ -65,7 +90,7 @@ export default function ControlPlaneLogin() {
     setPassword("");
     setCode("");
     setMode("denied");
-    setError("This identity is not authorized for the JALVORO Control Plane.");
+    setError("This identity is not authorized for the JALVORO Command Center.");
   }
 
   async function completeAccess(destination = next) {
@@ -149,7 +174,7 @@ export default function ControlPlaneLogin() {
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
-      setError("Enter the Control Plane email and password.");
+      setError("Enter the Command Center email and password.");
       setBusy(false);
       return;
     }
@@ -161,7 +186,7 @@ export default function ControlPlaneLogin() {
     setPassword("");
 
     if (signIn.error) {
-      setError(genericError());
+      setError(getSignInError(signIn.error));
       setBusy(false);
       return;
     }
@@ -195,7 +220,7 @@ export default function ControlPlaneLogin() {
 
     const result = await supabase.auth.mfa.enroll({
       factorType: "totp",
-      friendlyName: "JALVORO Control Plane",
+      friendlyName: "JALVORO Command Center",
     });
 
     if (result.error) {
@@ -277,7 +302,7 @@ export default function ControlPlaneLogin() {
           </div>
 
           <div>
-            <p className={styles.eyebrow}>Private control plane</p>
+            <p className={styles.eyebrow}>Private Command Center</p>
             <h1 className={styles.heroTitle} id="control-plane-title">
               Root authority. Zero shortcuts.
             </h1>
@@ -294,15 +319,15 @@ export default function ControlPlaneLogin() {
             </div>
             <div className={styles.trustItem}>
               <Smartphone className={styles.trustIcon} size={19} />
-              <span>Authenticator verification is mandatory before every control session.</span>
+              <span>Authenticator verification is mandatory before every Command Center session.</span>
             </div>
             <div className={styles.trustItem}>
               <UserRoundCheck className={styles.trustIcon} size={19} />
-              <span>Only active operators recorded in the private control registry pass.</span>
+              <span>Only active operators recorded in the private command registry pass.</span>
             </div>
             <div className={styles.trustItem}>
               <CheckCircle2 className={styles.trustIcon} size={19} />
-              <span>Admin routes require both Control Plane authority and app authorization.</span>
+              <span>Admin routes require both Command Center authority and app authorization.</span>
             </div>
           </div>
         </section>
@@ -314,17 +339,17 @@ export default function ControlPlaneLogin() {
               {mode === "challenge"
                 ? "Verify authenticator"
                 : mode === "enroll" || mode === "enroll-intro"
-                  ? "Secure the Root Owner"
+                  ? "Secure the Command Center account"
                   : mode === "denied"
                     ? "Access unavailable"
-                    : "Control Plane sign in"}
+                    : "Command Center sign in"}
             </h2>
             <p className={styles.authCopy}>
               {mode === "challenge"
                 ? "Enter a current code from the enrolled authenticator."
                 : mode === "enroll" || mode === "enroll-intro"
                   ? "MFA enrollment is required before the Command Center can open."
-                  : "Use the dedicated Control Plane credentials created in the isolated project."}
+                  : "Use the dedicated Command Center credentials created in the isolated project."}
             </p>
           </div>
 
@@ -338,7 +363,7 @@ export default function ControlPlaneLogin() {
           {mode === "credentials" ? (
             <form className={styles.form} onSubmit={handleLogin}>
               <label className={styles.field}>
-                <span className={styles.label}>Control Plane email</span>
+                <span className={styles.label}>Command Center email</span>
                 <input
                   className={styles.input}
                   type="email"
@@ -351,7 +376,7 @@ export default function ControlPlaneLogin() {
                 />
               </label>
               <label className={styles.field}>
-                <span className={styles.label}>Control Plane password</span>
+                <span className={styles.label}>Command Center password</span>
                 <input
                   className={styles.input}
                   type="password"
@@ -372,7 +397,7 @@ export default function ControlPlaneLogin() {
           {mode === "enroll-intro" ? (
             <div className={styles.mfaSetup}>
               <div className={styles.notice}>
-                No verified authenticator exists. The Control Plane remains locked until one is enrolled.
+                No verified authenticator exists. The Command Center remains locked until one is enrolled.
               </div>
               <button className={styles.button} type="button" onClick={startEnrollment} disabled={busy}>
                 <Smartphone size={18} />
@@ -389,7 +414,7 @@ export default function ControlPlaneLogin() {
               <div className={styles.qrShell}>
                 <Image
                   src={enrollment.qrCode}
-                  alt="QR code for JALVORO Control Plane authenticator enrollment"
+                  alt="QR code for JALVORO Command Center authenticator enrollment"
                   width={220}
                   height={220}
                   unoptimized
