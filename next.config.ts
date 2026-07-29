@@ -24,6 +24,12 @@ const supabaseOrigin = safeOrigin(
   "https://tdagzmgcgjlyqzegmizg.supabase.co",
 );
 const supabaseWebSocketOrigin = supabaseOrigin.replace(/^http/, "ws");
+const controlPlaneSupabaseOrigin = safeOrigin(
+  process.env.NEXT_PUBLIC_CONTROL_PLANE_SUPABASE_URL,
+  "https://zzvpovvuybfihwgjrder.supabase.co",
+);
+const controlPlaneSupabaseWebSocketOrigin =
+  controlPlaneSupabaseOrigin.replace(/^http/, "ws");
 const sentryOrigin = safeSentryOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN);
 const productionScriptSources = ["'self'", "'unsafe-inline'"];
 const scriptSources =
@@ -57,6 +63,8 @@ const contentSecurityPolicy = [
     "connect-src 'self'",
     supabaseOrigin,
     supabaseWebSocketOrigin,
+    controlPlaneSupabaseOrigin,
+    controlPlaneSupabaseWebSocketOrigin,
     "wss://stream.binance.com:9443",
     "wss://data-stream.binance.vision",
     ...(sentryOrigin ? [sentryOrigin] : []),
