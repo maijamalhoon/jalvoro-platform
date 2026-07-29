@@ -8,6 +8,7 @@ import "./command-center-launch-mobile.css";
 import "./organization-operations.css";
 import "./organization-operations-detail.css";
 import "./command-center-isolation.css";
+import "./global-command-center-workspace.css";
 
 export const metadata: Metadata = {
   title: {
