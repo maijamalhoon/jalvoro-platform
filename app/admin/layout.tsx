@@ -9,6 +9,7 @@ import "./organization-operations.css";
 import "./organization-operations-detail.css";
 import "./command-center-isolation.css";
 import "./global-command-center-workspace.css";
+import "./command-center-next.css";
 
 export const metadata: Metadata = {
   title: {
