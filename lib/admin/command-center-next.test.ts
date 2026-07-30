@@ -55,7 +55,7 @@ describe("Command Center Next", () => {
     const directory = read("components/admin/AdminUserOperationsPanel.tsx");
 
     expect(user360).toContain("cc360-next-layout");
-    expect(user360).toContain("Signal rail");
+    expect(user360).toContain("SIGNAL RAIL");
     expect(user360).toContain("Recent sessions");
     expect(user360).toContain("Privacy boundary");
     expect(directory).toContain("cc-directory-table");
