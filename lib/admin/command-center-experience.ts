@@ -21,7 +21,7 @@ export type CommandCenterExperienceItem =
 
 const GROUP_LABELS: Record<CommandCenterGroup, string> = {
   command: "Command",
-  operations: "Global operations",
+  operations: "Operations",
   governance: "Governance",
   infrastructure: "Infrastructure",
   ecosystem: "Ecosystem",
@@ -38,29 +38,25 @@ const MODULE_EXPERIENCE: Record<
 > = {
   "global-overview": {
     group: "command",
-    description:
-      "Executive pulse for users, billing, access, incidents, security and operating health.",
+    description: "Live priorities, health and audited activity.",
     keywords: ["overview", "users", "billing", "security", "incidents", "health"],
-    compactLabel: "Overview",
+    compactLabel: "Pulse",
   },
   "global-operations": {
     group: "operations",
-    description:
-      "Products, subscriptions, regions, devices and runtime distribution across the ecosystem.",
+    description: "Products, regions, devices and runtime distribution.",
     keywords: ["products", "subscriptions", "regions", "devices", "runtime"],
-    compactLabel: "Global",
+    compactLabel: "Topology",
   },
   organizations: {
     group: "operations",
-    description:
-      "Organization lifecycle, memberships, tenant-scoped access and audit history.",
+    description: "Organizations, members, scoped access and audit.",
     keywords: ["organizations", "tenants", "members", "permissions", "audit"],
     compactLabel: "Orgs",
   },
   "icon-system": {
     group: "infrastructure",
-    description:
-      "Versioned design infrastructure and symbol governance for every JALVORO product.",
+    description: "Versioned symbols and interface governance.",
     keywords: ["icons", "design", "symbols", "interface", "library"],
     compactLabel: "Icons",
   },
@@ -88,9 +84,7 @@ export function enrichCommandCenterNavigation(
       ...item,
       group,
       groupLabel: GROUP_LABELS[group],
-      description:
-        experience?.description ??
-        `${item.label} operations for ${item.productName}.`,
+      description: experience?.description ?? `${item.label} for ${item.productName}.`,
       keywords: experience?.keywords ?? [item.label, item.moduleKey, item.productName],
       compactLabel: experience?.compactLabel ?? item.label,
     };

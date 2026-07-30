@@ -138,7 +138,7 @@ describe("JALVORO Command Center product registry", () => {
     expect(shell).not.toContain('"use client"');
     expect(shellClient).toContain('"use client"');
     expect(shellClient).toContain("CommandPalette");
-    expect(shellClient).toContain("MobileModuleSheet");
+    expect(shellClient).toContain("MobileSheet");
     expect(shellClient).not.toContain("COMMAND_CENTER_COMPATIBILITY_PERMISSIONS");
     expect(registry).not.toContain("COMMAND_CENTER_COMPATIBILITY_PERMISSIONS");
     expect(registry).not.toContain("getRegisteredCommandCenterNavigation");

@@ -1,14 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   JalvoroCloseIcon,
@@ -20,11 +14,9 @@ import { JalvoroGlobeIcon } from "@/components/icons/jalvoro/components/communic
 import { JalvoroShieldMoneyIcon } from "@/components/icons/jalvoro/components/finance";
 import { JalvoroUsersIcon } from "@/components/icons/jalvoro/components/identity";
 import {
-  JalvoroArrowLeftIcon,
   JalvoroEyeIcon,
   JalvoroGridIcon,
   JalvoroMenuIcon,
-  JalvoroSidebarIcon,
 } from "@/components/icons/jalvoro/components/interface";
 import { JalvoroDashboardIcon } from "@/components/icons/jalvoro/components/navigation";
 import { JalvoroClockIcon } from "@/components/icons/jalvoro/components/objects";
@@ -32,9 +24,6 @@ import type { JalvoroIconComponent } from "@/components/icons/jalvoro/types";
 import {
   enrichCommandCenterNavigation,
   filterCommandCenterNavigation,
-  groupCommandCenterNavigation,
-  resolveActiveCommandCenterItem,
-  type CommandCenterExperienceItem,
 } from "@/lib/admin/command-center-experience";
 import type { ResolvedCommandCenterNavigationItem } from "@/lib/admin/command-center-navigation";
 import {
@@ -45,140 +34,138 @@ import {
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const SIDEBAR_DENSITY_STORAGE_KEY = "jalvoro-command-center-sidebar-density";
+type ModuleId =
+  | "overview"
+  | "users"
+  | "organizations"
+  | "security"
+  | "reliability"
+  | "finance"
+  | "governance"
+  | "releases"
+  | "operations";
 
-const NAVIGATION_ICONS: Record<string, JalvoroIconComponent> = {
-  dashboard: JalvoroDashboardIcon,
-  globe: JalvoroGlobeIcon,
-  grid: JalvoroGridIcon,
-  organizations: JalvoroUsersIcon,
-  users: JalvoroUsersIcon,
+type CoreModule = {
+  id: ModuleId;
+  label: string;
+  compactLabel: string;
+  group: "Command" | "Ecosystem" | "Platform" | "Commercial" | "Control";
+  description: string;
+  href: string;
+  icon: JalvoroIconComponent;
 };
 
-const THEME_LABELS: Record<ThemePreference, string> = {
-  system: "System",
-  light: "Light",
-  dark: "Dark",
-};
+const MODULES: CoreModule[] = [
+  { id: "overview", label: "Pulse", compactLabel: "Pulse", group: "Command", description: "Live priorities, health and audited activity.", href: "/admin", icon: JalvoroDashboardIcon },
+  { id: "users", label: "Users", compactLabel: "Users", group: "Ecosystem", description: "Identity, sessions, devices and access context.", href: "/admin?view=users", icon: JalvoroUsersIcon },
+  { id: "organizations", label: "Organizations", compactLabel: "Orgs", group: "Ecosystem", description: "Tenants, members, roles and scoped grants.", href: "/admin?view=organizations", icon: JalvoroUsersIcon },
+  { id: "reliability", label: "Health", compactLabel: "Health", group: "Platform", description: "Incidents, failures and performance signals.", href: "/admin?view=reliability", icon: JalvoroClockIcon },
+  { id: "operations", label: "Topology", compactLabel: "Map", group: "Platform", description: "Products, regions, devices and runtime distribution.", href: "/admin?view=operations", icon: JalvoroGlobeIcon },
+  { id: "finance", label: "Billing", compactLabel: "Billing", group: "Commercial", description: "Plans, subscriptions and provider operations.", href: "/admin?view=finance", icon: JalvoroShieldMoneyIcon },
+  { id: "security", label: "Security", compactLabel: "Secure", group: "Control", description: "Posture, operators and privileged access.", href: "/admin?view=security", icon: JalvoroShieldMoneyIcon },
+  { id: "governance", label: "Governance", compactLabel: "Govern", group: "Control", description: "Privacy, compliance, retention and audit.", href: "/admin?view=governance", icon: JalvoroMenuIcon },
+  { id: "releases", label: "Releases", compactLabel: "Release", group: "Control", description: "Readiness, approvals and deployment evidence.", href: "/admin?view=releases", icon: JalvoroGridIcon },
+];
 
-function resolveIcon(item: CommandCenterExperienceItem) {
-  return (
-    NAVIGATION_ICONS[item.iconKey] ??
-    NAVIGATION_ICONS[item.moduleKey] ??
-    JalvoroGridIcon
-  );
-}
+const GROUPS: CoreModule["group"][] = ["Command", "Ecosystem", "Platform", "Commercial", "Control"];
+const THEME_LABELS: Record<ThemePreference, string> = { system: "System", light: "Light", dark: "Dark" };
 
-function getNextThemePreference(preference: ThemePreference): ThemePreference {
-  if (preference === "system") return "light";
-  if (preference === "light") return "dark";
+function nextTheme(preference: ThemePreference): ThemePreference {
+  if (preference === "system") return "dark";
+  if (preference === "dark") return "light";
   return "system";
 }
 
-function formatOperatorTime(now: Date | null) {
+function operatorTime(now: Date | null) {
   if (!now) return "--:--";
-
   try {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(now);
+    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(now);
   } catch {
     return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 }
 
-function formatOperatorDate(now: Date | null) {
-  if (!now) return "Local operator time";
-
+function operatorDate(now: Date | null) {
+  if (!now) return "Local time";
   try {
-    return new Intl.DateTimeFormat(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    }).format(now);
+    return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(now);
   } catch {
     return now.toLocaleDateString();
   }
 }
 
-function SectionLink({
-  item,
+function activeModule(pathname: string, view: string | null): ModuleId {
+  if (pathname.startsWith("/admin/organizations")) return "organizations";
+  if (pathname.startsWith("/admin/global-operations")) return "operations";
+  return view && MODULES.some((item) => item.id === view) ? (view as ModuleId) : "overview";
+}
+
+function ModuleIcon({ module, size = 18 }: { module: CoreModule; size?: number }) {
+  const Icon = module.icon;
+  return <Icon size={size} context="compact" aria-hidden="true" />;
+}
+
+function ModuleLink({
+  module,
   active,
   compact = false,
   onNavigate,
 }: {
-  item: CommandCenterExperienceItem;
+  module: CoreModule;
   active: boolean;
   compact?: boolean;
   onNavigate?: () => void;
 }) {
-  const Icon = resolveIcon(item);
-
   return (
     <Link
-      href={item.href}
+      href={module.href}
       aria-current={active ? "page" : undefined}
-      aria-label={`${item.label}: ${item.description}`}
-      title={item.label}
+      aria-label={`${module.label}: ${module.description}`}
+      title={module.label}
       onClick={onNavigate}
-      className={cn(
-        "cc-nav-link finance-focus",
-        active && "cc-nav-link-active",
-        compact && "cc-nav-link-compact",
-      )}
+      className={cn("cc-next-nav-link finance-focus", active && "cc-next-nav-link-active", compact && "cc-next-nav-link-compact")}
     >
-      <span className="cc-nav-icon" aria-hidden="true">
-        <Icon size={compact ? 19 : 18} context="compact" />
-      </span>
-      <span className="cc-nav-copy">
-        <span className="cc-nav-label">
-          {compact ? item.compactLabel : item.label}
-        </span>
-        {!compact ? (
-          <span className="cc-nav-description">{item.description}</span>
-        ) : null}
-      </span>
+      <span className="cc-next-nav-icon"><ModuleIcon module={module} size={compact ? 19 : 18} /></span>
+      <span className="cc-next-nav-copy"><strong>{compact ? module.compactLabel : module.label}</strong></span>
     </Link>
   );
 }
 
 function CommandPalette({
-  items,
   open,
   online,
+  registry,
   themePreference,
-  sidebarCompact,
-  onClose,
-  onRefresh,
-  onCycleTheme,
-  onToggleSidebar,
+  close,
+  refresh,
+  cycleTheme,
 }: {
-  items: CommandCenterExperienceItem[];
   open: boolean;
   online: boolean;
+  registry: ReturnType<typeof enrichCommandCenterNavigation>;
   themePreference: ThemePreference;
-  sidebarCompact: boolean;
-  onClose: () => void;
-  onRefresh: () => void;
-  onCycleTheme: () => void;
-  onToggleSidebar: () => void;
+  close: () => void;
+  refresh: () => void;
+  cycleTheme: () => void;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const results = useMemo(
-    () => filterCommandCenterNavigation(items, query),
-    [items, query],
+  const normalized = query.trim().toLocaleLowerCase("en-US");
+  const coreResults = useMemo(
+    () => MODULES.filter((item) => [item.label, item.group, item.description].join(" ").toLocaleLowerCase("en-US").includes(normalized)),
+    [normalized],
   );
-  const showQuickActions = query.trim().length === 0;
+  const registryResults = useMemo(
+    () => filterCommandCenterNavigation(registry, query).filter((item) => !MODULES.some((module) => module.href === item.href)),
+    [query, registry],
+  );
 
   useEffect(() => {
     if (!open) {
       setQuery("");
       return;
     }
-
     const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [open]);
@@ -186,214 +173,77 @@ function CommandPalette({
   if (!open) return null;
 
   return (
-    <div className="cc-overlay" role="presentation" onMouseDown={onClose}>
-      <section
-        className="cc-command-palette"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cc-command-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="cc-command-head">
-          <div>
-            <p className="cc-kicker">Global command</p>
-            <h2 id="cc-command-title">Operate the JALVORO control plane</h2>
-            <span
-              className="cc-command-head-status"
-              data-network={online ? "online" : "offline"}
-              role="status"
-            >
-              <span className="cc-signal-dot" aria-hidden="true" />
-              {online ? "Browser network online" : "Browser network offline"}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="cc-icon-button finance-focus"
-            onClick={onClose}
-            aria-label="Close command menu"
-          >
+    <div className="cc-next-overlay" role="presentation" onMouseDown={close}>
+      <section className="cc-next-command" role="dialog" aria-modal="true" aria-labelledby="cc-next-command-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="cc-next-command-head">
+          <div><span className="cc-next-eyebrow">COMMAND</span><h2 id="cc-next-command-title">Navigate or operate</h2></div>
+          <span className="cc-next-command-network" data-online={online}><span aria-hidden="true" />{online ? "Connected" : "Offline"}</span>
+          <button type="button" className="cc-next-icon-button finance-focus" onClick={close} aria-label="Close command palette">
             <JalvoroCloseIcon size={18} context="compact" aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
-        <label className="cc-command-search">
+        <label className="cc-next-command-search">
           <JalvoroSearchIcon size={19} context="compact" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search operations, products, regions, access…"
-            autoComplete="off"
-          />
+          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search users, billing, security, releases…" autoComplete="off" />
           <kbd>Esc</kbd>
         </label>
 
-        {showQuickActions ? (
-          <div className="cc-command-quick">
-            <p className="cc-command-section-label">Operator actions</p>
-            <div className="cc-command-quick-grid">
-              <button
-                type="button"
-                className="cc-command-action finance-focus"
-                onClick={() => {
-                  onClose();
-                  onRefresh();
-                }}
-              >
-                <span className="cc-command-action-icon" aria-hidden="true">
-                  <JalvoroRefreshIcon size={19} context="compact" />
-                </span>
-                <span className="cc-command-action-copy">
-                  <strong>Refresh live snapshot</strong>
-                  <small>Revalidate the current server-rendered view</small>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="cc-command-action finance-focus"
-                onClick={onCycleTheme}
-              >
-                <span className="cc-command-action-icon" aria-hidden="true">
-                  <JalvoroEyeIcon size={19} context="compact" />
-                </span>
-                <span className="cc-command-action-copy">
-                  <strong>Cycle global theme</strong>
-                  <small>Current mode: {THEME_LABELS[themePreference]}</small>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="cc-command-action finance-focus"
-                onClick={onToggleSidebar}
-              >
-                <span className="cc-command-action-icon" aria-hidden="true">
-                  <JalvoroSidebarIcon size={19} context="compact" />
-                </span>
-                <span className="cc-command-action-copy">
-                  <strong>Change navigation density</strong>
-                  <small>
-                    {sidebarCompact ? "Switch to comfortable" : "Switch to compact"}
-                  </small>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="cc-command-action finance-focus"
-                onClick={() => {
-                  onClose();
-                  router.push("/dashboard");
-                }}
-              >
-                <span className="cc-command-action-icon" aria-hidden="true">
-                  <JalvoroArrowLeftIcon size={19} context="compact" />
-                </span>
-                <span className="cc-command-action-copy">
-                  <strong>Exit to workspace</strong>
-                  <small>Return to the authenticated product</small>
-                </span>
-              </button>
-            </div>
+        {!normalized ? (
+          <div className="cc-next-command-actions">
+            <button type="button" onClick={() => { close(); refresh(); }}>
+              <JalvoroRefreshIcon size={18} context="compact" aria-hidden="true" />
+              <span><strong>Refresh</strong><small>Reload live evidence</small></span>
+            </button>
+            <button type="button" onClick={cycleTheme}>
+              <JalvoroEyeIcon size={18} context="compact" aria-hidden="true" />
+              <span><strong>Theme</strong><small>{THEME_LABELS[themePreference]}</small></span>
+            </button>
+            <button type="button" onClick={() => { close(); router.push("/admin?view=operations"); }}>
+              <JalvoroGlobeIcon size={18} context="compact" aria-hidden="true" />
+              <span><strong>Topology</strong><small>Open system map</small></span>
+            </button>
           </div>
         ) : null}
 
-        <div className="cc-command-results">
-          {results.length > 0 ? (
-            results.map((item) => {
-              const Icon = resolveIcon(item);
-              return (
-                <button
-                  key={`${item.productKey}:${item.navigationId}`}
-                  type="button"
-                  className="cc-command-result finance-focus"
-                  onClick={() => {
-                    onClose();
-                    router.push(item.href);
-                  }}
-                >
-                  <span className="cc-command-result-icon">
-                    <Icon size={20} context="compact" aria-hidden="true" />
-                  </span>
-                  <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.description}</small>
-                  </span>
-                  <span className="cc-command-group">{item.groupLabel}</span>
-                </button>
-              );
-            })
-          ) : (
-            <div className="cc-command-empty">
-              No authorized Command Center module matches this search.
-            </div>
-          )}
-        </div>
-
-        <div className="cc-command-statusbar">
-          <span>{items.length} authorized registry modules</span>
-          <span>Future modules appear only after server authorization</span>
+        <div className="cc-next-command-results">
+          {coreResults.map((module) => (
+            <button key={module.id} type="button" onClick={() => { close(); router.push(module.href); }}>
+              <span className="cc-next-command-result-icon"><ModuleIcon module={module} size={19} /></span>
+              <span><strong>{module.label}</strong><small>{module.description}</small></span>
+              <b>{module.group}</b>
+            </button>
+          ))}
+          {registryResults.map((item) => (
+            <button key={`${item.productKey}:${item.navigationId}`} type="button" onClick={() => { close(); router.push(item.href); }}>
+              <span className="cc-next-command-result-icon"><JalvoroGridIcon size={19} context="compact" aria-hidden="true" /></span>
+              <span><strong>{item.label}</strong><small>{item.description}</small></span>
+              <b>Registry</b>
+            </button>
+          ))}
+          {coreResults.length === 0 && registryResults.length === 0 ? <div className="cc-next-command-empty">No authorized operation matches.</div> : null}
         </div>
       </section>
     </div>
   );
 }
 
-function MobileModuleSheet({
-  items,
-  active,
-  open,
-  onClose,
-}: {
-  items: CommandCenterExperienceItem[];
-  active: CommandCenterExperienceItem | null;
-  open: boolean;
-  onClose: () => void;
-}) {
+function MobileSheet({ open, activeId, close }: { open: boolean; activeId: ModuleId; close: () => void }) {
   if (!open) return null;
-
   return (
-    <div
-      className="cc-overlay cc-overlay-mobile"
-      role="presentation"
-      onMouseDown={onClose}
-    >
-      <section
-        className="cc-mobile-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cc-mobile-modules-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="cc-mobile-sheet-handle" aria-hidden="true" />
-        <div className="cc-mobile-sheet-head">
-          <div>
-            <p className="cc-kicker">Command Center world</p>
-            <h2 id="cc-mobile-modules-title">All authorized modules</h2>
-          </div>
-          <button
-            type="button"
-            className="cc-icon-button finance-focus"
-            onClick={onClose}
-            aria-label="Close module menu"
-          >
-            <JalvoroCloseIcon size={18} context="compact" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="cc-mobile-sheet-groups">
-          {groupCommandCenterNavigation(items).map((group) => (
-            <div key={group.group} className="cc-mobile-sheet-group">
-              <p>{group.label}</p>
-              <div>
-                {group.items.map((item) => (
-                  <SectionLink
-                    key={`${item.productKey}:${item.navigationId}`}
-                    item={item}
-                    active={active?.navigationId === item.navigationId}
-                    onNavigate={onClose}
-                  />
-                ))}
-              </div>
-            </div>
+    <div className="cc-next-overlay cc-next-overlay-mobile" role="presentation" onMouseDown={close}>
+      <section className="cc-next-mobile-sheet" role="dialog" aria-modal="true" aria-labelledby="cc-next-mobile-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="cc-next-mobile-handle" aria-hidden="true" />
+        <header>
+          <div><span className="cc-next-eyebrow">SYSTEM MAP</span><h2 id="cc-next-mobile-title">Command modules</h2></div>
+          <button type="button" className="cc-next-icon-button" onClick={close} aria-label="Close module menu"><JalvoroCloseIcon size={18} context="compact" aria-hidden="true" /></button>
+        </header>
+        <div className="cc-next-mobile-groups">
+          {GROUPS.map((group) => (
+            <section key={group}>
+              <p>{group}</p>
+              <div>{MODULES.filter((item) => item.group === group).map((module) => <ModuleLink key={module.id} module={module} active={activeId === module.id} onNavigate={close} />)}</div>
+            </section>
           ))}
         </div>
       </section>
@@ -409,365 +259,137 @@ export default function AdminCommandCenterShellClient({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [commandOpen, setCommandOpen] = useState(false);
-  const [mobileModulesOpen, setMobileModulesOpen] = useState(false);
-  const [sidebarCompact, setSidebarCompact] = useState(false);
-  const [themePreference, setThemePreference] =
-    useState<ThemePreference>("system");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [online, setOnline] = useState(true);
   const [now, setNow] = useState<Date | null>(null);
-  const [timeZone, setTimeZone] = useState("Local time");
-  const items = useMemo(() => enrichCommandCenterNavigation(sections), [sections]);
-  const groups = useMemo(() => groupCommandCenterNavigation(items), [items]);
-  const active = useMemo(
-    () => resolveActiveCommandCenterItem(items, pathname),
-    [items, pathname],
-  );
-  const primaryMobileItems = items.slice(0, 4);
-  const timeLabel = formatOperatorTime(now);
-  const dateLabel = formatOperatorDate(now);
+  const [timeZone, setTimeZone] = useState("Local");
+  const registry = useMemo(() => enrichCommandCenterNavigation(sections), [sections]);
+  const activeId = activeModule(pathname, searchParams.get("view"));
+  const current = MODULES.find((item) => item.id === activeId) ?? MODULES[0];
+  const mobileModules = MODULES.filter((item) => ["overview", "users", "organizations", "reliability"].includes(item.id));
 
   function cycleTheme() {
-    const nextPreference = getNextThemePreference(themePreference);
-    applyThemePreference(nextPreference);
-    setThemePreference(nextPreference);
-  }
-
-  function toggleSidebarDensity() {
-    setSidebarCompact((current) => {
-      const next = !current;
-      try {
-        window.localStorage.setItem(
-          SIDEBAR_DENSITY_STORAGE_KEY,
-          next ? "compact" : "comfortable",
-        );
-      } catch {
-        // The visual preference still applies for this session.
-      }
-      return next;
-    });
+    const preference = nextTheme(themePreference);
+    applyThemePreference(preference);
+    setThemePreference(preference);
   }
 
   useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
+    function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setCommandOpen(true);
       }
       if (event.key === "Escape") {
         setCommandOpen(false);
-        setMobileModulesOpen(false);
+        setMobileOpen(false);
       }
     }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
-    const locked = commandOpen || mobileModulesOpen;
+    const locked = commandOpen || mobileOpen;
     document.documentElement.classList.toggle("cc-scroll-locked", locked);
     return () => document.documentElement.classList.remove("cc-scroll-locked");
-  }, [commandOpen, mobileModulesOpen]);
+  }, [commandOpen, mobileOpen]);
 
   useEffect(() => {
-    try {
-      setSidebarCompact(
-        window.localStorage.getItem(SIDEBAR_DENSITY_STORAGE_KEY) === "compact",
-      );
-    } catch {
-      setSidebarCompact(false);
-    }
+    function syncTheme() { setThemePreference(getStoredThemePreference()); }
+    syncTheme();
+    window.addEventListener(THEME_CHANGE_EVENT, syncTheme);
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, syncTheme);
   }, []);
 
   useEffect(() => {
-    function syncThemePreference() {
-      setThemePreference(getStoredThemePreference());
-    }
-
-    syncThemePreference();
-    window.addEventListener(THEME_CHANGE_EVENT, syncThemePreference);
-    return () =>
-      window.removeEventListener(THEME_CHANGE_EVENT, syncThemePreference);
-  }, []);
-
-  useEffect(() => {
-    function syncNetworkState() {
-      setOnline(window.navigator.onLine);
-    }
-
-    syncNetworkState();
-    window.addEventListener("online", syncNetworkState);
-    window.addEventListener("offline", syncNetworkState);
+    function syncNetwork() { setOnline(window.navigator.onLine); }
+    syncNetwork();
+    window.addEventListener("online", syncNetwork);
+    window.addEventListener("offline", syncNetwork);
     return () => {
-      window.removeEventListener("online", syncNetworkState);
-      window.removeEventListener("offline", syncNetworkState);
+      window.removeEventListener("online", syncNetwork);
+      window.removeEventListener("offline", syncNetwork);
     };
   }, []);
 
   useEffect(() => {
     function syncClock() {
       setNow(new Date());
-      try {
-        setTimeZone(
-          Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time",
-        );
-      } catch {
-        setTimeZone("Local time");
-      }
+      try { setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "Local"); }
+      catch { setTimeZone("Local"); }
     }
-
     syncClock();
     const interval = window.setInterval(syncClock, 30_000);
     return () => window.clearInterval(interval);
   }, []);
 
   return (
-    <div
-      data-admin-shell
-      data-network={online ? "online" : "offline"}
-      data-sidebar-density={sidebarCompact ? "compact" : "comfortable"}
-      data-theme-preference={themePreference}
-      className="cc-world"
-    >
-      <a className="jf-skip-link" href="#admin-main">
-        Skip to Command Center content
-      </a>
+    <div data-admin-shell data-network={online ? "online" : "offline"} data-theme-preference={themePreference} className="cc-world cc-next-world">
+      <div className="cc-next-atmosphere" aria-hidden="true" />
+      <a className="jf-skip-link" href="#admin-main">Skip to Command Center content</a>
 
-      <aside className="cc-sidebar" aria-label="JALVORO Command Center navigation">
-        <Link
-          href="/admin"
-          className="cc-brand finance-focus"
-          aria-label="JALVORO Command Center home"
-        >
-          <span className="cc-brand-mark">
-            <JalvoroShieldMoneyIcon
-              size={24}
-              context="heading"
-              aria-hidden="true"
-            />
-          </span>
-          <span className="cc-brand-copy">
-            <strong>JALVORO</strong>
-            <small>Global Command Center</small>
-          </span>
+      <aside className="cc-next-sidebar" aria-label="Command Center navigation">
+        <Link href="/admin" className="cc-next-brand finance-focus" aria-label="JALVORO Command Center home">
+          <span className="cc-next-brand-mark"><JalvoroShieldMoneyIcon size={22} context="heading" aria-hidden="true" /></span>
+          <span><strong>JALVORO</strong><small>COMMAND CENTER</small></span>
         </Link>
 
-        <div className="cc-plane-status">
-          <span className="cc-live-dot" aria-hidden="true" />
-          <span>
-            <strong>Global control plane</strong>
-            <small>
-              {online ? "Browser online" : "Browser offline"} · {timeZone}
-            </small>
-          </span>
+        <div className="cc-next-plane" data-online={online}>
+          <span className="cc-next-plane-orbit" aria-hidden="true"><i /></span>
+          <span><strong>{online ? "Control plane live" : "Connection lost"}</strong><small>{registry.length} registry nodes</small></span>
         </div>
 
-        <nav className="cc-sidebar-nav" aria-label="Command Center modules">
-          {groups.map((group) => (
-            <div key={group.group} className="cc-nav-group">
-              <p className="cc-nav-group-label">{group.label}</p>
-              <div className="cc-nav-group-items">
-                {group.items.map((item) => (
-                  <SectionLink
-                    key={`${item.productKey}:${item.navigationId}`}
-                    item={item}
-                    active={active?.navigationId === item.navigationId}
-                  />
-                ))}
-              </div>
-            </div>
+        <nav className="cc-next-sidebar-nav" aria-label="Operating modules">
+          {GROUPS.map((group) => (
+            <section key={group} className="cc-next-nav-group">
+              <p>{group}</p>
+              <div>{MODULES.filter((item) => item.group === group).map((module) => <ModuleLink key={module.id} module={module} active={activeId === module.id} />)}</div>
+            </section>
           ))}
         </nav>
 
-        <div className="cc-sidebar-foot">
-          <div className="cc-sidebar-intelligence" aria-label="Operator context">
-            <div className="cc-sidebar-intelligence-row">
-              <span>Authorized modules</span>
-              <strong>{items.length}</strong>
-            </div>
-            <div className="cc-sidebar-intelligence-row">
-              <span>Global theme</span>
-              <strong>{THEME_LABELS[themePreference]}</strong>
-            </div>
-            <div className="cc-sidebar-intelligence-row">
-              <span>Operator time</span>
-              <strong>{timeLabel}</strong>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="cc-search-trigger finance-focus"
-            onClick={() => setCommandOpen(true)}
-            aria-label="Search Command Center"
-          >
-            <JalvoroSearchIcon size={18} context="compact" aria-hidden="true" />
-            <span>Search Command Center</span>
-            <kbd>⌘K</kbd>
+        <div className="cc-next-sidebar-foot">
+          <button type="button" className="cc-next-search-trigger finance-focus" onClick={() => setCommandOpen(true)}>
+            <JalvoroSearchIcon size={18} context="compact" aria-hidden="true" /><span>Command</span><kbd>⌘K</kbd>
           </button>
-          <Link href="/dashboard" className="cc-exit-link finance-focus">
-            <JalvoroArrowLeftIcon size={17} context="compact" aria-hidden="true" />
-            <span>Exit to workspace</span>
-          </Link>
+          <div className="cc-next-operator-time"><JalvoroClockIcon size={16} context="compact" aria-hidden="true" /><span><strong>{operatorTime(now)}</strong><small>{timeZone}</small></span></div>
         </div>
       </aside>
 
-      <div className="cc-stage">
-        <header className="cc-topbar">
-          <Link
-            href="/admin"
-            className="cc-mobile-brand finance-focus"
-            aria-label="JALVORO Command Center home"
-          >
-            <span className="cc-brand-mark cc-brand-mark-small">
-              <JalvoroShieldMoneyIcon
-                size={19}
-                context="compact"
-                aria-hidden="true"
-              />
-            </span>
-            <span>
-              <strong>JALVORO</strong>
-              <small>Command Center</small>
-            </span>
-          </Link>
-
-          <div className="cc-context">
-            <span className="cc-context-icon" aria-hidden="true">
-              {active ? (
-                (() => {
-                  const ActiveIcon = resolveIcon(active);
-                  return <ActiveIcon size={18} context="compact" />;
-                })()
-              ) : (
-                <JalvoroMenuIcon size={18} context="compact" />
-              )}
-            </span>
-            <span>
-              <strong>{active?.label ?? "Command Center"}</strong>
-              <small>{active?.groupLabel ?? "Global operations"}</small>
-            </span>
+      <div className="cc-next-stage">
+        <header className="cc-next-topbar">
+          <div className="cc-next-context">
+            <span className="cc-next-context-icon"><ModuleIcon module={current} /></span>
+            <span><small>{current.group}</small><strong>{current.label}</strong></span>
           </div>
-
-          <div className="cc-topbar-actions cc-operator-strip">
-            <span
-              className="cc-signal"
-              data-network={online ? "online" : "offline"}
-              role="status"
-            >
-              <span className="cc-signal-dot" aria-hidden="true" />
-              {online ? "Online" : "Offline"}
-            </span>
-            <span className="cc-clock-chip" aria-label={`${dateLabel}, ${timeZone}`}>
-              <JalvoroClockIcon size={17} context="compact" aria-hidden="true" />
-              <span>
-                <strong>{timeLabel}</strong>
-                <small>{dateLabel} · {timeZone}</small>
-              </span>
-            </span>
-            <button
-              type="button"
-              className="cc-theme-trigger finance-focus"
-              onClick={cycleTheme}
-              aria-label={`Cycle global theme. Current mode: ${THEME_LABELS[themePreference]}`}
-            >
-              <JalvoroEyeIcon size={18} context="compact" aria-hidden="true" />
-              <span>{THEME_LABELS[themePreference]}</span>
-            </button>
-            <button
-              type="button"
-              className="cc-density-trigger finance-focus"
-              onClick={toggleSidebarDensity}
-              aria-label={
-                sidebarCompact
-                  ? "Use comfortable Command Center navigation"
-                  : "Use compact Command Center navigation"
-              }
-            >
-              <JalvoroSidebarIcon size={18} context="compact" aria-hidden="true" />
-              <span>{sidebarCompact ? "Comfortable" : "Compact"}</span>
-            </button>
-            <button
-              type="button"
-              className="cc-icon-button finance-focus"
-              onClick={() => setCommandOpen(true)}
-              aria-label="Search Command Center"
-            >
-              <JalvoroSearchIcon size={18} context="compact" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="cc-icon-button finance-focus"
-              onClick={() => router.refresh()}
-              aria-label="Refresh current Command Center view"
-            >
-              <JalvoroRefreshIcon size={18} context="compact" aria-hidden="true" />
-            </button>
-            <Link
-              href="/dashboard"
-              className="cc-icon-button finance-focus cc-topbar-exit"
-              aria-label="Exit Command Center"
-            >
-              <JalvoroArrowLeftIcon size={18} context="compact" aria-hidden="true" />
-            </Link>
+          <div className="cc-next-topbar-center" aria-label="System status">
+            <span data-online={online}><i aria-hidden="true" />{online ? "CONNECTED" : "OFFLINE"}</span>
+            <span>{operatorDate(now)}</span>
+          </div>
+          <div className="cc-next-topbar-actions">
+            <button type="button" className="cc-next-top-action finance-focus" onClick={() => setCommandOpen(true)}><JalvoroSearchIcon size={17} context="compact" aria-hidden="true" /><span>Command</span></button>
+            <button type="button" className="cc-next-icon-button finance-focus" onClick={cycleTheme} aria-label={`Cycle theme. Current: ${THEME_LABELS[themePreference]}`}><JalvoroEyeIcon size={18} context="compact" aria-hidden="true" /></button>
+            <button type="button" className="cc-next-icon-button finance-focus" onClick={() => router.refresh()} aria-label="Refresh current data"><JalvoroRefreshIcon size={18} context="compact" aria-hidden="true" /></button>
           </div>
         </header>
 
-        <main
-          id="admin-main"
-          tabIndex={-1}
-          aria-label="JALVORO Global Admin and Operations Command Center content"
-          className="cc-content"
-        >
-          {children}
-        </main>
+        <main id="admin-main" tabIndex={-1} aria-label="JALVORO Command Center content" className="cc-content cc-next-canvas">{children}</main>
       </div>
 
-      <nav className="cc-mobile-dock" aria-label="Primary Command Center modules">
-        {primaryMobileItems.map((item) => (
-          <SectionLink
-            key={`${item.productKey}:${item.navigationId}`}
-            item={item}
-            active={active?.navigationId === item.navigationId}
-            compact
-          />
-        ))}
-        <button
-          type="button"
-          className={cn(
-            "cc-nav-link cc-nav-link-compact finance-focus",
-            mobileModulesOpen && "cc-nav-link-active",
-          )}
-          onClick={() => setMobileModulesOpen(true)}
-          aria-label="Open all Command Center modules"
-        >
-          <span className="cc-nav-icon" aria-hidden="true">
-            <JalvoroMoreIcon size={19} context="compact" />
-          </span>
-          <span className="cc-nav-copy">
-            <span className="cc-nav-label">More</span>
-          </span>
+      <nav className="cc-next-mobile-dock" aria-label="Primary Command Center modules">
+        {mobileModules.map((module) => <ModuleLink key={module.id} module={module} active={activeId === module.id} compact />)}
+        <button type="button" className={cn("cc-next-nav-link cc-next-nav-link-compact", mobileOpen && "cc-next-nav-link-active")} onClick={() => setMobileOpen(true)} aria-label="Open all Command Center modules">
+          <span className="cc-next-nav-icon"><JalvoroMoreIcon size={19} context="compact" aria-hidden="true" /></span><span className="cc-next-nav-copy"><strong>More</strong></span>
         </button>
       </nav>
 
-      <CommandPalette
-        items={items}
-        open={commandOpen}
-        online={online}
-        themePreference={themePreference}
-        sidebarCompact={sidebarCompact}
-        onClose={() => setCommandOpen(false)}
-        onRefresh={() => router.refresh()}
-        onCycleTheme={cycleTheme}
-        onToggleSidebar={toggleSidebarDensity}
-      />
-      <MobileModuleSheet
-        items={items}
-        active={active}
-        open={mobileModulesOpen}
-        onClose={() => setMobileModulesOpen(false)}
-      />
+      <CommandPalette open={commandOpen} online={online} registry={registry} themePreference={themePreference} close={() => setCommandOpen(false)} refresh={() => router.refresh()} cycleTheme={cycleTheme} />
+      <MobileSheet open={mobileOpen} activeId={activeId} close={() => setMobileOpen(false)} />
     </div>
   );
 }

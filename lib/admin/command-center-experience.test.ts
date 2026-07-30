@@ -47,7 +47,7 @@ describe("Command Center experience model", () => {
 
     expect(items[0]).toMatchObject({
       group: "command",
-      compactLabel: "Overview",
+      compactLabel: "Pulse",
     });
     expect(items[1]).toMatchObject({
       group: "operations",
@@ -66,7 +66,7 @@ describe("Command Center experience model", () => {
 
     expect(groups.map((group) => group.label)).toEqual([
       "Command",
-      "Global operations",
+      "Operations",
       "Infrastructure",
     ]);
     expect(groups.flatMap((group) => group.items)).toHaveLength(3);

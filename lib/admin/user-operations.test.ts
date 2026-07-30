@@ -129,6 +129,8 @@ describe("admin user operations", () => {
     expect(page).toContain("AdminUserOperationsPanel");
     expect(panel).toContain("user.userReference.startsWith(normalizedQuery)");
     expect(panel).not.toContain("user.maskedEmail.includes");
-    expect(panel).toContain("Email and\n              username search are intentionally unavailable");
+    expect(panel).toContain("Opaque lookup");
+    expect(panel).toContain("Full email returned");
+    expect(panel).toContain("Provider IDs returned");
   });
 });

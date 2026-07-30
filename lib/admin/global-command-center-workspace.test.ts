@@ -38,8 +38,9 @@ describe("global Command Center workspace", () => {
     expect(migration).toContain("'exactGpsReturned', false");
     expect(migration).toContain("'financeValuesReturned', false");
     expect(migration).toContain("'sessionReplayReturned', false");
-    expect(panel).toContain("No fabricated data");
-    expect(panel).toContain("Every lookup is audited");
+    expect(panel).toContain("No placeholder data was inserted");
+    expect(panel).toContain("Audited");
+    expect(panel).toContain("Privacy boundary");
   });
 
   it("keeps the isolated Command Center inside /admin and removes workspace exit UI", () => {
