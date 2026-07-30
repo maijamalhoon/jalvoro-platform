@@ -130,6 +130,7 @@ describe("admin user operations", () => {
     expect(panel).toContain("user.userReference.startsWith(normalizedQuery)");
     expect(panel).not.toContain("user.maskedEmail.includes");
     expect(panel).toContain("Opaque lookup");
-    expect(panel).toContain("raw identity search disabled");
+    expect(panel).toContain("Full email returned");
+    expect(panel).toContain("Provider IDs returned");
   });
 });
