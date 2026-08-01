@@ -41,7 +41,7 @@ function getConfirmAction(message: string): ConfirmAction {
   const destructive = /^(delete|remove)\b/i.test(message.trim());
 
   return {
-    label: "Confirm",
+    label: destructive ? "Delete" : "Confirm",
     destructive,
   };
 }
