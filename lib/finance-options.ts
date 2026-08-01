@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getAppDateKey } from "@/lib/dates";
 import { formatMoney } from "@/lib/currency";
+import { resolvePayableStatus } from "@/lib/planning/calculations";
 
 export const INCOME_SOURCE_SUGGESTIONS = [
   "inDrive rides",
@@ -86,17 +87,26 @@ export function formatPKR(value: number | string | null | undefined) {
   return formatMoney(Number(value ?? 0));
 }
 
-export function getPayableStatus(payable: {
-  status: string;
-  remaining_amount: number | string;
-  due_date: string | null;
-}) {
-  const remaining = Number(payable.remaining_amount);
-  if (remaining <= 0) return "completed";
-  if (payable.due_date && payable.due_date < getAppDateKey()) {
-    return "overdue";
-  }
-  return payable.status === "completed" ? "partial" : payable.status;
+export function getPayableStatus(
+  payable: {
+    status: string;
+    paid_amount?: number | string;
+    remaining_amount: number | string;
+    due_date: string | null;
+  },
+  todayKey = getAppDateKey(),
+) {
+  const resolved = resolvePayableStatus(
+    {
+      paidAmount: payable.paid_amount ?? 0,
+      remainingAmount: payable.remaining_amount,
+      dueDate: payable.due_date,
+    },
+    todayKey,
+  );
+
+  if (resolved === "pending" && payable.status === "partial") return "partial";
+  return resolved;
 }
 
 export function getAccountType(value: string) {

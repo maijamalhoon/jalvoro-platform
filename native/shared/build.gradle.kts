@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -47,4 +48,11 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
     }
+}
+
+tasks.withType<Test>().configureEach {
+    systemProperty(
+        "jalvoro.financeParityFixture",
+        rootProject.file("../contracts/finance-parity/v1.json").absolutePath,
+    )
 }

@@ -1,0 +1,163 @@
+name: Native pull request CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "native/**"
+      - ".github/workflows/native-pr-ci.yml"
+      - ".github/scripts/setup-android-sdk.cmd"
+      - ".github/scripts/setup-gradle.cmd"
+      - ".github/scripts/apply-native-parity-fixes.mjs"
+      - ".github/scripts/apply-native-screenshot-acceptance-fixes.mjs"
+      - ".github/scripts/apply-native-exact-overview-parity.mjs"
+      - ".github/scripts/apply-native-money-input-normalization.mjs"
+      - ".github/scripts/apply-native-exact-money-parity.mjs"
+      - ".github/scripts/apply-native-exact-planning-parity.mjs"
+      - ".github/scripts/apply-native-global-painter.mjs"
+      - ".github/scripts/prepare-native-artifacts.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: native-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  android-and-shared:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: cmd
+        working-directory: native
+
+    steps:
+      - name: Check out pull request branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+          clean: false
+
+      - name: Apply and commit native website parity source
+        shell: cmd
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        working-directory: .
+        run: |
+          set "FIXER_LOG=%GITHUB_WORKSPACE%\native\native-fixer.log"
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-parity-fixes.mjs" > "%FIXER_LOG%" 2>&1
+          set "FIXER_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%FIXER_EXIT%"=="0" exit /b %FIXER_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-screenshot-acceptance-fixes.mjs" >> "%FIXER_LOG%" 2>&1
+          set "SCREENSHOT_FIXER_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%SCREENSHOT_FIXER_EXIT%"=="0" exit /b %SCREENSHOT_FIXER_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-exact-overview-parity.mjs" >> "%FIXER_LOG%" 2>&1
+          set "EXACT_OVERVIEW_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%EXACT_OVERVIEW_EXIT%"=="0" exit /b %EXACT_OVERVIEW_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-money-input-normalization.mjs" >> "%FIXER_LOG%" 2>&1
+          set "MONEY_NORMALIZATION_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%MONEY_NORMALIZATION_EXIT%"=="0" exit /b %MONEY_NORMALIZATION_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-exact-money-parity.mjs" >> "%FIXER_LOG%" 2>&1
+          set "EXACT_MONEY_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%EXACT_MONEY_EXIT%"=="0" exit /b %EXACT_MONEY_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-exact-planning-parity.mjs" >> "%FIXER_LOG%" 2>&1
+          set "EXACT_PLANNING_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%EXACT_PLANNING_EXIT%"=="0" exit /b %EXACT_PLANNING_EXIT%
+
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\apply-native-global-painter.mjs" >> "%FIXER_LOG%" 2>&1
+          set "GLOBAL_PAINTER_EXIT=%ERRORLEVEL%"
+          type "%FIXER_LOG%"
+          if not "%GLOBAL_PAINTER_EXIT%"=="0" exit /b %GLOBAL_PAINTER_EXIT%
+
+          git diff --check >> "%FIXER_LOG%" 2>&1
+          if errorlevel 1 (
+            type "%FIXER_LOG%"
+            exit /b 1
+          )
+
+          set "CHANGES="
+          for /f "delims=" %%A in ('git status --porcelain -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewRedesign.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteMoneyForms.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroPlanningGoals.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroPlanningPayables.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroAdvisorOverview.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroGlobalPainter.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JamalsFinanceTheme.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroNativeDesign.kt') do set "CHANGES=1"
+          if defined CHANGES (
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroOverviewRedesign.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteWorkspaceShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteFinanceDashboard.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteMoneyForms.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroPlanningGoals.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroPlanningPayables.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteModuleRoot.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroAdvisorOverview.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroWebsiteUtilityShell.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroGlobalPainter.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JamalsFinanceTheme.kt native/androidApp/src/main/kotlin/com/jamalsfinance/nativeapp/ui/JalvoroNativeDesign.kt
+            git commit -m "Apply global native architecture and painter"
+            git push origin "HEAD:%PR_HEAD_REF%"
+          ) else (
+            echo Native website parity source is already committed.>> "%FIXER_LOG%"
+          )
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK 36
+        shell: cmd
+        run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-android-sdk.cmd"
+
+      - name: Set up Gradle 9.3.1
+        shell: cmd
+        run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-gradle.cmd"
+
+      - name: Test, lint and compile native application
+        shell: cmd
+        run: |
+          call gradle.bat :shared:testAndroidHostTest :androidApp:lintDebug :androidApp:lintRelease :androidApp:assembleDebug :androidApp:bundleRelease --stacktrace > native-ci.log 2>&1
+          set "GRADLE_EXIT=%ERRORLEVEL%"
+          type native-ci.log
+          exit /b %GRADLE_EXIT%
+
+      - name: Prepare deterministic native artifacts
+        shell: cmd
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          "C:\Program Files\nodejs\node.exe" "%GITHUB_WORKSPACE%\.github\scripts\prepare-native-artifacts.mjs"
+
+      - name: Upload physical-device test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: jalvoro-personal-device-test-${{ github.event.pull_request.head.sha }}
+          path: native/device-build/
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: jalvoro-personal-release-bundle-${{ github.event.pull_request.head.sha }}
+          path: native/release-build/
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload native diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ci-log-${{ github.run_id }}
+          path: |
+            native/native-fixer.log
+            native/native-ci.log
+            native/native-artifact-build.log
+            native/native-artifact-paths.log
+            native/android-sdk-setup.log
+            native/gradle-setup.log
+          if-no-files-found: ignore
+          retention-days: 3
