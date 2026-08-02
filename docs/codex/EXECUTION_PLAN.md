@@ -2,614 +2,255 @@
 
 ## Status
 
-- Plan state: Draft template
-- Last updated: YYYY-MM-DD
-- Repository commit used for planning: `<commit-sha>`
-- Lead: Unassigned
-- Implementation started: No
-
-> Do not start broad implementation until `docs/codex/AUDIT.md` contains evidence-backed findings. Replace generic placeholders with actual finding IDs and file scopes.
+- Date: 2026-08-02
+- Source audit: `docs/codex/AUDIT.md`
+- Product baseline: `origin/main@404a8576e3ab52045f11542772ff6efaffeb0fe4`
+- Superseded incorrect baseline: `52f236e999901a8af1b675e890dd866f4cbb001a`
+- Audit branch: `audit/deep-production-readiness-20260802` in a dedicated isolated worktree
+- Plan state: **PLANNED — IMPLEMENTATION NOT STARTED**
+- Production deployment included: No
 
 ## Planning Principles
 
-- Correctness, security, and data integrity come before cleanup.
-- Protect current valid behavior with tests before refactoring.
-- Use small pull requests with one clear purpose.
-- Prefer reversible changes.
-- Avoid overlapping edits across concurrent agents.
-- Measure before and after performance changes.
-- Use staging or preview environments.
-- Never treat a successful build as complete verification.
-- Do not deploy to production without explicit authorization.
-- Do not combine database migration, broad refactor, dependency replacement, and visual redesign in one pull request.
+- Start all implementation from a freshly fetched, reviewed `main`, never from the superseded detached checkout or from the documentation branch.
+- Security, unauthorized access, data loss/recovery, migration safety, and CI integrity precede product/performance work.
+- One purpose per pull request; do not recreate PR #169's 184-file release surface.
+- Preserve current valid calculation, tenant, soft-delete, audit, and idempotency behavior with golden tests before changing it.
+- No production migration until migration history is reconciled, a backup exists, and a branch/staging rehearsal passes.
+- Every PR must link one or more findings and verification cases, include a rollback, and obtain an independent reviewer.
 
 ## Entry Criteria
 
-Implementation of a finding may begin only when it has:
-
-- A finding ID in `AUDIT.md`.
-- Severity and confidence.
-- Evidence.
-- Affected files and journeys.
-- A proposed correction.
-- Regression risks.
-- Required tests.
-- Verification criteria.
-- Rollback instructions.
-- Dependencies.
-
-## Workstream Order
-
-1. P0 containment and credential rotation.
-2. P1 authorization, data integrity, and incorrect business logic.
-3. Broken critical journeys.
-4. Reliability and error-state defects.
-5. Database and backend bottlenecks.
-6. Frontend rendering and interaction bottlenecks.
-7. Responsive and accessibility failures.
-8. Maintainability improvements.
-9. Cost optimizations.
-10. Non-critical polish.
+1. Create a clean worktree at current GitHub `main` and record exact SHA.
+2. Restore access to the authoritative Jalvoro Vercel project and a read-only Sentry token, or explicitly declare staging-only work.
+3. Provision an isolated Supabase branch/local stack with synthetic identities for both projects.
+4. Reconcile local/live migration histories without applying production DDL.
+5. Export encrypted database and Storage backups and document restore ownership.
+6. Restore a passing dependency policy or record a narrowly time-bounded approved exception.
+7. Assign an owner and reviewer to each retained PR; do not merge from stale broad branches.
 
 ## Immediate Stop Conditions
 
-Stop implementation and escalate when:
+- A command targets a production project for migration, write, restore, reset, branch merge, or deployment.
+- Migration dry-run includes any unexpected existing object or privilege change.
+- A security fix requires reopening direct authenticated admin RPCs.
+- Synthetic tests can reach or identify real user/tenant data.
+- Backup/restore evidence is absent before a schema/configuration change.
+- Calculation golden fixtures change without explicit product/accounting approval.
+- CI, CodeQL, RLS negative tests, or exact-SHA build is not green.
 
-- A secret or privileged key is exposed.
-- Production data could be lost or corrupted.
-- A migration is irreversible or untested.
-- Expected business behavior is ambiguous.
-- A security boundary cannot be verified.
-- Tests reveal unrelated widespread regressions.
-- Required environment access is missing.
-- A proposed optimization changes results.
-- A preview environment uses production data or credentials unsafely.
-- Rollback is not possible for a high-risk change.
+## Ordered Workstreams
 
-## Phase 0 — Safe Working Environment
+Plan identifiers are retained for stable finding references, but merge execution starts with `PLAN-002`, then `PLAN-001`. The section order below is not authorization to merge `PLAN-001` first.
 
-### Objectives
+### PLAN-001 — Close the legacy Command Center RPC surface
 
-- Confirm clean repository state.
-- Identify package manager and canonical commands.
-- Create a branch or isolated worktree.
-- Confirm no production deployment will occur.
-- Confirm safe local, preview, or staging environment.
-- Confirm secrets are not printed.
-- Record baseline commit.
-- Verify database access level.
-
-### Required Outputs
-
-- Baseline commit recorded.
-- Working branch recorded.
-- Commands recorded in `AUDIT.md`.
-- Environment limitations recorded.
-- Initial rollback path confirmed.
-
-### Exit Criteria
-
-- Safe environment exists.
-- Baseline commands can run or their blockers are documented.
-- No production data will be modified.
-
-## Phase 1 — Audit and Baseline
-
-### Objectives
-
-- Complete repository map.
-- Complete critical journey inventory.
-- Complete business-logic inventory.
-- Run clean checks.
-- Capture performance baseline.
-- Review authentication, authorization, RLS, storage, and secrets.
-- Review database integrity and query patterns.
-- Review responsive and accessibility behavior.
-- Review deployment and monitoring.
-- Rank findings.
-
-### Deliverables
-
-- Updated `AUDIT.md`.
-- Evidence-backed findings.
-- Initial verification cases in `VERIFICATION.md`.
-- Finding-to-plan mapping.
-- Launch recommendation.
-
-### Exit Criteria
-
-- Five highest risks identified.
-- Every P0/P1 finding has a proposed next action.
-- Unknowns are disclosed.
-- No broad implementation has begun prematurely.
-
-## Phase 2 — Test Harness and Protected Behavior
-
-### Objectives
-
-Build enough protection to safely change the system.
-
-### Tasks
-
-- Add unit tests for calculations and deterministic logic.
-- Add contract tests for APIs and data shapes.
-- Add integration tests for Supabase and trusted server boundaries.
-- Add RLS tests using multiple identities.
-- Add critical end-to-end smoke tests.
-- Add reusable test fixtures without production data.
-- Add checks for duplicate submission and retries.
-- Add regression tests for each confirmed defect before or with the fix.
-
-### Constraints
-
-- Do not chase coverage percentage for its own sake.
-- Do not rewrite implementation merely to fit a test tool.
-- Do not use real production secrets or personal data.
-- Keep tests deterministic.
-
-### Exit Criteria
-
-- Protected logic has golden or characterization tests.
-- Critical flow smoke tests run locally or in preview.
-- Security boundaries have repeatable tests.
-
-## Phase 3 — P0 and P1 Security/Data Corrections
-
-### Potential Tasks
-
-Only include tasks supported by findings:
-
-- Remove exposed secrets and rotate compromised credentials.
-- Correct client-side use of privileged credentials.
-- Fix missing or incorrect authorization.
-- Correct RLS policies.
-- Correct storage policies.
-- Add trusted-boundary validation.
-- Prevent insecure direct object references.
-- Add safe rate limits or abuse controls where justified.
-- Fix dangerous file upload handling.
-- Correct cache exposure of private data.
-- Add webhook verification where applicable.
-- Redact sensitive logs.
-- Correct destructive or unsafe data operations.
-
-### Pull Request Rules
-
-- One security boundary per pull request where practical.
-- Include threat and regression notes.
-- Include before/after authorization test matrix.
-- Include rollback path.
-- Request independent review.
-
-### Exit Criteria
-
-- No unresolved P0.
-- P1 security/data findings fixed, mitigated, or explicitly accepted.
-- RLS and authorization tests pass.
-- Secret rotation actions documented.
-
-## Phase 4 — Calculation and Business-Logic Corrections
-
-### Procedure for Every Logic Change
-
-1. Link the finding and logic ID.
-2. Document current examples.
-3. Document intended examples.
-4. Add tests preserving valid behavior.
-5. Add a failing test for the confirmed defect.
-6. Make the smallest safe correction.
-7. Verify every consumer.
-8. Compare old and new results on representative data.
-9. Record intentional changes in `CHANGELOG.md`.
-10. Define rollback.
-
-### Special Review Areas
-
-- Precision and rounding.
-- Currency.
-- Dates and timezones.
-- Sorting and ranking.
-- Search semantics.
-- Pagination.
-- Eligibility.
-- Permissions.
-- Totals and derived values.
-- Validation.
-- Client/server consistency.
-- Persisted versus computed values.
-
-### Exit Criteria
-
-- Confirmed defects corrected.
-- Valid behavior remains protected.
-- No logic removed merely to simplify code.
-
-## Phase 5 — Critical User Journey Reliability
-
-### Objectives
-
-Make all critical journeys robust from start to finish.
-
-### Tasks
-
-- Correct broken navigation.
-- Correct stale or invalid state handling.
-- Add proper loading states.
-- Add empty states.
-- Add validation messages.
-- Add authorization failure handling.
-- Add network/server error handling.
-- Add safe retry behavior.
-- Prevent duplicate actions.
-- Preserve user input after recoverable failures.
-- Confirm success only after persistence.
-- Handle expired sessions and stale records.
-- Verify back/forward/refresh behavior.
-
-### Exit Criteria
-
-- Every critical journey has defined success and failure behavior.
-- End-to-end critical tests pass.
-- No misleading success states remain in tested flows.
-
-## Phase 6 — Database and Backend Performance
-
-### Method
-
-For each performance change:
-
-1. Identify the slow operation.
-2. Capture query or request baseline.
-3. Capture query plan where available.
-4. Confirm correctness.
-5. Implement the smallest change.
-6. Measure again using equivalent conditions.
-7. Test concurrency and pagination where relevant.
-8. Document tradeoffs and rollback.
-
-### Candidate Changes
-
-Only when justified:
-
-- Add or revise indexes.
-- Remove N+1 queries.
-- Reduce over-fetching.
-- Bound queries.
-- Correct pagination.
-- Batch safe operations.
-- Add caching with explicit invalidation.
-- Reduce duplicate requests.
-- Move trusted logic to the correct boundary.
-- Add constraints.
-- Make write operations idempotent.
-- Correct realtime subscription cleanup.
-- Adjust timeout or retry behavior.
-
-### Migration Rules
-
-- Use expand-and-contract when possible.
-- Avoid blocking operations on large tables.
-- Document lock and runtime risk.
-- Validate against production-like data volume.
-- Include rollback or forward-recovery.
-- Do not remove old schema until all consumers migrate.
-
-### Exit Criteria
-
-- Targeted bottlenecks have before/after evidence.
-- Query correctness remains unchanged.
-- Migration safety is documented.
-
-## Phase 7 — Frontend Performance and Smoothness
-
-### Objectives
-
-Reduce loading delay, rendering delay, search delay, scrolling jank, memory growth, and interaction blocking without removing features.
-
-### Candidate Tasks
-
-Only when measured:
-
-- Reduce unnecessary client-side rendering.
-- Split heavy route code.
-- Optimize images.
-- Improve font loading.
-- Remove duplicate requests.
-- Fix data waterfalls.
-- Memoize only proven expensive work.
-- Correct unnecessary re-renders.
-- Cancel stale search requests.
-- Debounce search appropriately.
-- Improve long-list behavior.
-- Remove leaking listeners.
-- Reduce expensive scroll work.
-- Respect reduced-motion preferences.
-- Reduce third-party script impact.
-- Improve loading and transition states.
-
-### Verification
-
-- Repeat the same device/network profile.
-- Use multiple samples.
-- Compare medians and percentiles where possible.
-- Check correctness and accessibility after optimization.
-- Test low-powered mobile behavior.
-- Check memory after extended interaction.
-
-### Exit Criteria
-
-- Targeted metrics improve or the change is reverted.
-- No protected functionality is removed.
-- Search and scrolling remain correct.
-
-## Phase 8 — Responsive Design and Accessibility
-
-### Objectives
-
-Make critical journeys usable across required viewports and input methods.
-
-### Tasks
-
-- Fix overflow and clipping.
-- Fix narrow-layout navigation.
-- Fix dialogs, drawers, and dropdowns.
-- Fix tables and dense content.
-- Correct touch target sizing.
-- Correct focus management.
-- Add or fix labels and accessible names.
-- Correct keyboard interaction.
-- Correct semantic structure.
-- Add status announcements.
-- Correct contrast issues.
-- Respect zoom and text resizing.
-- Respect reduced motion.
-- Test long content and localization expansion.
-- Test mobile keyboard and safe areas.
-
-### Constraints
-
-- Do not hide required features on mobile.
-- Do not create separate conflicting behavior without need.
-- Do not rely only on automated accessibility checks.
-
-### Exit Criteria
-
-- Responsive matrix completed for critical routes.
-- Keyboard-only critical journeys pass.
-- Critical screen-reader checks pass.
-- No P1 accessibility blocker remains.
-
-## Phase 9 — Maintainability Refactoring
-
-Start only after relevant behavior is protected.
-
-### Candidate Tasks
-
-- Separate domain logic from UI.
-- Reduce oversized modules.
-- Centralize shared validation.
-- Centralize stable types.
-- Normalize error handling.
-- Improve names.
-- Remove proven dead code.
-- Consolidate equivalent duplication.
-- Remove circular dependencies.
-- Clarify server/client module boundaries.
-- Add architecture documentation.
-- Reduce unnecessary abstractions.
-
-### Refactor Rules
-
-- One clear boundary per pull request.
-- No intentional behavior change.
-- Tests must pass before and after.
-- Avoid broad formatting noise.
-- Compare generated bundles and performance when relevant.
-- Revert if complexity increases without measurable benefit.
-
-### Exit Criteria
-
-- Code is easier to navigate.
-- Behavior remains unchanged.
-- Future change points are documented.
-
-## Phase 10 — Cost Optimization
-
-### Objectives
-
-Reduce avoidable cost without weakening security, reliability, or maintainability.
-
-### Tasks
-
-- Inventory cost drivers.
-- Remove unused paid services.
-- Reduce duplicate traffic.
-- Reduce unnecessary compute and database usage.
-- Improve cache effectiveness where safe.
-- Optimize storage and image delivery.
-- Add spending alerts if available.
-- Compare alternatives using total operational cost.
-- Document scaling thresholds.
-
-### Exit Criteria
-
-- Recommendations include migration and maintenance cost.
-- No risky “free” replacement is adopted without evidence.
-
-## Phase 11 — Staging, Capacity, and Failure Testing
-
-### Objectives
-
-Verify the application under production-like conditions.
-
-### Tasks
-
-- Deploy to preview or staging.
-- Use safe representative data.
-- Run critical journeys.
-- Run concurrency/load scenarios.
-- Test dependency latency and failures.
-- Test timeouts and retries.
-- Test session expiry.
-- Test deployment rollback.
-- Test migration rollback or forward-recovery.
-- Inspect logs for sensitive data.
-- Verify monitoring and alerts.
-
-### Load Test Guardrails
-
-- Do not load-test production without explicit approval.
-- Define workload before testing.
-- Set maximum traffic and duration.
-- Stop on elevated errors or resource risk.
-- Record environment differences.
-- Do not generalize beyond the tested workload.
-
-### Exit Criteria
-
-- Capacity results documented.
-- Failure behavior documented.
-- Monitoring is actionable.
-- Rollback is rehearsed or credibly verified.
-
-## Phase 12 — Controlled Production Rollout
-
-This phase requires explicit owner authorization.
-
-### Pre-Deployment Checklist
-
-- No unresolved P0.
-- P1 disposition documented.
-- Required checks pass.
-- Staging verified.
-- Migration reviewed.
-- Backup confirmed.
-- Rollback confirmed.
-- Monitoring active.
-- Responsible person available.
-- Deployment window selected.
-- Post-deployment tests prepared.
-
-### Rollout Strategy
-
-Prefer:
-
-- Small reversible changes.
-- Backward-compatible schema.
-- Feature flags where useful and safe.
-- Gradual exposure where available.
-- Immediate monitoring.
-- Defined rollback triggers.
-
-### Post-Deployment
-
-- Run critical smoke tests.
-- Check errors, latency, database health, and user-impact signals.
-- Confirm no secret or personal-data leakage in logs.
-- Compare production metrics to baseline.
-- Record outcome in `CHANGELOG.md` and `VERIFICATION.md`.
-
-## Pull Request Template
-
-Copy for every implementation unit.
-
----
-
-### PLAN-XXX — Concise Pull Request Purpose
-
-- **Findings:** `FINDING-XXX`
-- **Severity:** P0 | P1 | P2 | P3
-- **Owner:** Unassigned
+- **Findings:** `FINDING-001`
+- **Severity:** P1
 - **Status:** PLANNED
-- **Branch:** `<branch>`
-- **Expected files:** `path/to/file`
-- **Dependencies:** None
+- **Expected files:** one new main migration; `lib/admin/command-center-client.ts`; gateway allowlist; focused SQL/Deno/application tests
+- **Merge dependency:** `PLAN-002` must be merged and green before this plan is represented as merge-ready.
+- **Production activation dependencies:** isolated main/control verification plus `PLAN-003`, `PLAN-004`, `PLAN-005`, and `PLAN-006`; merging source is not authorization to apply its migration or deploy it.
 - **Production deployment included:** No
 
-#### Problem
+#### Problem and Scope
 
-State the verified issue.
-
-#### Scope
-
-List exact intended changes.
-
-#### Out of Scope
-
-List related work intentionally excluded.
+Make the service-role dispatcher the only main-project entry for every privileged Command Center operation, including user-360. Revoke `anon`/`authenticated` execution on legacy public/private admin functions or make wrappers fail for non-service callers. Do not weaken the control-plane recent-AAL2 guard.
 
 #### Protected Behavior
 
-List calculations, contracts, permissions, and flows that must not change.
+- Matching dual identities and current AAL2 succeed through the gateway.
+- Control operator role/permission checks, audit events, idempotency, and privacy masking remain intact.
+- Ordinary Individual/Business RPCs are unaffected.
 
-#### Implementation Steps
+#### Test Plan and Success Criteria
 
-1. Add or update tests.
-2. Make the smallest safe implementation change.
-3. Run verification.
-4. Update documentation.
-5. Review the diff.
+- Enumerate the catalog and assert zero direct `authenticated` admin/Command Center entry points, including all 21 current gateway-operation targets and every broader privileged candidate.
+- For every operation: anon, main AAL1, missing control token, mismatched email, stale TOTP, disabled operator, and insufficient role fail; valid dual session succeeds.
+- User-360 masking/audit assertions pass.
+- Exact lint/type/test/Edge/build suite passes.
+- Rollback: revert code routing while keeping direct grants closed; forward-fix any omitted allowlist operation.
 
-#### Test Plan
+### PLAN-002 — Restore the dependency security gate
 
-- Unit:
-- Integration:
-- End-to-end:
-- Manual:
-- Security:
-- Performance:
+- **Findings:** `FINDING-003`
+- **Severity:** P1
+- **Status:** PLANNED
+- **Expected files:** `package.json`, `package-lock.json`, dependency-policy metadata only
+- **Dependencies:** None; this is the first merge prerequisite
+- **Production deployment included:** No
 
-#### Success Criteria
+Upgrade or override the transitive `brace-expansion` path with npm 11.9.0. Update advisory metadata only after `npm audit` is clean; do not delete/disable the CI gate. Verify clean install, both audits, full repository checks, and GitHub Actions. Roll back the focused lockfile/policy commit if tooling regresses. `PLAN-001` may be investigated or prepared in parallel, but it is not merge-ready while this required gate fails.
 
-Use measurable pass conditions.
+### PLAN-003 — Establish production-grade Supabase resilience
 
-#### Risks
+- **Findings:** `FINDING-002`
+- **Severity:** P1
+- **Status:** PLANNED
+- **Expected files:** operations/runbook evidence; possibly environment-name documentation; no application change required initially
+- **Dependencies:** billing/owner approval
+- **Production deployment included:** Configuration change only in a separately authorized task
 
-List regressions and operational concerns.
+Upgrade the organization, enable leaked-password protection, confirm non-pausing status and daily backup retention, create encrypted off-site database plus Storage-object backups, and run a restore into a non-production project. Record RPO/RTO, custom-role password handling, Storage reconciliation, and post-restore RLS/auth checks. Do not treat app-level finance export as a platform backup.
 
-#### Rollback
+### PLAN-004 — Reconcile migration history and freeze an exact release candidate
 
-Reference the exact procedure in `ROLLBACK.md`.
+- **Findings:** `FINDING-005`, `FINDING-011`
+- **Severity:** P1
+- **Status:** PLANNED
+- **Expected files:** migration reconciliation evidence and, only if necessary, metadata/baseline changes in a dedicated PR
+- **Dependencies:** `PLAN-002`, `PLAN-003`, isolated database branch
+- **Production deployment included:** No
 
-#### Evidence Required
+From current `main`, compare local/remote migration lists and schema-only dumps for both projects. Rehearse any `migration repair` only on a disposable branch, prove an empty replay, prove a no-op existing-project baseline, and freeze one small exact-SHA candidate. Never run `db push` while versions are divergent. Rollback is restore of migration metadata/branch only; production catalog changes require forward repair.
 
-List screenshots, traces, query plans, test output, or measurements.
+### PLAN-005 — Restore Vercel and Sentry release observability
 
----
+- **Findings:** `FINDING-004`, `FINDING-012`
+- **Severity:** P1
+- **Status:** PLANNED
+- **Expected files:** minimal project/runbook/health configuration only after inspection
+- **Dependencies:** correct Vercel team access; local read-only Sentry token
+- **Production deployment included:** No
 
-## Plan Register
+Identify the authoritative Jalvoro project/domain and current deployment SHA. Inventory environment variable **names/scopes only**, build/runtime errors, domains, cache configuration, analytics, and rollback candidates. Query unresolved Sentry production issues with PII redaction. Add missing health/runbook configuration in separate focused PRs; do not deploy as part of the audit follow-up until exact-SHA preview verification passes.
 
-| Plan ID | Findings | Severity | Purpose | Owner | Status | Dependencies | PR |
-|---|---|---|---|---|---|---|---|
-| PLAN-001 | TBD | TBD | First approved correction after audit | Unassigned | BLOCKED_BY_AUDIT | TBD | — |
+### PLAN-006 — Build the isolated critical-journey and tenant harness
 
-## Suggested Agent/Worktree Boundaries
+- **Findings:** `FINDING-012`
+- **Severity:** P1
+- **Status:** PLANNED
+- **Expected files:** E2E fixtures/tests and test-only configuration
+- **Dependencies:** `PLAN-004`, isolated main/control projects, synthetic users
+- **Production deployment included:** No
 
-Concurrent agents may inspect separate areas, but overlapping edits require lead coordination.
+Create deterministic synthetic users for Individual, two Business tenants, POS staff, main platform admin, control owner/admin/support, disabled operator, and invitation cases. Cover signup/callback/realm, session expiry, cross-tenant denial, business posting/refunds, POS approval, AI consent/failure, Command Center MFA, backup/restore, and duplicate requests. Hard-fail if project refs or emails do not match the test allowlist.
 
-| Workstream | Allowed Scope | Must Not Edit Concurrently With |
-|---|---|---|
-| Security/auth | Auth, authorization, policies, security config | Any agent changing same boundaries |
-| Supabase/data | Migrations, queries, RLS tests | Security agent on same policies |
-| Business logic | Calculations and domain tests | UI refactor touching same logic |
-| Frontend performance | Rendering, bundles, requests | Responsive agent on same components |
-| Responsive/accessibility | Layout and interactions | Frontend performance on same components |
-| CI/operations | Workflows, Vercel config, monitoring | Deployment agent |
+First repair the current harness/config contract: `supabase/config.toml` is now tracked, while `scripts/run-local-e2e.mjs` refuses to replace any existing file at that path and exits before Docker. Preserve the tracked baseline config, generate isolated test configuration in a nonconflicting temporary location, and prove repository cleanliness after both success and failure.
 
-## Completion Checklist
+### PLAN-007 — Add bounded transaction search/history
 
-- [ ] Audit entry criteria satisfied.
-- [ ] Plan register maps every approved finding.
-- [ ] Protected logic has tests.
-- [ ] P0 handled.
-- [ ] P1 disposition documented.
-- [ ] Critical journeys verified.
-- [ ] Database changes measured and reversible.
-- [ ] Frontend changes measured.
-- [ ] Responsive and accessibility checks completed.
-- [ ] Cost review completed.
-- [ ] Capacity model tested.
-- [ ] Staging verified.
-- [ ] Monitoring and rollback verified.
-- [ ] Production rollout explicitly authorized.
-- [ ] Final results documented.
+- **Findings:** `FINDING-006`
+- **Severity:** P2
+- **Status:** PLANNED
+- **Expected files:** one versioned RPC migration; transaction loader/page/filter tests
+- **Dependencies:** `PLAN-004`, `PLAN-006`
+- **Production deployment included:** No
+
+Protect existing order/filter/deleted semantics with fixtures, then add keyset pagination and bounded server filtering/search. Use deterministic `(updated_at, created_at, id)` or approved equivalent cursor; avoid `%LIKE%` scans at scale by selecting a reviewed search strategy. Measure 10k/100k rows, response bytes, browser heap, egress, stale response handling, and p95.
+
+### PLAN-008 — Correct investment asset identity and valuation aggregation
+
+- **Findings:** `FINDING-009`
+- **Severity:** P2
+- **Status:** PLANNED
+- **Expected files:** investment aggregation, tests, optional additive identity migration
+- **Dependencies:** calculation golden fixtures from `PLAN-006`
+- **Production deployment included:** No
+
+Define asset identity precedence (provider/asset ID/symbol/type), explicit legacy alias behavior, currency compatibility, and freshest-price selection. Add same-name/different-asset fixtures before implementation. Feature-flag or version the grouping key so chart colors/history can roll back without mutating transaction history.
+
+### PLAN-009 — Index the verified POS foreign-key paths
+
+- **Findings:** `FINDING-010`
+- **Severity:** P2
+- **Status:** PLANNED
+- **Expected files:** small additive index migrations and plan tests
+- **Dependencies:** `PLAN-004`; representative POS fixture/load data
+- **Production deployment included:** No
+
+Rank the 44 advisories by actual query/cascade paths, reject redundant indexes, and add required indexes in small concurrent batches. Capture before/after `EXPLAIN (ANALYZE, BUFFERS)` in staging, write throughput, disk use, and advisor output. Each index batch has an independent concurrent-drop rollback.
+
+### PLAN-010 — Fix install-dialog semantics and first-visit timing
+
+- **Findings:** `FINDING-008`, `FINDING-013`
+- **Severity:** P2
+- **Status:** PLANNED
+- **Expected files:** Windows/Android install managers and focused accessibility tests
+- **Dependencies:** None
+- **Production deployment included:** No
+
+Use the existing accessible dialog primitive or a fully tested focus/inert implementation; restore focus on close. Replace sub-second auto-open with an explicit action, engagement threshold, or non-modal banner. Verify keyboard, screen reader, reduced motion, standalone/install-event absence, safe-area layout, and the full viewport matrix.
+
+### PLAN-011 — Preserve transaction URL state
+
+- **Findings:** `FINDING-007`
+- **Severity:** P2
+- **Status:** PLANNED
+- **Expected files:** `TransactionSearchAutoClose.tsx` and URL-state tests
+- **Dependencies:** None; coordinate with `PLAN-007`
+- **Production deployment included:** No
+
+Remove reload-time query deletion and reset only transient open/closed UI state. Test reload, bookmark, back/forward, IME composition, every filter, and unauthenticated `next` preservation. Roll back by reverting this single component/test PR.
+
+### PLAN-012 — Resolve low-risk public semantics
+
+- **Findings:** `FINDING-014`
+- **Severity:** P3
+- **Status:** PLANNED
+- **Expected files:** landing/control-login semantic markup and accessibility tests
+- **Dependencies:** None
+- **Production deployment included:** No
+
+Replace role-less labeled containers with native list/section/group markup or remove redundant ARIA. Verify axe and accessibility-tree names. Keep visual CSS unchanged.
+
+### PLAN-013 — Owner-led PR topology triage
+
+- **Findings:** `FINDING-011`
+- **Severity:** P1
+- **Status:** PLANNED
+- **Expected files:** None initially; GitHub governance action requires explicit owner authorization
+- **Dependencies:** `PLAN-002` so retained heads can obtain current CI
+- **Production deployment included:** No
+
+Classify all 31 PRs using the table below. Preserve work before any close/retarget/rebase, resolve CodeQL threads, and replace broad branches with small current-main PRs.
+
+## Open PR Classification Snapshot
+
+| PRs | Classification | Required disposition |
+| --- | --- | --- |
+| #203–#205 | Current, mergeable Dependabot CI actions; CI audit gate failing | Retest after `PLAN-002`, review breaking action changes separately |
+| #181–#183 | Mergeable dependency updates on older main | Rebase, current CI, focused review |
+| #28, #25 | Mergeable dependency PRs on older main with pre-expiry green checks | Rebase and rerun after `PLAN-002`, or supersede with current focused updates |
+| #169 | Obsolete/conflicting release aggregate; 176 commits/184 files, no review | Do not merge; extract only still-needed items into small current-main PRs |
+| #164 | Conflicting 78-commit Command Center audit branch overlapping later main work | Compare to current main/`PLAN-001`, preserve unique work, then retire |
+| #165 | Small draft mobile-sidebar fix | Rebase and verify if still reproducible; otherwise retire |
+| #151→#158→#163 | Stacked experience/workspace chain | Preserve stack order; re-evaluate against current main before retargeting |
+| #161→#162 plus #156 | AI design/hardening branches, parent conflict/overlap | Consolidate requirements; do not merge child without parent; replace if superseded |
+| #108→#111→#118→#120→#124→#130→#134 | Long stacked .NET business-core chain | Treat as one program with explicit dependency graph; not a production release candidate |
+| #100 | 242-commit/90-file native parity draft; workflows `action_required` | Split or retire; re-authorize workflows and independent review |
+| #99 | Mergeable pricing draft with two unresolved CodeQL threads | Block until findings resolved and current main verified |
+| #77 | Unmergeable 118-commit billing branch with unresolved CodeQL | Do not merge; extract secure billing requirements into small new PRs |
+| #35 | Old unmergeable security branch with no current workflow evidence | Compare with landed hardening, extract missing tests only, then retire |
+| #147, #103, #94 | Old public/business/one-line drafts | Reproduce against current main; close as superseded if behavior already landed |
+
+## Release Order and Gates
+
+1. Merge `PLAN-002` first to restore a trustworthy dependency/security CI gate.
+2. Prepare and merge the focused `PLAN-001` source/migration change only after `PLAN-002` is green. Investigation or draft preparation may occur earlier, but `PLAN-001` must not be called merge-ready while its required CI gate is failing. This merge is not production activation.
+3. Complete production-tier/backup controls (`PLAN-003`) and migration reconciliation (`PLAN-004`) before any production schema or privilege action.
+4. Restore deployment/observability access (`PLAN-005`) and repair/execute the isolated critical-journey harness (`PLAN-006`).
+5. Only then activate `PLAN-001` through a separately authorized protected preview, staged production change, and defined monitoring window.
+6. Implement bounded history (`PLAN-007`), investment correctness (`PLAN-008`), and POS indexes (`PLAN-009`) as separate PRs in their verified dependency order.
+7. Complete accessibility/UX PRs (`PLAN-010` through `PLAN-012`).
+8. Conduct GitHub triage (`PLAN-013`) throughout, with no broad branch merged into the release candidate.
+
+## Pull Request Rules
+
+- Target current `main`; branch prefix `codex/` unless owner chooses otherwise.
+- Prefer fewer than 10 changed files; explain every exception.
+- Include finding, protected behavior, exact checks, preview evidence, rollback, and owner.
+- No secrets, production data, generated backup files, `.env` values, or service keys in commits/logs.
+- Migrations are additive/forward-first, idempotency-aware, and rehearsed from empty plus existing state.
+- Security/database/calculation PRs need independent review and exact-SHA evidence.
+
+## Final Exit Criteria
+
+- `FINDING-001` through `FINDING-005`, `FINDING-011`, and `FINDING-012` are verified or explicitly accepted by an accountable owner.
+- All exact safe checks and current GitHub Actions pass.
+- One exact commit is linked to one preview and one production deployment.
+- Both database migration lists align; branch replay, schema diff, RLS negatives, backup, and restore pass.
+- All critical journeys pass with synthetic accounts; no cross-tenant access.
+- Required responsive/accessibility matrix passes, including modal focus and screen-reader review.
+- Performance/capacity gates pass on representative scale with documented budgets.
+- A tested rollback candidate and monitoring window are recorded before rollout.

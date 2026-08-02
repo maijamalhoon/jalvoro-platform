@@ -1,470 +1,134 @@
 # Jalvoro Rollback and Recovery Plan
 
-## Purpose
-
-Define safe, explicit procedures for reversing application, configuration, dependency, database, and deployment changes.
-
-Rollback is not automatically safe. Database writes, schema changes, external side effects, and credential exposure may require forward recovery rather than a simple code revert.
-
 ## Status
 
-- Last reviewed: YYYY-MM-DD
-- Owner: Unassigned
-- Production rollback tested: No
-- Database restore tested: No
-- Current production deployment: `<identifier>`
-- Current production commit: `<commit-sha>`
+- Date: 2026-08-02
+- Product baseline: `origin/main@404a8576e3ab52045f11542772ff6efaffeb0fe4`
+- Superseded incorrect baseline: `52f236e999901a8af1b675e890dd866f4cbb001a`
+- Audit branch: `audit/deep-production-readiness-20260802` in a dedicated isolated worktree
+- State: **PLANNED — NOT EXECUTED**
+- Production change made by this audit: None
 
-## Safety Rules
+This is the rollback contract for future implementation work identified by the audit. It does not authorize a deployment, database command, restore, PR mutation, or production change.
 
-- Do not perform production rollback without explicit owner authorization unless an active incident procedure grants authority.
-- Preserve incident evidence before destructive cleanup.
-- Do not expose secrets in logs, screenshots, or chat.
-- Stop further deployments during a rollback.
-- Communicate the affected scope.
-- Prefer the smallest safe rollback.
-- Verify data integrity after rollback.
-- A code rollback does not automatically undo database writes.
-- A database rollback can destroy valid new data; evaluate forward repair first.
-- If credentials were exposed, reverting code is insufficient. Rotate credentials.
-- If private data was exposed, contain access and follow incident-response obligations.
-- Record the rollback in `CHANGELOG.md`.
+## Non-Negotiable Preconditions
 
-## Rollback Triggers
+1. Name one incident commander, deploy owner, database owner, and communications owner.
+2. Record the exact Git SHA, immutable build/deployment ID, migration versions, Vercel project/team, Supabase project refs, environment, start time, and change window.
+3. Confirm an earlier healthy deployment is still deployable and its environment-variable **names/scopes** are compatible.
+4. Produce encrypted off-site database and Storage-object backups; record hashes, timestamps, retention, RPO/RTO, and restore owner.
+5. Restore those artifacts into an isolated project and run schema, row-count, RLS, auth, signed-object, and application smoke checks.
+6. Rehearse migrations from both an empty database and a copy of the existing schema. Stop on an unexpected diff.
+7. Define metric/log/Sentry thresholds and a bounded monitoring window before rollout.
 
-Consider rollback when one or more occur:
+The current Free Supabase plan does not satisfy the backup/restore precondition. Database backups alone do not restore Storage object bytes.
 
-- Unauthorized access or data leakage.
-- Secret exposure.
-- Data corruption or unexpected deletion.
-- Critical calculation regression.
-- Critical user journey failure.
-- Severe error-rate increase.
-- Severe latency increase.
-- Deployment causes repeated crashes or timeouts.
-- Migration leaves the application incompatible.
-- Monitoring or logs indicate widespread user impact.
-- A security control was weakened.
-- Recovery through a small forward fix is riskier or slower than rollback.
+## Rollback Decision Triggers
 
-Define numeric thresholds per release where possible.
+Stop rollout and invoke the applicable playbook for any of:
 
-## Roles
+- privileged access succeeds without matching recent control-plane AAL2;
+- cross-tenant read/write, RLS regression, or unintended grant;
+- authentication callback loop, broad login failure, or session corruption;
+- ledger, balance, currency, refund, inventory, payroll, or investment reconciliation mismatch;
+- migration error, destructive/unexpected schema diff, lock contention, or elevated database errors;
+- elevated 5xx/error rate, severe latency, runaway egress/cost, queue/realtime backlog, or client crash loop;
+- missing/incorrect environment variable scope, provider key failure, or deployment SHA mismatch;
+- incomplete restore, missing Storage objects, or inability to identify the previous healthy artifact.
 
-| Role | Responsibility | Assigned |
-|---|---|---|
-| Incident lead | Coordinates decision and communication | TBD |
-| Application owner | Approves production change | TBD |
-| Database owner | Evaluates data impact and recovery | TBD |
-| Verifier | Runs smoke tests and integrity checks | TBD |
+Security/data-integrity triggers require traffic containment and forward repair even if the web artifact is rolled back.
 
-One person may hold multiple roles in a small team, but responsibilities must still be explicit.
+## Rollback Classes
 
-## Pre-Change Rollback Readiness
+| Change class | Primary recovery | Important limitation |
+| --- | --- | --- |
+| Web/application code | Promote the recorded previous healthy immutable deployment | Old code must remain schema- and environment-compatible. |
+| Environment/configuration | Restore versioned names/scopes/values through the authorized platform owner, then redeploy the known artifact | Never paste values into tickets, logs, docs, or chat. |
+| Dependency/lockfile | Revert only the focused dependency commit and rebuild from a clean install | Do not restore an actively vulnerable version merely to make CI green. |
+| Additive database object | Disable new code path; forward-drop only after dependency and usage proof | Ordinary Git/Vercel rollback does not undo schema state. |
+| Destructive/data migration | Stop writes, preserve evidence, restore or execute a reviewed forward repair | Never blindly down-migrate production data. |
+| Privilege/RLS/security | Keep the safer/revoked state; forward-fix missing legitimate access | Do not reopen a confirmed bypass as a convenience rollback. |
+| Index | Drop the exact new index concurrently if write/plan regression is proven | Verify no constraint depends on it. |
+| Calculation behavior | Disable/rollback the new version while preserving immutable source records; reconcile derived outputs | Never delete transaction/audit history to hide a discrepancy. |
+| Storage | Restore object bytes plus metadata/policy state and reconcile checksums | Database restore alone is insufficient. |
 
-Before any high-risk change:
+## Playbooks
 
-- [ ] Baseline commit recorded.
-- [ ] Current production deployment recorded.
-- [ ] Change scope documented.
-- [ ] Feature flag or safe disable path considered.
-- [ ] Database migration classified.
-- [ ] Backup requirement assessed.
-- [ ] Restoration feasibility assessed.
-- [ ] Backward compatibility assessed.
-- [ ] Rollback command or deployment action documented.
-- [ ] Verification steps prepared.
-- [ ] Monitoring prepared.
-- [ ] Responsible person available.
-- [ ] External side effects identified.
-- [ ] Secrets rotation procedure identified if relevant.
+### RB-001 — Privileged RPC hardening
 
-## Change Classification
+- Roll forward is preferred: retain revoked direct grants and correct any missing gateway allowlist/routing.
+- If the new gateway code is defective, restore the previous application artifact while direct legacy grants remain closed; use an authorized emergency operator workflow.
+- Verify catalog privileges, AAL1 negatives, recent-AAL2 positives, audit events, identity match, and disabled-role denial.
+- Do not restore direct `authenticated` execution as a rollback.
 
-### Class A — Code-Only, Backward-Compatible
+### RB-002 — Dependency policy
 
-Examples:
+- Revert the isolated manifest/lock/policy commit if build/runtime behavior regresses.
+- Re-run clean install, both npm audits, policy gate, lint, typecheck, tests, build, and Edge checks.
+- If the earlier graph contains the active advisory, keep release blocked and use a new forward fix instead.
 
-- UI correction.
-- Server logic correction that uses existing schema.
-- Performance change without data-format change.
+### RB-003 — Supabase plan, backup, and password protection
 
-Typical rollback: redeploy prior known-good commit.
+- Plan upgrades and leaked-password protection should not be rolled back during launch stabilization.
+- If auth behavior changes, investigate policy/configuration in isolation; preserve protection and use a staged forward correction.
+- Prove daily backup visibility and run an isolated database-plus-Storage restore before relying on it.
 
-### Class B — Configuration or Environment
+### RB-004 — Migration reconciliation and schema changes
 
-Examples:
+- Before production: discard/recreate only the disposable branch and correct the migration ledger; do not alter production history.
+- After production DDL: stop application rollout, capture catalog/log evidence, and choose a reviewed forward fix or point-in-time restore based on data impact.
+- Restore requires a new isolated target first, reconciliation, then explicit incident authorization for cutover.
+- Validate extensions, grants, RLS, function ownership/search paths, triggers, constraints, indexes, row counts, auth identities, Storage metadata, and object bytes.
 
-- Environment-variable change.
-- Vercel configuration.
-- Headers, redirects, runtime settings.
+### RB-005 — Vercel deployment/configuration
 
-Typical rollback: restore prior configuration and redeploy if required.
+- Promote the recorded previous healthy deployment in the authoritative project.
+- Confirm domain routing, environment scope, health, auth callback URLs, Supabase project refs, and error telemetry after promotion.
+- If schema compatibility prevents artifact rollback, contain traffic and deploy a minimal forward-compatible repair.
 
-### Class C — Dependency Change
+### RB-006 — Transaction pagination/search
 
-Examples:
+- Feature-disable bounded search or revert the focused application/RPC commit while retaining stable prior semantics.
+- If a new additive index/function is unused, leave it safely in place until a separately reviewed cleanup.
+- Verify no gaps/duplicates, soft-deleted history, transfers, filters, receipt links, and deterministic ordering.
 
-- Package upgrade.
-- Build tooling change.
-- Runtime upgrade.
+### RB-007 — Investment aggregation
 
-Typical rollback: restore manifest and lockfile from known-good commit, reinstall cleanly, rebuild, and redeploy.
+- Disable the new grouping/quote-selection version and return to prior presentation logic without mutating source lots/transactions.
+- Compare old/new derived totals, identify affected identities, and reconcile deliberately; never rewrite history automatically.
 
-### Class D — Backward-Compatible Database Expansion
+### RB-008 — POS indexes
 
-Examples:
+- Drop only the exact regressing index with the production-safe concurrent procedure and an explicit owner.
+- Record query plans, lock/wait state, writes, disk, and cascade/delete timing before and after.
 
-- Add nullable column.
-- Add new table.
-- Add index.
-- Add policy while old code remains compatible.
+### RB-009 — Install-dialog and URL/ARIA changes
 
-Typical rollback: roll back application first; retain additive schema until safe removal.
+- Revert the focused component/test commit or disable the prompt via an existing safe flag if one is formally introduced.
+- Verify login/start navigation, query persistence, keyboard focus, scroll restoration, responsive matrix, axe, and accessibility tree.
 
-### Class E — Data Transformation or Breaking Schema
+### RB-010 — PR triage
 
-Examples:
+- Preserve branch SHAs/patches before close, rebase, or retarget.
+- A GitHub metadata change can be reversed, but lost context cannot; record owner decisions and dependency order.
+- Never merge a stale broad branch as a shortcut to recover work.
 
-- Column type change.
-- Renaming/removing a column.
-- Destructive migration.
-- Rewriting stored values.
-- Changing ownership or permissions model.
+## Post-Rollback Verification
 
-Typical response: use expand-and-contract. Prefer forward recovery. Restore only with explicit impact analysis.
+- Confirm the running deployment and Git SHA, not only a successful platform action.
+- Run the journey most directly affected plus login, tenant isolation, privileged negatives, transaction reconciliation, and health checks.
+- Inspect Vercel/runtime/Sentry/Supabase logs over the predefined window.
+- Compare database schema, migration ledger, row counts, RLS/grants, and Storage inventory to the recorded baseline.
+- Record residual risk, customer/data impact, exact recovery actions, and follow-up owner.
+- Do not declare recovery if monitoring access or exact deployment identity remains unknown.
 
-### Class F — Security Incident
+## Current Recovery Gaps
 
-Examples:
+- Authoritative Jalvoro Vercel project, deployment SHA, and prior healthy artifact are `BLOCKED` by access.
+- Sentry issue/event health is `BLOCKED` by missing local read-only credentials/configuration.
+- Managed Supabase daily backups and leaked-password protection are unavailable on the current Free projects.
+- A database-plus-Storage restore drill has not run.
+- Migration histories are divergent and must be reconciled before any production command.
+- No safe authenticated synthetic environment exists for end-to-end post-rollback verification.
 
-- Exposed credential.
-- Authorization bypass.
-- Private-data leakage.
-
-Typical response: contain, rotate, revoke, patch, investigate, verify, and document. Code rollback alone is insufficient.
-
-## General Incident Procedure
-
-1. **Detect and confirm**
-   - Confirm the signal.
-   - Identify affected environment, routes, identities, and time window.
-   - Avoid broad conclusions before evidence.
-
-2. **Contain**
-   - Pause deployments.
-   - Disable a feature safely if available.
-   - Revoke or rotate compromised credentials.
-   - Restrict access where necessary.
-   - Avoid destroying evidence.
-
-3. **Decide**
-   - Compare rollback, forward fix, feature disable, and traffic restriction.
-   - Evaluate data compatibility.
-   - Evaluate external side effects.
-   - Choose the lowest-risk path.
-
-4. **Execute**
-   - Follow the relevant procedure below.
-   - Record commands and timestamps.
-   - Use a second reviewer for high-risk actions where possible.
-
-5. **Verify**
-   - Run critical smoke tests.
-   - Verify authorization and data integrity.
-   - Check errors and latency.
-   - Confirm the original issue stopped.
-   - Confirm rollback did not create a new issue.
-
-6. **Monitor**
-   - Observe for a defined period.
-   - Check delayed jobs, webhooks, caches, and retries.
-   - Confirm user-facing state is consistent.
-
-7. **Document**
-   - Add a changelog rollback entry.
-   - Update the finding.
-   - Record root cause and follow-up actions.
-
-## Procedure A — Application Code Rollback
-
-Use for Class A changes.
-
-### Preconditions
-
-- Prior deployment is known-good.
-- Schema remains compatible.
-- No irreversible external side effect requires separate recovery.
-
-### Steps
-
-1. Identify the last known-good commit and deployment.
-2. Confirm current database schema is compatible with old code.
-3. Prefer Vercel rollback to the known-good deployment when safe and available, or create a revert commit through the normal Git workflow.
-4. Do not force-push shared branches.
-5. Deploy the known-good version.
-6. Clear or invalidate caches only when required and understood.
-7. Run post-rollback verification.
-
-### Verification
-
-- Critical routes load.
-- Authentication works.
-- Authorization remains correct.
-- Primary read/write journey works.
-- Error rate returns to acceptable range.
-- Latency returns to acceptable range.
-- No new client/server version mismatch exists.
-
-### Follow-Up
-
-- Preserve the failed commit for investigation.
-- Create a finding for the regression.
-- Do not reapply without a new verification record.
-
-## Procedure B — Configuration Rollback
-
-Use for Class B changes.
-
-### Steps
-
-1. Record current configuration values without exposing secrets.
-2. Restore prior values from an approved secure source.
-3. Confirm preview and production scopes separately.
-4. Redeploy if the platform requires it.
-5. Verify runtime behavior.
-6. Confirm logs do not expose values.
-
-### Special Cases
-
-- Secret changes may require rotation rather than restoration.
-- A compromised secret must not be reused.
-- Environment-variable rollback can make old deployments incompatible; verify version expectations.
-
-## Procedure C — Dependency Rollback
-
-Use for Class C changes.
-
-### Steps
-
-1. Restore package manifest and lockfile from the known-good commit.
-2. Remove untracked build artifacts if safe.
-3. Perform a clean dependency install using the repository's package manager.
-4. Run format, lint, type check, tests, and production build.
-5. Deploy the verified candidate.
-6. Verify runtime behavior.
-
-Do not manually reconstruct lockfile entries.
-
-## Procedure D — Backward-Compatible Database Expansion
-
-Use for Class D changes.
-
-### Preferred Method
-
-1. Roll back application code first.
-2. Leave additive schema in place if it does not create risk.
-3. Confirm old code ignores the new schema safely.
-4. Schedule schema cleanup as a separate reviewed change.
-5. Remove additive schema only after all consumers and rollback windows are closed.
-
-### Index Rollback
-
-Before dropping an index:
-
-- Confirm it is not required by another query.
-- Confirm drop operation risk.
-- Check lock and runtime behavior.
-- Record before/after query plans.
-
-### Policy Rollback
-
-Never restore an insecure RLS policy merely to regain functionality. Prefer a safe forward correction or temporary feature disable.
-
-## Procedure E — Data Transformation or Breaking Migration Recovery
-
-Use for Class E changes.
-
-### Required Assessment
-
-- What rows changed?
-- Can transformed values be reversed exactly?
-- Were new writes created under the new schema?
-- Is the old application compatible with current data?
-- Will restore discard valid new data?
-- Are external systems affected?
-- Is a backup available?
-- Has restoration been tested?
-- Is forward repair safer?
-
-### Preferred Strategy
-
-Use forward recovery when rollback would destroy or misinterpret data.
-
-### Restore Strategy
-
-A database restore requires explicit approval and a documented loss window.
-
-1. Stop writes if required.
-2. Record current state.
-3. Identify backup timestamp.
-4. Calculate potential lost writes.
-5. Notify the owner of data-loss implications.
-6. Restore to an isolated environment first when possible.
-7. Validate integrity.
-8. Perform approved production restoration.
-9. Reconcile external side effects and writes after the backup.
-10. Run full verification.
-
-Never claim backups are valid without a tested restore.
-
-## Procedure F — Secret Exposure
-
-Use for Class F.
-
-1. Treat the secret as compromised.
-2. Revoke or rotate it at the provider.
-3. Update approved environment stores.
-4. Remove it from current code and configuration.
-5. Assess repository history, logs, build output, browser bundles, and deployment artifacts.
-6. Restrict or rotate downstream credentials reachable by the secret.
-7. Verify old credentials no longer work.
-8. Review access logs where available.
-9. Correct the root cause.
-10. Record the incident without writing the secret value.
-
-A Git revert does not remove a secret from history or artifacts.
-
-## Procedure G — Authorization or RLS Incident
-
-1. Restrict the affected operation.
-2. Disable the vulnerable feature if necessary.
-3. Preserve evidence.
-4. Identify affected tables, users, operations, and time range.
-5. Correct authorization at the trusted boundary.
-6. Correct RLS/storage policies.
-7. Test with anonymous, owner, other user, and privileged identities.
-8. Review access logs where available.
-9. Assess whether private data was accessed.
-10. Do not restore an insecure policy as rollback.
-
-## Procedure H — Performance Regression
-
-1. Confirm regression against comparable baseline.
-2. Identify whether impact is client, server, database, network, or third party.
-3. Disable the specific optimization or feature flag if available.
-4. Revert the isolated change.
-5. Verify correctness and performance.
-6. Check caches and query plans.
-7. Continue monitoring after rollback.
-
-Do not “fix” a performance regression by removing required functionality without approval.
-
-## Procedure I — Broken Calculation or Business Logic
-
-1. Stop or disable the affected action if wrong results could be persisted.
-2. Identify affected records and time range.
-3. Roll back code only if current data remains compatible.
-4. Restore the last verified logic.
-5. Run golden tests.
-6. Determine whether persisted data requires correction.
-7. Create an auditable data-repair plan.
-8. Do not silently overwrite historical records without owner approval.
-9. Notify affected users if required by product or legal obligations.
-
-## Procedure J — Search Failure
-
-1. Determine whether failure is UI, API, database, index, permissions, or external service.
-2. Preserve authorization filtering.
-3. Disable a faulty optimization rather than leaking broader results.
-4. Restore known-good search behavior.
-5. Verify empty, rapid typing, stale response, no-result, error, pagination, and private-data cases.
-
-## Post-Rollback Verification Checklist
-
-- [ ] Correct deployment/version is active.
-- [ ] Application loads.
-- [ ] Authentication works.
-- [ ] Authorization and RLS remain correct.
-- [ ] Critical read flow works.
-- [ ] Critical write flow works.
-- [ ] Calculations match golden tests.
-- [ ] Search works without private-data leakage.
-- [ ] Error rate is acceptable.
-- [ ] Latency is acceptable.
-- [ ] Database integrity checks pass.
-- [ ] Background jobs/webhooks are consistent.
-- [ ] Logs contain no secrets.
-- [ ] Monitoring is active.
-- [ ] Original incident has stopped.
-- [ ] No new regression was introduced.
-- [ ] Changelog updated.
-- [ ] Follow-up finding created.
-
-## Rollback Record Template
-
----
-
-### ROLLBACK-XXX — Concise Incident/Change Title
-
-- **Date/time:** `<timestamp>`
-- **Environment:** `<environment>`
-- **Change:** `CHANGE-XXX`
-- **Finding:** `FINDING-XXX`
-- **From commit/deployment:** `<identifier>`
-- **To commit/deployment:** `<identifier>`
-- **Authorized by:** `<owner>`
-- **Executed by:** `<person/agent>`
-- **Class:** A | B | C | D | E | F
-- **Data impact:** None | Possible | Confirmed
-- **User impact:** `<summary>`
-
-#### Trigger
-
-State the objective trigger.
-
-#### Decision
-
-Explain why rollback was safer than a forward fix.
-
-#### Steps Executed
-
-List exact actions without secrets.
-
-#### Verification
-
-Reference `VER-XXX`.
-
-#### Data Reconciliation
-
-Describe any repair, replay, or cleanup.
-
-#### Outcome
-
-State whether the system recovered and what remains unresolved.
-
-#### Follow-Up
-
-List new findings, tests, or process changes.
-
----
-
-## Release-Specific Rollback Section
-
-Before each production deployment, add:
-
-### Release `<identifier>`
-
-- Known-good deployment:
-- Candidate deployment:
-- Candidate commit:
-- Database migrations:
-- Configuration changes:
-- Feature flags:
-- External side effects:
-- Rollback class:
-- Exact rollback action:
-- Data compatibility:
-- Verification owner:
-- Monitoring window:
-- Rollback thresholds:
+Until these gaps are closed, rollback readiness is **FAIL** and production launch remains blocked.

@@ -1,153 +1,18 @@
-# Jalvoro Engineering Changelog
+# Jalvoro Audit Changelog
 
-## Purpose
+## 2026-08-02 — Corrected production-readiness audit package
 
-Record intentional repository, behavior, database, infrastructure, security, and operational changes made through the production-readiness work.
+- **Type:** Documentation
+- **Status:** Audit documentation corrected on `audit/deep-production-readiness-20260802`
+- **Product baseline:** `origin/main@404a8576e3ab52045f11542772ff6efaffeb0fe4`
+- **Superseded incorrect baseline:** `52f236e999901a8af1b675e890dd866f4cbb001a`
+- **Product implementation:** Not started
+- **Production deployment:** None
+- **Production mutation:** None
+- **Findings:** `FINDING-001` through `FINDING-014`
+- **Plans:** `PLAN-001` through `PLAN-013`
+- **Verification:** `VER-001` through `VER-014`
 
-This is not a replacement for Git history. It explains why behavior changed, what was protected, how the change was verified, and how it can be rolled back.
+Corrected the completed audit onto the exact latest `origin/main` at repair start. The repair inspected all 29 intervening commits and 42 changed files, reran the safe repository/browser/live read-only checks, superseded invalid stale-checkout evidence, recorded the new User 360 exposure and E2E config collision, refreshed PR classifications, and made `PLAN-002` the merge prerequisite for `PLAN-001`.
 
-## Rules
-
-- Add an entry for every merged or production-relevant change.
-- Link findings, plan items, verification records, commits, and pull requests.
-- Separate internal refactors from user-visible behavior changes.
-- Explicitly record changes to calculations, permissions, validation, search semantics, database schema, and API contracts.
-- Do not write “various fixes” or other vague summaries.
-- Do not include secrets or sensitive personal data.
-- Do not rewrite old entries to hide prior decisions. Add corrections as new entries.
-
-## Change Types
-
-- `SECURITY`
-- `CORRECTNESS`
-- `DATA`
-- `RELIABILITY`
-- `PERFORMANCE`
-- `ACCESSIBILITY`
-- `RESPONSIVE`
-- `MAINTAINABILITY`
-- `COST`
-- `OPERATIONS`
-- `DOCUMENTATION`
-
-## Risk Levels
-
-- `CRITICAL`
-- `HIGH`
-- `MEDIUM`
-- `LOW`
-
-## Unreleased
-
-### CHANGE-XXX — Concise Change Title
-
-- **Date:** YYYY-MM-DD
-- **Type:** SECURITY | CORRECTNESS | DATA | RELIABILITY | PERFORMANCE | ACCESSIBILITY | RESPONSIVE | MAINTAINABILITY | COST | OPERATIONS | DOCUMENTATION
-- **Risk:** CRITICAL | HIGH | MEDIUM | LOW
-- **Status:** PLANNED | IMPLEMENTED | VERIFIED | DEPLOYED | ROLLED_BACK
-- **Findings:** `FINDING-XXX`
-- **Plans:** `PLAN-XXX`
-- **Verification:** `VER-XXX`
-- **Commit:** `<commit-sha>`
-- **Pull request:** `<url-or-number>`
-- **Environment deployed:** None | Preview | Staging | Production
-- **Owner:** Unassigned
-
-#### Problem
-
-Describe the verified problem.
-
-#### Change
-
-Describe the implementation precisely.
-
-#### User-Visible Impact
-
-State what users will observe. Write `None` for an internal-only change.
-
-#### Business Logic Impact
-
-State whether calculations, ranking, filtering, permissions, validation, dates, currency, or other rules changed.
-
-- Protected behavior:
-- Intentional behavior change:
-- Compatibility impact:
-
-#### Database Impact
-
-- Migration:
-- Tables/policies/functions/indexes affected:
-- Backward compatibility:
-- Data validation:
-- Backup requirement:
-
-Write `None` when not applicable.
-
-#### Security Impact
-
-State whether the trust boundary, authorization, secret handling, validation, logging, or abuse resistance changed.
-
-#### Performance Impact
-
-Record before/after measurements or state that performance was not expected to change.
-
-#### Dependencies
-
-List added, removed, or upgraded dependencies and why.
-
-#### Verification
-
-Summarize objective checks and reference `VER-XXX`.
-
-#### Known Limitations
-
-List remaining risks and unverified conditions.
-
-#### Rollback
-
-Reference the exact rollback procedure in `ROLLBACK.md`.
-
----
-
-## Released
-
-Move verified deployed entries here under a dated release heading.
-
-## YYYY-MM-DD — Release `<identifier>`
-
-### Included Changes
-
-- `CHANGE-XXX`
-- `CHANGE-YYY`
-
-### Deployment
-
-- **Commit:** `<sha>`
-- **Environment:** Production
-- **Deployment identifier:** `<vercel-deployment-or-release-id>`
-- **Migration identifiers:** `<ids-or-none>`
-- **Deployed by:** `<name-or-agent-with-owner-approval>`
-- **Deployment time:** `<timestamp>`
-- **Monitoring window:** `<window>`
-
-### Post-Deployment Result
-
-- Critical smoke tests:
-- Error rate:
-- Latency:
-- Database health:
-- User-impact signals:
-- Rollback required: Yes/No
-- Remaining risks:
-
-## Rolled Back Changes
-
-### CHANGE-XXX — Concise Change Title
-
-- **Original deployment:** `<identifier>`
-- **Rollback date:** YYYY-MM-DD
-- **Reason:** `<reason>`
-- **Rollback procedure:** `<reference>`
-- **Data recovery required:** Yes/No
-- **Result:** `<verified outcome>`
-- **Follow-up finding:** `FINDING-XXX`
+Only the five canonical audit documents were changed by this repair. No application source, test, dependency, lockfile, migration, database data, Supabase configuration, Vercel deployment, environment variable, GitHub PR/review, or production service was changed. Future implementation requires its own dated changelog entry linked to the relevant finding, plan, verification evidence, exact commit, environment, and rollback result.
