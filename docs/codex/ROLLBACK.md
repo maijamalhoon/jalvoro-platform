@@ -63,9 +63,12 @@ Security/data-integrity triggers require traffic containment and forward repair 
 
 ### RB-002 — Dependency policy
 
-- Revert the isolated manifest/lock/policy commit if build/runtime behavior regresses.
+- Current candidate: draft PR #206, exact head `947a152da1414f04b3cd6d8f0f802db225621c67`, with clean commits `c96c642a6617ec2bfff17ca968cc953a9ff82e24` and `947a152da1414f04b3cd6d8f0f802db225621c67`; no deployment, migration, or production state exists to roll back.
+- Before merge, rollback is closure/abandonment of the focused PR while preserving its branch and evidence; no production action is required.
+- After merge, first record the actual landed `main` SHA and merge method. Revert the landed merge, squash, or rebased commit set as appropriate only if a confirmed tooling regression requires it, then rebuild from a canonical clean install.
 - Re-run clean install, both npm audits, policy gate, lint, typecheck, tests, build, and Edge checks.
-- If the earlier graph contains the active advisory, keep release blocked and use a new forward fix instead.
+- Reversion restores the vulnerable development-only `brace-expansion@1.1.16` copy and the expired exception, so it is mechanically safe but not a security resolution. Keep release blocked and use a new forward fix instead of disabling the audit job or treating the restored graph as releasable.
+- Preserve the three-file scope: `package-lock.json`, `scripts/dependency-audit-policy.mts`, and `lib/dependency-audit-policy.test.ts`. No database, customer data, environment, deployment, or runtime application rollback is involved.
 
 ### RB-003 — Supabase plan, backup, and password protection
 

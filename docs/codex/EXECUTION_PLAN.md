@@ -7,7 +7,7 @@
 - Product baseline: `origin/main@404a8576e3ab52045f11542772ff6efaffeb0fe4`
 - Superseded incorrect baseline: `52f236e999901a8af1b675e890dd866f4cbb001a`
 - Audit branch: `audit/deep-production-readiness-20260802` in a dedicated isolated worktree
-- Plan state: **PLANNED — IMPLEMENTATION NOT STARTED**
+- Plan state: **IN PROGRESS — PLAN-002 EXACT-HEAD GREEN IN DRAFT PR #206; NOT MERGED**
 - Production deployment included: No
 
 ## Planning Principles
@@ -75,12 +75,15 @@ Make the service-role dispatcher the only main-project entry for every privilege
 
 - **Findings:** `FINDING-003`
 - **Severity:** P1
-- **Status:** PLANNED
-- **Expected files:** `package.json`, `package-lock.json`, dependency-policy metadata only
+- **Status:** LOCALLY AND REMOTELY VERIFIED — DRAFT PR #206; NOT MERGED
+- **Implemented files:** `package-lock.json`, `scripts/dependency-audit-policy.mts`, `lib/dependency-audit-policy.test.ts`; `package.json` and workflows unchanged
+- **Clean branch / exact head:** `fix/dependency-security-gate-main-20260802` / `947a152da1414f04b3cd6d8f0f802db225621c67`
+- **Clean commits:** `c96c642a6617ec2bfff17ca968cc953a9ff82e24`, `947a152da1414f04b3cd6d8f0f802db225621c67`
+- **Remote evidence:** CI `30749931181` and Security Scanning `30749931214` succeeded on the exact head; Dependency Review and CodeQL succeeded
 - **Dependencies:** None; this is the first merge prerequisite
 - **Production deployment included:** No
 
-Upgrade or override the transitive `brace-expansion` path with npm 11.9.0. Update advisory metadata only after `npm audit` is clean; do not delete/disable the CI gate. Verify clean install, both audits, full repository checks, and GitHub Actions. Roll back the focused lockfile/policy commit if tooling regresses. `PLAN-001` may be investigated or prepared in parallel, but it is not merge-ready while this required gate fails.
+The implementation resolves the vulnerable development-only `brace-expansion` path from `1.1.16` to `1.1.18` through its existing compatible minimatch range and removes the expired exception. It accepts only well-formed audit v2 reports with zero production and full-tree findings and fails closed on audit/process errors. Clean install, both audits, focused fail-closed tests, complete repository checks, production build, and four Deno checks passed locally; exact-head CI, Dependency Review, and CodeQL passed remotely. PR #206 remains draft and unmerged. `PLAN-001` may be prepared as a stack on this exact green head, but it is not merge-ready until PLAN-002 is explicitly approved and merged.
 
 ### PLAN-003 — Establish production-grade Supabase resilience
 
@@ -203,12 +206,13 @@ Replace role-less labeled containers with native list/section/group markup or re
 - **Dependencies:** `PLAN-002` so retained heads can obtain current CI
 - **Production deployment included:** No
 
-Classify all 31 PRs using the table below. Preserve work before any close/retarget/rebase, resolve CodeQL threads, and replace broad branches with small current-main PRs.
+Classify all 32 PRs using the table below. Preserve work before any close/retarget/rebase, resolve CodeQL threads, and replace broad branches with small current-main PRs.
 
 ## Open PR Classification Snapshot
 
 | PRs | Classification | Required disposition |
 | --- | --- | --- |
+| #206 | Current-main, exact-head-green three-file PLAN-002 draft | Preserve exact head and scope; explicit approval required before merge; prerequisite for the PLAN-001 stack |
 | #203–#205 | Current, mergeable Dependabot CI actions; CI audit gate failing | Retest after `PLAN-002`, review breaking action changes separately |
 | #181–#183 | Mergeable dependency updates on older main | Rebase, current CI, focused review |
 | #28, #25 | Mergeable dependency PRs on older main with pre-expiry green checks | Rebase and rerun after `PLAN-002`, or supersede with current focused updates |
@@ -226,8 +230,8 @@ Classify all 31 PRs using the table below. Preserve work before any close/retarg
 
 ## Release Order and Gates
 
-1. Merge `PLAN-002` first to restore a trustworthy dependency/security CI gate.
-2. Prepare and merge the focused `PLAN-001` source/migration change only after `PLAN-002` is green. Investigation or draft preparation may occur earlier, but `PLAN-001` must not be called merge-ready while its required CI gate is failing. This merge is not production activation.
+1. Obtain explicit approval and merge exact-head-green draft PR #206 (`PLAN-002`) first; do not auto-merge it.
+2. Prepare the focused `PLAN-001` source/migration change as a draft stack on PLAN-002 head `947a152da1414f04b3cd6d8f0f802db225621c67`. It must not be represented as merge-ready or retargeted to `main` until PLAN-002 is merged and the resulting diff is reverified. This merge is not production activation.
 3. Complete production-tier/backup controls (`PLAN-003`) and migration reconciliation (`PLAN-004`) before any production schema or privilege action.
 4. Restore deployment/observability access (`PLAN-005`) and repair/execute the isolated critical-journey harness (`PLAN-006`).
 5. Only then activate `PLAN-001` through a separately authorized protected preview, staged production change, and defined monitoring window.

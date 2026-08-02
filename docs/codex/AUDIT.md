@@ -34,13 +34,13 @@ The old command durations, build result, control-login behavior, migration/confi
 
 Jalvoro builds and its local unit/type/lint/Edge-function checks are strong. Public pages rendered without horizontal overflow at all 12 required viewports, public axe scans found no violations, live RLS inspection found no public/private table with RLS disabled and data privileges for `anon` or `authenticated`, and the control-plane database correctly enforces AAL2 with recent password and TOTP authentication.
 
-Those positives do not make the system production-ready. All 21 current gateway-operation targets remain directly executable by `authenticated`, and a broader reviewed query finds 31 directly executable privileged candidates without body-level AAL2 checks; the old categorical count of 27 is superseded. Both production Supabase projects are on the Free Plan, the dependency policy fails, the local E2E harness now fails before Docker because tracked `supabase/config.toml` collides with its temporary-config strategy, no authoritative Jalvoro Vercel project is inspectable, and repository/live migration ledgers are not one-to-one. Full authenticated and tenant-isolation journeys were not executed because no safe test identities or isolated database were available.
+Those positives do not make the system production-ready. All 21 current gateway-operation targets remain directly executable by `authenticated`, and a broader reviewed query finds 31 directly executable privileged candidates without body-level AAL2 checks; the old categorical count of 27 is superseded. Both production Supabase projects are on the Free Plan, the dependency-policy remediation is exact-head green only in unmerged draft PR #206, the local E2E harness fails before Docker because tracked `supabase/config.toml` collides with its temporary-config strategy, no authoritative Jalvoro Vercel project is inspectable, and repository/live migration ledgers are not one-to-one. Full authenticated and tenant-isolation journeys were not executed because no safe test identities or isolated database were available.
 
 ### Five Highest Confirmed Risks
 
 1. `FINDING-001`: all 21 current gateway targets and 31 broader privileged candidates remain directly callable from the main project without equivalent AAL2 enforcement.
 2. `FINDING-002`: both production databases use a Free Plan with no managed daily backups, no leaked-password protection, and inactivity pausing.
-3. `FINDING-003`: the mandatory dependency audit gate is expired and failing; the three newest PRs stop before lint/test/build.
+3. `FINDING-003`: the mandatory dependency audit gate is repaired and exact-head green in draft PR #206, but `main` remains unfixed until explicit approval and merge.
 4. `FINDING-004`: no inspectable Jalvoro Vercel production target, build logs, environment inventory, or rollback candidate could be proven.
 5. `FINDING-005`: migration ledgers, checkout, remote `main`, and live schema history are not deployment-safe as a single verified candidate.
 
@@ -48,8 +48,8 @@ Those positives do not make the system production-ready. All 21 current gateway-
 
 - Revoke or service-gate the legacy main-project Command Center RPC surface and prove AAL1 rejection.
 - Move both Supabase projects to a production-suitable plan, enable leaked-password protection, establish backups, and complete a restore drill including Storage objects.
-- Restore a passing dependency policy without hiding the active advisory.
-- Merge-order correction: `PLAN-002` is the prerequisite merge, then `PLAN-001`; the RPC fix may be investigated/prepared earlier but is not merge-ready while its required CI gate fails.
+- Approve and merge exact-head-green PLAN-002 draft PR #206 without changing its verified three-file scope.
+- Merge-order correction: `PLAN-002` remains the prerequisite merge, then `PLAN-001`; the RPC fix may be prepared as a stack on the green PLAN-002 head but is not merge-ready while that prerequisite is unmerged.
 - Identify and inspect the actual Jalvoro Vercel production project, environment names, deployment SHA, runtime errors, and rollback target.
 - Reconcile Supabase migration history before any `db push` or production migration.
 - Run isolated multi-user, multi-tenant, MFA, backup/restore, long-list, failure, and capacity verification.
@@ -215,7 +215,8 @@ Screenshots were ephemeral local evidence and were not committed; no absolute lo
 
 ## GitHub, Deployment, Dependencies, and Operations
 
-- Live GitHub snapshot: 31 open PRs; 22 drafts and 9 ready/non-draft; 9 unmergeable.
+- Baseline audit GitHub snapshot before PLAN-002 PR creation: 31 open PRs; 22 drafts and 9 ready/non-draft; 9 unmergeable.
+- Current topology after opening exact-head-green draft PR #206: 32 open PRs; 23 drafts and 9 ready/non-draft. PR #206 is mergeable and remains draft/unmerged.
 - PR #169 is the only non-Dependabot ready PR but is 176 commits/184 files (+9,594/−1,256), unmergeable, based on an old main SHA, and has zero submitted reviews. It is not a release candidate; its recorded Vercel preview no longer resolves.
 - PR #100 is 242 commits/90 files and every current workflow is `action_required`; PR #164 is 78 commits/35 files and unmergeable; PR #77 is 118 commits/53 files and unmergeable.
 - PRs #99 and #77 retain two and one unresolved GitHub Advanced Security CodeQL threads respectively for DOM text reinterpreted as HTML.
@@ -309,9 +310,9 @@ List organization/projects/advisors; query database size/connections; compare wi
 - **Dependencies:** Owner approval and billing authority; no code PR required for the plan change.
 - **Plan / Verification / Changelog:** `PLAN-003`; `VER-002`; operational changelog after implementation.
 
-### FINDING-003 — Dependency audit policy is expired and blocks CI
+### FINDING-003 — Dependency audit policy remediation is green but unmerged
 
-- **Status:** OPEN
+- **Status:** REMEDIATED IN DRAFT PR #206 — NOT MERGED
 - **Severity:** P1
 - **Confidence:** Confirmed
 - **Category:** Security / Supply chain / CI
@@ -319,12 +320,13 @@ List organization/projects/advisors; query database size/connections; compare wi
 - **Owner:** Unassigned
 - **Affected journey:** J-010
 - **Affected logic:** Release gate
-- **Affected files:** `package-lock.json`; `package.json`; dependency-audit policy script/config; `.github/workflows/ci.yml`
+- **Implemented files:** `package-lock.json`; `scripts/dependency-audit-policy.mts`; `lib/dependency-audit-policy.test.ts`
+- **Unchanged files:** `package.json`; CI/security workflows; application and production dependencies
 - **Affected environments:** CI, Preview, Production release
 
 #### Summary and Evidence
 
-`npm run audit:ci` fails because a temporary exception expired on 2026-08-01 and references an older advisory source. Current full audit reports one high dev-only vulnerability in `brace-expansion <1.1.17` (GHSA-mh99-v99m-4gvg); production-only audit reports zero. PRs #203–#205 all fail exactly at this gate and skip lint/typecheck/tests/build.
+The baseline `npm run audit:ci` failed because a temporary exception expired on 2026-08-01 while the full audit reported one high development-only vulnerability in `brace-expansion <1.1.17` (GHSA-mh99-v99m-4gvg); production-only audit reported zero. Draft PR #206 updates only the compatible development copy to `1.1.18`, removes the exception, and makes the policy fail closed. Local verification and exact-head CI, Dependency Review, and CodeQL are green at `947a152da1414f04b3cd6d8f0f802db225621c67`; the remediation is not yet on `main`.
 
 #### Reproduction or Inspection Steps
 
@@ -332,22 +334,23 @@ Run exact npm 11.9.0 `npm audit --omit=dev`, `npm audit`, and `npm run audit:ci`
 
 #### Expected / Actual / Cause / Impact
 
-- **Expected:** Policy matches current advisory IDs and CI reaches every required validation step.
-- **Actual:** Gate fails before quality/build checks on all new PRs.
+- **Expected:** Policy structurally validates npm audit v2 output, fails closed on malformed or inconsistent reports, and requires zero vulnerability findings for both full and production-only audits before CI reaches every required validation step.
+- **Baseline actual:** Before remediation, the gate failed before quality/build checks on newly opened PRs.
+- **Current candidate:** Draft PR #206 reaches and passes the full CI and Security Scanning workflows on exact head `947a152da1414f04b3cd6d8f0f802db225621c67`; `main` retains the baseline behavior until merge.
 - **Technical cause:** Expired exception plus transitive vulnerable dev dependency/advisory-ID drift.
-- **Impact:** No mergeable release candidate can obtain current green CI; teams may be tempted to bypass the gate.
+- **Baseline impact:** Before remediation, main-based release candidates could not obtain green CI; other candidates retain that limitation until the verified PR #206 remediation is merged to `main`.
 - **Security/data impact:** Tooling-only advisory was confirmed; no production runtime vulnerability was reported.
 
 #### Remediation, Risks, Tests, Verification, Rollback
 
-- **Smallest safe fix:** Upgrade/override the dependency chain to a fixed `brace-expansion`, regenerate with npm 11.9.0, and update policy metadata only after the clean audit is proven.
-- **Alternative:** Time-bounded renewed exception with exact advisory and owner; only if upgrade is blocked.
+- **Implemented smallest safe fix:** Resolve the existing compatible development dependency path to `brace-expansion@1.1.18`; add no override; leave `package.json` and production dependencies unchanged; remove the temporary exception.
+- **Rejected alternative:** A renewed exception would preserve avoidable advisory exposure and is not used.
 - **Regression risk:** Medium—lockfile/tooling changes can alter CI behavior.
-- **Required tests:** clean install, both audits, lint, typecheck, the complete current test suite, four Edge typechecks, production build.
-- **Verification:** New PR head has current CI and Security Scanning success.
+- **Required tests:** Passed — clean install, dependency-tree validation, both audits, audit policy, 37 focused tests, lint, typecheck, 859 complete tests, brand check, four Edge typechecks with `--no-lock`, and production build.
+- **Verification:** CI run `30749931181` and Security Scanning run `30749931214` succeeded on exact PR head `947a152da1414f04b3cd6d8f0f802db225621c67`; Dependency Review and CodeQL succeeded; independent review found no blocking issue.
 - **Rollback:** Revert the focused lockfile/policy PR; never disable the audit job.
 - **Dependencies:** None; this is the first merge prerequisite and should not be mixed with application changes.
-- **Plan / Verification / Changelog:** `PLAN-002`; `VER-003`; future security changelog.
+- **Plan / Verification / Changelog:** `PLAN-002`; `VER-003`; 2026-08-02 security changelog entry.
 
 ### FINDING-004 — Jalvoro production deployment and rollback state is unavailable
 
@@ -644,7 +647,7 @@ Run the Supabase performance advisor and validate each FK's leading columns agai
 
 #### Summary and Evidence
 
-There are 31 open PRs: 22 drafts, 9 non-drafts, and 9 unmergeable. The only non-Dependabot ready PR is unmergeable and unreviewed at 176 commits/184 files. Multiple long stacked chains target other feature branches, and #99/#77 retain unresolved CodeQL threads. This audit made no PR mutations.
+There are currently 32 open PRs: 23 drafts and 9 non-drafts. The added PR #206 is the focused, exact-head-green PLAN-002 draft. The only non-Dependabot ready PR remains unmergeable and unreviewed at 176 commits/184 files. Multiple long stacked chains target other feature branches, and #99/#77 retain unresolved CodeQL threads. The original baseline audit made no PR mutations; the subsequent PLAN-002 work opened only draft PR #206.
 
 #### Reproduction or Inspection Steps
 
@@ -795,7 +798,7 @@ Run axe on `/` and unauthenticated `/admin` at 390×844 and inspect the labeled 
 | --- | --- | --- | --- | --- |
 | FINDING-001 | P1 | Confirmed | Legacy admin RPC dual-auth bypass | Yes |
 | FINDING-002 | P1 | Confirmed | Free-plan resilience/password gap | Yes |
-| FINDING-003 | P1 | Confirmed | Dependency audit gate failure | Yes |
+| FINDING-003 | P1 | Confirmed | Dependency audit gate remediation exact-head green but unmerged | Yes, until merge |
 | FINDING-004 | P1 | High | Vercel production/rollback unavailable | Yes |
 | FINDING-005 | P1 | Confirmed | Migration/release target drift | Yes |
 | FINDING-006 | P2 | Confirmed | Unbounded transaction history | Before scale |
@@ -814,8 +817,8 @@ Run axe on `/` and unauthenticated `/admin` at 390×844 and inspect the labeled 
 - [x] Architecture, clients, auth, privileged paths, calculations, database, storage, realtime, indexes, and query stats inspected.
 - [x] Safe lint/type/test/build/audit/Edge checks run and timed.
 - [x] Required 12-viewport landing matrix and representative public routes checked.
-- [x] All 31 open PR metadata/head classifications refreshed read-only; earlier detailed conclusions retained only for unchanged heads.
+- [x] All 32 open PR metadata/head classifications refreshed; earlier detailed conclusions retained only for unchanged heads and focused draft PR #206 recorded separately.
 - [x] Live Supabase projects/advisors/catalog/stats/logs inspected read-only.
 - [x] Vercel and Sentry access limitations recorded.
 - [x] Findings contain evidence, cause, impact, smallest fix, risks, tests, verification, and rollback.
-- [x] No implementation, production mutation, deployment, migration, merge, PR edit, or secret exposure.
+- [x] No production mutation, deployment, migration, merge, or secret exposure; the only later GitHub mutation is focused draft PR #206 and its evidence update.
