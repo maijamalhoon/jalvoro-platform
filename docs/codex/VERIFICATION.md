@@ -55,6 +55,62 @@ Runtime: bundled Node `v24.14.0`; exact npm `11.9.0` invoked through the bundled
 
 The build emitted 163 JavaScript chunks totaling 6,559,815 bytes raw (largest 427,491 bytes) and 16 CSS chunks totaling 1,220,962 bytes raw. Route-attributed compressed transfer cost remains `UNVERIFIED`.
 
+## PLAN-002 Local Implementation Verification
+
+- Date: 2026-08-02 (Asia/Karachi)
+- Branch: `fix/dependency-security-gate-20260802`
+- Starting audit commit: `a73705a078fbe35abfdc25f549facb17f1fadb20`
+- Product baseline and merge-base: `origin/main@404a8576e3ab52045f11542772ff6efaffeb0fe4`
+- Starting relation: audit branch 8 commits ahead of `origin/main`, 0 behind; the eight commits contained only `AGENTS.md` and `docs/codex/*` audit material
+- Focused implementation commit: `39b1d4265ac1ee99fe5979d51116277421abd3f0`
+- Status: **LOCALLY IMPLEMENTED AND VERIFIED — NOT MERGED; REMOTE CI NOT RUN**
+- Runtime: Node `v24.14.0`; investigation, clean install, audits, and acceptance checks used npm `11.9.0`
+
+The initial full audit failed on one high-severity, development-only `brace-expansion <1.1.17` advisory (`GHSA-mh99-v99m-4gvg`, npm source `1130588`, CVSS 7.5, CWE-400/CWE-770). Production audits were clean. `npm explain` and `npm ls` traced the vulnerable `brace-expansion@1.1.16` copy to the root ESLint toolchain through `minimatch@3.1.5`; that parent accepts `brace-expansion ^1.1.7`. Existing production and other development paths used unaffected `brace-expansion@5.0.8`. No focused compatible Dependabot branch or PR existed, the broad historical security branch did not contain the patch, and upgrading direct ESLint was unnecessary.
+
+The retained dependency change is the normal transitive resolution from `brace-expansion@1.1.16` to `1.1.18`. `package.json`, all direct dependencies, all production dependency paths, and existing overrides are unchanged. The lockfile changes only the package's version, tarball URL, and integrity. npm 11.9.0's attempted lock-only writes were rejected because each also removed 186 unrelated Linux `libc` metadata lines. The retained six-line lockfile diff was produced by the canonical `npm audit fix --package-lock-only --ignore-scripts` command using npm 11.19.0, which preserved that metadata; npm 11.9.0 then consumed the result through the required clean install and all acceptance checks.
+
+The expired exception was removed completely. The policy now accepts only audit-report version 2 with zero production and zero full-tree findings; it counts the greater of metadata total and vulnerability keys, rejects unknown report versions, and prints the exact returned vulnerability object on a nonzero result. Focused tests prove that production findings, development findings, inconsistent zero metadata with a finding, and future report formats all fail closed.
+
+### PLAN-002 command evidence
+
+| Command / check | Result | Duration | Exact evidence |
+| --- | --- | ---: | --- |
+| Initial `npm audit` | `FAIL` | 61.13 s | One high-severity development advisory for `brace-expansion <1.1.17`; fix available. |
+| Initial `npm audit --json` | `FAIL` | 13.25 s | Audit v2; source `1130588`; total/high 1; production path absent. |
+| Initial `npm audit --omit=dev` | `PASS` | 8.01 s | Zero production vulnerabilities. |
+| Initial `npm audit --omit=dev --json` | `PASS` | 7.50 s | Audit v2; all severity counts zero; empty vulnerability object. |
+| Initial `npm run audit:ci` | `FAIL` | 10.57 s | Existing exception had expired on 2026-08-01. |
+| Initial `npm explain brace-expansion` | `PASS` | 17.62 s | Vulnerable copy isolated to ESLint/minimatch development paths. |
+| Initial `npm ls brace-expansion` | `PASS` | 8.82 s | One `1.1.16` development copy and three unaffected `5.0.8` copies. |
+| Initial `npm ls --all` | `PASS` | 8.22 s | Complete tree exited zero; no invalid dependency. |
+| Existing policy regression test before editing | `PASS` | 20.51 s | One file and five tests passed. |
+| `npm ci --silent` | `PASS` | 127.45 s | Canonical clean install with npm 11.9.0. First attempt stopped at 15.84 s because an allowed local `next start` process held the SWC binary; that process was stopped and the unchanged command passed. |
+| `npm ls --depth=0` | `PASS` | 2.81 s | Direct tree resolved; the same generated optional WASM packages were reported as extraneous. |
+| `npm ls --all` | `PASS` | 4.63 s | 2,432 output lines; exit zero; only expected platform/peer optional omissions, no invalid dependency. |
+| `npm explain brace-expansion` | `PASS` | 3.64 s | Patched root development copy remains under compatible `minimatch@3.1.5`. |
+| `npm ls brace-expansion` | `PASS` | 2.69 s | ESLint path resolves `brace-expansion@1.1.18`; three unaffected copies remain `5.0.8`. |
+| `npm audit` | `PASS` | 6.40 s | Found zero vulnerabilities. |
+| `npm audit --json` | `PASS` | 6.84 s | Audit v2; total/info/low/moderate/high/critical all zero; `vulnerabilities: {}`. |
+| `npm audit --omit=dev` | `PASS` | 5.32 s | Found zero production vulnerabilities. |
+| `npm audit --omit=dev --json` | `PASS` | 6.95 s | Audit v2; every severity count zero; `vulnerabilities: {}`. |
+| `npm run audit:ci` | `PASS` | 28.47 s | `Dependency audit passed with zero known vulnerabilities.` No exception path remains. |
+| `npm run lint` | `PASS` | 264.95 s | No lint errors. |
+| `npm run typecheck` | `PASS` | 121.75 s | TypeScript completed without error. |
+| `npm run check:brand` | `PASS` | 1.03 s | Generated brand files synchronized; brand check passed. |
+| `npm test` | `PASS` | 33.82 s | 117 files and 827 tests passed; Vitest time 25.82 s. |
+| Focused dependency/security tests | `PASS` | 4.43 s | Four files and 24 tests passed: dependency policy, security hardening, identity recovery wrapper, and POS security contracts. |
+| Placeholder-configured `npm run build` | `PASS` | 282.53 s | npm 11.9.0; Next.js 16.2.11; compile 2.9 min; TypeScript 66 s; 35 static pages. |
+| `deno check --no-lock` — control-plane operator function | `PASS` | 1.81 s | Deno 2.8.1; no lockfile written. |
+| `deno check --no-lock` — business identity recovery | `PASS` | 0.15 s | No lockfile written. |
+| `deno check --no-lock` — POS security | `PASS` | 0.14 s | No lockfile written. |
+| `deno check --no-lock` — Command Center gateway | `PASS` | 0.18 s | No lockfile written. |
+| `git diff --check` | `PASS` | — | No whitespace errors before the implementation commit. |
+
+The same-worktree pre/post production-build comparison held at 160 static JavaScript chunks and 16 CSS chunks. Raw JavaScript changed from 6,558,859 to 6,564,896 bytes (+6,037 bytes, approximately 0.09%); the largest chunk remained 427,491 bytes and CSS remained 1,220,962 bytes. No application source or production package changed, and no runtime behavior change was observed or expected from this development-only patch.
+
+No push, pull request, deployment, migration, database/Supabase/Vercel/production action, production write, or `PLAN-001` implementation occurred. Local evidence satisfies the repository portion of `VER-003`; exact-head GitHub Actions still must pass after review/push before `PLAN-002` is merge-ready, so `PLAN-001` remains not merge-ready.
+
 ## Browser and Accessibility Verification
 
 The exact local production build was exercised with placeholder public Supabase configuration and no credentials. It did not connect to or mutate production data.

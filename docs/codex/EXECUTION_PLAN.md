@@ -75,12 +75,13 @@ Make the service-role dispatcher the only main-project entry for every privilege
 
 - **Findings:** `FINDING-003`
 - **Severity:** P1
-- **Status:** PLANNED
-- **Expected files:** `package.json`, `package-lock.json`, dependency-policy metadata only
+- **Status:** LOCALLY IMPLEMENTED AND VERIFIED — NOT MERGED; REMOTE CI NOT RUN
+- **Implemented files:** `package-lock.json`, `scripts/dependency-audit-policy.mts`, `lib/dependency-audit-policy.test.ts`; `package.json` and workflows unchanged
+- **Implementation commit:** `39b1d4265ac1ee99fe5979d51116277421abd3f0`
 - **Dependencies:** None; this is the first merge prerequisite
 - **Production deployment included:** No
 
-Upgrade or override the transitive `brace-expansion` path with npm 11.9.0. Update advisory metadata only after `npm audit` is clean; do not delete/disable the CI gate. Verify clean install, both audits, full repository checks, and GitHub Actions. Roll back the focused lockfile/policy commit if tooling regresses. `PLAN-001` may be investigated or prepared in parallel, but it is not merge-ready while this required gate fails.
+The local implementation resolves the vulnerable development-only `brace-expansion` path from `1.1.16` to `1.1.18` through its existing compatible minimatch range and removes the expired exception. Clean install, both audit forms, the fail-closed policy regression tests, complete repository checks, production build, and four Deno checks pass locally with the required Node 24/npm 11.9.0 verification runtime. Exact-head GitHub Actions remain unrun because this task did not push or open a PR. Review the focused commit and obtain green remote CI before merge; roll back that commit if tooling regresses. `PLAN-001` was not started and is not merge-ready until `PLAN-002` is merged and green.
 
 ### PLAN-003 — Establish production-grade Supabase resilience
 
@@ -226,7 +227,7 @@ Classify all 31 PRs using the table below. Preserve work before any close/retarg
 
 ## Release Order and Gates
 
-1. Merge `PLAN-002` first to restore a trustworthy dependency/security CI gate.
+1. Review the locally verified `PLAN-002` implementation, run exact-head GitHub Actions, and merge it first only when those checks are green.
 2. Prepare and merge the focused `PLAN-001` source/migration change only after `PLAN-002` is green. Investigation or draft preparation may occur earlier, but `PLAN-001` must not be called merge-ready while its required CI gate is failing. This merge is not production activation.
 3. Complete production-tier/backup controls (`PLAN-003`) and migration reconciliation (`PLAN-004`) before any production schema or privilege action.
 4. Restore deployment/observability access (`PLAN-005`) and repair/execute the isolated critical-journey harness (`PLAN-006`).
