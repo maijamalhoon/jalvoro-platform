@@ -2,33 +2,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
-// Keep the CI exception narrow, auditable, and self-expiring.
-const TEMPORARY_ADVISORY_URL =
-  "https://github.com/advisories/GHSA-mh99-v99m-4gvg";
-const TEMPORARY_ADVISORY_SOURCE = 1124334;
-const TEMPORARY_EXCEPTION_EXPIRES_AT = "2026-08-01T00:00:00.000Z";
-const TRACKING_ISSUE =
-  "https://github.com/maijamalhoon/jalvoro-platform/issues/141";
-
-const ALLOWED_DEVELOPMENT_CHAIN = new Set([
-  "@eslint/config-array",
-  "@eslint/eslintrc",
-  "brace-expansion",
-  "eslint",
-  "eslint-config-next",
-  "eslint-plugin-import",
-  "eslint-plugin-jsx-a11y",
-  "eslint-plugin-react",
-  "minimatch",
-]);
-
-type AuditViaAdvisory = {
-  source?: number;
-  url?: string;
-};
-
 type AuditVulnerability = {
-  via?: Array<string | AuditViaAdvisory>;
+  [key: string]: unknown;
 };
 
 export type AuditReport = {
@@ -43,7 +18,7 @@ export type AuditReport = {
 };
 
 export type AuditDecision =
-  | { accepted: true; reason: "clean" | "temporary-development-exception" }
+  | { accepted: true; reason: "clean" }
   | { accepted: false; reason: string };
 
 function vulnerabilityNames(report: AuditReport): string[] {
@@ -52,15 +27,19 @@ function vulnerabilityNames(report: AuditReport): string[] {
 
 function vulnerabilityTotal(report: AuditReport): number {
   const metadataTotal = report.metadata?.vulnerabilities?.total;
-  return typeof metadataTotal === "number"
-    ? metadataTotal
-    : vulnerabilityNames(report).length;
+  const reportedTotal =
+    typeof metadataTotal === "number" &&
+    Number.isFinite(metadataTotal) &&
+    metadataTotal >= 0
+      ? metadataTotal
+      : 0;
+
+  return Math.max(reportedTotal, vulnerabilityNames(report).length);
 }
 
 export function evaluateAuditReports(
   productionReport: AuditReport,
   fullReport: AuditReport,
-  now = new Date(),
 ): AuditDecision {
   if (
     productionReport.auditReportVersion !== 2 ||
@@ -76,52 +55,28 @@ export function evaluateAuditReports(
     };
   }
 
-  if (vulnerabilityTotal(fullReport) === 0) {
-    return { accepted: true, reason: "clean" };
-  }
-
-  if (now.getTime() >= Date.parse(TEMPORARY_EXCEPTION_EXPIRES_AT)) {
+  if (vulnerabilityTotal(fullReport) !== 0) {
     return {
       accepted: false,
-      reason: "The temporary development advisory exception has expired.",
+      reason: "A dependency vulnerability is present in the full audit.",
     };
   }
 
-  if ((fullReport.metadata?.vulnerabilities?.critical ?? 0) > 0) {
-    return {
-      accepted: false,
-      reason: "A critical development dependency vulnerability is present.",
-    };
+  return { accepted: true, reason: "clean" };
+}
+
+function reportVulnerabilities(label: string, report: AuditReport): void {
+  if (vulnerabilityTotal(report) === 0) {
+    return;
   }
 
-  const names = vulnerabilityNames(fullReport);
-  if (
-    names.length === 0 ||
-    names.some((name) => !ALLOWED_DEVELOPMENT_CHAIN.has(name))
-  ) {
-    return {
-      accepted: false,
-      reason: "The full audit contains an unapproved vulnerability chain.",
-    };
-  }
-
-  const braceExpansion = fullReport.vulnerabilities?.["brace-expansion"];
-  const advisory = braceExpansion?.via?.find(
-    (entry): entry is AuditViaAdvisory =>
-      typeof entry === "object" && entry !== null,
+  console.error(
+    `${label} audit vulnerabilities:\n${JSON.stringify(
+      report.vulnerabilities ?? {},
+      null,
+      2,
+    )}`,
   );
-
-  if (
-    advisory?.source !== TEMPORARY_ADVISORY_SOURCE ||
-    advisory.url !== TEMPORARY_ADVISORY_URL
-  ) {
-    return {
-      accepted: false,
-      reason: "The development advisory identity does not match the exception.",
-    };
-  }
-
-  return { accepted: true, reason: "temporary-development-exception" };
 }
 
 function runNpmAudit(extraArguments: string[]): AuditReport {
@@ -160,25 +115,14 @@ function main(): void {
     const decision = evaluateAuditReports(productionReport, fullReport);
 
     if (!decision.accepted) {
+      reportVulnerabilities("Production", productionReport);
+      reportVulnerabilities("Full", fullReport);
       console.error(`Dependency audit rejected: ${decision.reason}`);
       process.exitCode = 1;
       return;
     }
 
-    if (decision.reason === "clean") {
-      console.log("Dependency audit passed with zero known vulnerabilities.");
-      return;
-    }
-
-    console.warn(
-      [
-        "Dependency audit passed with one time-bounded development-only exception:",
-        `- advisory: ${TEMPORARY_ADVISORY_URL}`,
-        `- expires: ${TEMPORARY_EXCEPTION_EXPIRES_AT}`,
-        `- tracking: ${TRACKING_ISSUE}`,
-        "- production dependency vulnerabilities: 0",
-      ].join("\n"),
-    );
+    console.log("Dependency audit passed with zero known vulnerabilities.");
   } catch (error) {
     console.error(
       `Dependency audit failed: ${
