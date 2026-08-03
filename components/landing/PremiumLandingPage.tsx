@@ -177,7 +177,7 @@ function ProductPreview() {
           <div className="flex items-center justify-between gap-5">
             <div>
               <p className="m-0 text-[11px] font-semibold text-slate-400">Unified workspace</p>
-              <strong className="mt-1 block text-lg tracking-tight max-sm:text-sm">Good evening, Jamal</strong>
+              <strong className="mt-1 block text-lg tracking-tight max-sm:text-sm">Your unified workspace</strong>
             </div>
             <span className="inline-flex items-center gap-2 text-[11px] font-semibold text-slate-500 max-sm:hidden"><i className="size-2 rounded-full bg-emerald-500 shadow-[0_0_0_5px_rgba(16,185,129,.1)]" /> Demo workspace</span>
           </div>
