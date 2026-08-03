@@ -1,12 +1,12 @@
 import {
+  BrainCircuit,
+  Building2,
   CircleDollarSign,
   Handshake,
   Landmark,
   ShoppingCart,
   type LucideIcon,
   WalletCards,
-  Building2,
-  BrainCircuit,
 } from "lucide-react";
 
 import { APP_NAME, brand } from "@/lib/brand";
@@ -121,32 +121,128 @@ export const capabilityGroups = [
 ] as const;
 
 export const container =
-  "mx-auto w-[calc(100%-1.75rem)] max-w-[1480px] 2xl:w-[calc(100%-8rem)]";
+  "mx-auto w-[calc(100%-1.5rem)] max-w-[1480px] sm:w-[calc(100%-2.5rem)] 2xl:w-[calc(100%-8rem)]";
 export const focus =
-  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20";
+  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25";
 export const sectionSpace = "py-[clamp(5rem,7vw,7.5rem)]";
 export const sectionTitle =
-  "mt-3 text-balance text-[clamp(2.2rem,3.7vw,4.2rem)] font-[710] leading-[1.04] tracking-[-0.05em] text-[#12211b]";
+  "mt-3 text-balance text-[clamp(2.2rem,3.7vw,4.2rem)] font-[710] leading-[1.04] tracking-[-0.05em] text-text-primary";
 
 export const landingStyles = String.raw`
   .jv-atomic ~ .landing-math-field { display: none !important; }
-  .jv-enter { animation: jv-enter .72s cubic-bezier(.22,1,.36,1) both; }
-  .jv-enter-late { animation: jv-enter .82s .08s cubic-bezier(.22,1,.36,1) both; }
-  .jv-chart-line { stroke-dasharray: 900; stroke-dashoffset: 900; animation: jv-draw 1.5s .45s ease forwards; }
-  .jv-preview-shell { transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; }
-  @media (hover: hover) and (pointer: fine) {
-    .jv-preview-shell:hover { transform: translateY(-3px); box-shadow: 0 28px 78px rgba(28,55,43,.14); }
+  .jv-hero-viewport {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 100svh;
   }
+  .jv-enter { animation: jv-enter .68s cubic-bezier(.22,1,.36,1) both; }
+  .jv-enter-late { animation: jv-enter .76s .08s cubic-bezier(.22,1,.36,1) both; }
+  .jv-usecase-viewport {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+  }
+  .jv-usecase-track {
+    display: flex;
+    width: max-content;
+    animation: jv-usecase-loop 48s linear infinite;
+    will-change: transform;
+  }
+  .jv-usecase-viewport:hover .jv-usecase-track,
+  .jv-usecase-viewport:focus-visible .jv-usecase-track,
+  .jv-usecase-viewport:focus-within .jv-usecase-track {
+    animation-play-state: paused;
+  }
+  .jv-usecase-card {
+    box-shadow: var(--shadow-md), var(--surface-highlight);
+    transition:
+      transform var(--motion-duration-base) var(--motion-ease),
+      border-color var(--motion-duration-base) var(--motion-ease),
+      box-shadow var(--motion-duration-base) var(--motion-ease);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .jv-usecase-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-lg), var(--surface-highlight);
+    }
+  }
+  .jv-mini-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transform-origin: left center;
+    animation: jv-bar-fill 2.8s cubic-bezier(.22,1,.36,1) infinite alternate;
+  }
+  .jv-mini-bar:nth-child(2) > span { animation-delay: .18s; }
+  .jv-mini-bar:nth-child(3) > span { animation-delay: .34s; }
+  .jv-spark-line {
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+    animation: jv-line-draw 3.8s .25s cubic-bezier(.22,1,.36,1) infinite;
+  }
+  .jv-live-dot { animation: jv-live 1.9s ease-in-out infinite; }
   @keyframes jv-enter {
-    from { opacity: 0; transform: translateY(18px); }
+    from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  @keyframes jv-draw { to { stroke-dashoffset: 0; } }
+  @keyframes jv-usecase-loop {
+    to { transform: translateX(-50%); }
+  }
+  @keyframes jv-bar-fill {
+    from { transform: scaleX(.58); opacity: .72; }
+    to { transform: scaleX(1); opacity: 1; }
+  }
+  @keyframes jv-line-draw {
+    0%, 12% { stroke-dashoffset: 220; opacity: .55; }
+    55%, 88% { stroke-dashoffset: 0; opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: .55; }
+  }
+  @keyframes jv-live {
+    0%, 100% { opacity: .55; transform: scale(.78); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+  @media (max-width: 639px) {
+    .jv-usecase-viewport {
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+    }
+    .jv-usecase-track { animation-duration: 42s; }
+  }
+  @media (max-height: 760px) {
+    .jv-landing-header { padding-top: .5rem !important; }
+    .jv-hero-grid { padding-block: .75rem !important; gap: .75rem !important; }
+    .jv-hero-title { margin-top: .65rem !important; font-size: clamp(2rem, 5.8vw, 4.25rem) !important; }
+    .jv-hero-copy { margin-top: .65rem !important; line-height: 1.45 !important; }
+    .jv-hero-actions { margin-top: .8rem !important; }
+    .jv-hero-proof { margin-top: .65rem !important; }
+    .jv-usecase-card { height: 220px !important; }
+    .jv-card-description { display: none; }
+  }
+  @media (max-height: 660px) {
+    .jv-hero-badge,
+    .jv-hero-proof { display: none !important; }
+    .jv-hero-grid { padding-block: .5rem !important; }
+    .jv-hero-title { margin-top: 0 !important; }
+    .jv-usecase-card { height: 198px !important; }
+    .jv-card-compact-hide { display: none !important; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .jv-atomic *, .jv-atomic *::before, .jv-atomic *::after {
       animation-duration: .01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: .01ms !important;
     }
+    .jv-usecase-viewport {
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-mask-image: none;
+      mask-image: none;
+      scrollbar-width: none;
+    }
+    .jv-usecase-viewport::-webkit-scrollbar { display: none; }
+    .jv-usecase-track { width: max-content; transform: none !important; }
+    .jv-usecase-copy { display: none !important; }
+    .jv-usecase-card { scroll-snap-align: center; }
   }
 `;
