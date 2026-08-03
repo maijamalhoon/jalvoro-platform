@@ -1,40 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
+  ArrowLeft,
+  ArrowRight,
   BarChart3,
   BrainCircuit,
   Building2,
   CheckCircle2,
-  CircleDollarSign,
   Clock3,
   Goal,
   PackageSearch,
-  ReceiptText,
   ShoppingCart,
+  TrendingDown,
   TrendingUp,
   Users,
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
 
-type UseCaseId =
-  | "overview"
-  | "insights"
-  | "goals"
-  | "pos"
-  | "inventory"
-  | "crm"
-  | "accounting"
-  | "team";
+type Tone = "success" | "warning";
+type TrendDirection = "up" | "down";
 
 type UseCase = {
-  id: UseCaseId;
+  id: string;
   kicker: string;
   title: string;
   description: string;
   icon: LucideIcon;
-  warning?: boolean;
+  tone?: Tone;
+  headlineLabel: string;
+  headlineValue: number;
+  headlinePrefix?: string;
+  headlineSuffix?: string;
+  headlineDecimals?: number;
+  trend: string;
+  trendDirection?: TrendDirection;
+  progress?: number;
+  metrics: readonly [string, string, string?][];
+  rows: readonly [string, string, string, Tone?][];
 };
 
 const useCases: readonly UseCase[] = [
@@ -43,8 +47,22 @@ const useCases: readonly UseCase[] = [
     kicker: "Personal overview",
     title: "See your complete money picture",
     description:
-      "Accounts, income, spending, liabilities, and net worth in one private view.",
+      "Accounts, spending, liabilities, savings, and net worth in one private view.",
     icon: WalletCards,
+    headlineLabel: "Illustrative net worth",
+    headlineValue: 248500,
+    headlinePrefix: "PKR ",
+    trend: "PKR 19,400 higher this month",
+    metrics: [
+      ["Income", "PKR 185,000", "Salary + side income"],
+      ["Spending", "PKR 112,600", "61% of income"],
+      ["Saved", "PKR 72,400", "39% savings rate"],
+    ],
+    rows: [
+      ["Primary bank", "Available balance", "PKR 126,800"],
+      ["Savings account", "Emergency reserve", "PKR 152,000"],
+      ["Credit card", "Payment due in 8 days", "PKR 54,000", "warning"],
+    ],
   },
   {
     id: "insights",
@@ -53,14 +71,45 @@ const useCases: readonly UseCase[] = [
     description:
       "Turn verified personal activity into useful guidance without invented data.",
     icon: BrainCircuit,
+    headlineLabel: "Spending below recent average",
+    headlineValue: 11,
+    headlineSuffix: "%",
+    trend: "92% confidence from verified records",
+    trendDirection: "down",
+    progress: 92,
+    metrics: [
+      ["Dining", "−PKR 6,240", "Largest reduction"],
+      ["Transport", "−PKR 3,180", "Fuel + rides"],
+      ["Categorized", "96%", "Transactions covered"],
+    ],
+    rows: [
+      ["Essential bills", "Within normal range", "On track"],
+      ["Subscriptions", "One possible duplicate", "Review", "warning"],
+      ["Unverified records", "Need confirmation", "2", "warning"],
+    ],
   },
   {
     id: "goals",
     kicker: "Goals and wealth",
     title: "Track progress without spreadsheets",
     description:
-      "Keep goals, investments, and liabilities connected to your real cash flow.",
+      "Keep goals, investments, and liabilities connected to real cash flow.",
     icon: Goal,
+    headlineLabel: "Emergency fund complete",
+    headlineValue: 72,
+    headlineSuffix: "%",
+    trend: "PKR 360,000 of PKR 500,000",
+    progress: 72,
+    metrics: [
+      ["Home deposit", "38%", "PKR 760,000 saved"],
+      ["Debt cleared", "61%", "PKR 94,000 remains"],
+      ["Coverage", "4.8 mo", "Essential expenses"],
+    ],
+    rows: [
+      ["Next contribution", "Emergency fund · 5 Sep", "PKR 25,000"],
+      ["Investment plan", "Monthly contribution", "PKR 18,000"],
+      ["Debt payment", "Scheduled · 12 Sep", "PKR 16,500"],
+    ],
   },
   {
     id: "pos",
@@ -69,6 +118,20 @@ const useCases: readonly UseCase[] = [
     description:
       "Connect checkout, returns, payments, daily cash, and stock movement.",
     icon: ShoppingCart,
+    headlineLabel: "Illustrative sales today",
+    headlineValue: 184250,
+    headlinePrefix: "PKR ",
+    trend: "8.6% above today’s target",
+    metrics: [
+      ["Orders", "126", "Average ticket PKR 1,462"],
+      ["Card/wallet", "54%", "PKR 99,495"],
+      ["Cash", "46%", "PKR 84,755"],
+    ],
+    rows: [
+      ["Top selling line", "24 units sold", "PKR 31,200"],
+      ["Returns", "4 completed today", "PKR 5,840", "warning"],
+      ["Closing cash", "Expected drawer amount", "PKR 84,755"],
+    ],
   },
   {
     id: "inventory",
@@ -77,7 +140,23 @@ const useCases: readonly UseCase[] = [
     description:
       "Watch stock movement, low-stock items, and reorder attention in one place.",
     icon: PackageSearch,
-    warning: true,
+    tone: "warning",
+    headlineLabel: "Items needing attention",
+    headlineValue: 15,
+    headlineSuffix: " items",
+    trend: "12 low stock · 3 out of stock",
+    trendDirection: "down",
+    progress: 94.7,
+    metrics: [
+      ["Active SKUs", "1,248", "Across all locations"],
+      ["Stock value", "PKR 2.84m", "Illustrative estimate"],
+      ["Stock health", "94.7%", "Within threshold"],
+    ],
+    rows: [
+      ["Oil filter — standard", "Reorder point: 18", "9 left", "warning"],
+      ["Brake pad set", "Reorder point: 10", "4 left", "warning"],
+      ["Coolant 1 litre", "Delivery expected Friday", "0 left", "warning"],
+    ],
   },
   {
     id: "crm",
@@ -86,14 +165,43 @@ const useCases: readonly UseCase[] = [
     description:
       "Connect leads, customers, ownership, follow-ups, and pipeline progress.",
     icon: Users,
+    headlineLabel: "Illustrative active pipeline",
+    headlineValue: 1920000,
+    headlinePrefix: "PKR ",
+    trend: "18 opportunities · 5 due today",
+    progress: 68,
+    metrics: [
+      ["New", "8", "Recently added"],
+      ["Qualified", "7", "Active evaluation"],
+      ["Won", "3", "24.6% conversion"],
+    ],
+    rows: [
+      ["North branch setup", "Proposal review · due today", "PKR 420k"],
+      ["Retail expansion", "Follow-up · 2:30 PM", "PKR 285k", "warning"],
+      ["Annual service plan", "Contract approved", "PKR 180k"],
+    ],
   },
   {
     id: "accounting",
     kicker: "Accounting and reports",
     title: "Read the numbers behind the work",
     description:
-      "Bring revenue, expenses, profit, and reporting into a connected view.",
+      "Bring revenue, expenses, profit, reconciliation, and reporting together.",
     icon: BarChart3,
+    headlineLabel: "Illustrative operating profit",
+    headlineValue: 684200,
+    headlinePrefix: "PKR ",
+    trend: "12.4% operating margin",
+    metrics: [
+      ["Revenue", "PKR 5.52m", "Current period"],
+      ["Expenses", "PKR 4.84m", "Current period"],
+      ["Reconciled", "98%", "148 of 151 entries"],
+    ],
+    rows: [
+      ["Receivables", "7 invoices outstanding", "PKR 462k", "warning"],
+      ["Payables", "4 bills due this week", "PKR 278k", "warning"],
+      ["Bank reconciliation", "3 entries to review", "98%"],
+    ],
   },
   {
     id: "team",
@@ -102,7 +210,22 @@ const useCases: readonly UseCase[] = [
     description:
       "Manage roles, payroll status, pending approvals, and operational ownership.",
     icon: Building2,
-    warning: true,
+    tone: "warning",
+    headlineLabel: "Pending approvals",
+    headlineValue: 6,
+    trend: "2 require action today",
+    trendDirection: "down",
+    progress: 91,
+    metrics: [
+      ["Team", "24", "Active members"],
+      ["Present", "22", "Today’s attendance"],
+      ["Payroll", "Ready", "24 records checked"],
+    ],
+    rows: [
+      ["Supplier payment", "Finance approval required", "PKR 148k", "warning"],
+      ["Role change", "Inventory supervisor", "Review", "warning"],
+      ["Payroll checks", "All records validated", "Ready"],
+    ],
   },
 ];
 
@@ -122,23 +245,16 @@ function CountUp({
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (reduceMotion) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setDisplay(value);
       return;
     }
 
     let frame = 0;
     const startedAt = performance.now();
-    const duration = 1050;
-
     const animate = (time: number) => {
-      const progress = Math.min((time - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(value * eased);
+      const progress = Math.min((time - startedAt) / 920, 1);
+      setDisplay(value * (1 - Math.pow(1 - progress, 3)));
       if (progress < 1) frame = requestAnimationFrame(animate);
     };
 
@@ -146,30 +262,34 @@ function CountUp({
     return () => cancelAnimationFrame(frame);
   }, [cycle, value]);
 
-  const formatted = new Intl.NumberFormat("en-PK", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(display);
-
   return (
     <>
       {prefix}
-      {formatted}
+      {new Intl.NumberFormat("en-PK", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(display)}
       {suffix}
     </>
   );
 }
 
-function Sparkline() {
+function Sparkline({ direction = "up" }: { direction?: TrendDirection }) {
   return (
     <svg
-      className="mt-3 h-11 w-full overflow-visible text-success"
-      viewBox="0 0 220 50"
+      className={`mt-3 h-14 w-full overflow-visible ${
+        direction === "down" ? "text-warning" : "text-success"
+      }`}
+      viewBox="0 0 320 64"
       preserveAspectRatio="none"
       aria-hidden="true"
     >
       <path
-        d="M0 43 C25 39 35 28 55 31 C78 35 91 18 116 22 C139 26 153 8 177 14 C197 19 209 8 220 4"
+        d={
+          direction === "down"
+            ? "M0 12 C34 17 44 30 78 27 C112 24 127 45 161 41 C199 37 218 53 252 49 C283 45 300 55 320 58"
+            : "M0 55 C31 51 48 38 76 41 C109 45 126 26 160 30 C194 34 213 12 248 18 C282 24 299 9 320 5"
+        }
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"
@@ -181,297 +301,165 @@ function Sparkline() {
   );
 }
 
-function MiniBars({ warning = false }: { warning?: boolean }) {
-  const widths = ["86%", "64%", "42%"];
+function ProgressBar({ value, tone = "success" }: { value: number; tone?: Tone }) {
   return (
-    <div className="mt-3 grid gap-2" aria-hidden="true">
-      {widths.map((width, index) => (
-        <span
-          key={width}
-          className="jv-mini-bar h-1.5 overflow-hidden rounded-full bg-surface-secondary"
-        >
-          <span
-            className={warning ? "bg-warning" : "bg-success"}
-            style={{ width }}
-          />
-        </span>
-      ))}
-    </div>
+    <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-surface-secondary">
+      <span
+        className={`jv-progress-fill block h-full rounded-full ${
+          tone === "warning" ? "bg-warning" : "bg-success"
+        }`}
+        style={{ "--jv-progress": `${value}%` } as CSSProperties}
+      />
+    </span>
   );
 }
 
-function UseCaseData({ id, cycle }: { id: UseCaseId; cycle: number }) {
-  switch (id) {
-    case "overview":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-            Sample net worth
-          </span>
-          <strong className="mt-1 block text-[clamp(1.35rem,2vw,1.8rem)] tracking-[-0.045em]">
-            <CountUp value={248500} cycle={cycle} prefix="PKR " />
-          </strong>
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-success">
-            <TrendingUp className="size-3.5" />
-            8.4% this month
-          </div>
-          <Sparkline />
-        </div>
-      );
-
-    case "insights":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-              Verified insight
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-success">
-              <i className="jv-live-dot size-1.5 rounded-full bg-success" />
-              Updated
-            </span>
-          </div>
-          <p className="mt-3 text-sm font-semibold leading-5 text-text-primary">
-            Spending is 11% lower than your recent monthly average.
-          </p>
-          <div className="mt-4 flex items-end justify-between gap-3">
-            <span className="text-[11px] text-text-muted">Confidence</span>
-            <strong className="text-lg">
-              <CountUp value={92} cycle={cycle} suffix="%" />
-            </strong>
-          </div>
-          <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface-secondary">
-            <span className="block h-full w-[92%] rounded-full bg-success" />
-          </span>
-        </div>
-      );
-
-    case "goals":
-      return (
-        <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-4 rounded-2xl border border-border bg-surface-soft p-3.5">
-          <span
-            className="grid aspect-square place-items-center rounded-full p-2"
-            style={{
-              background:
-                "conic-gradient(var(--success) 0 72%, var(--surface-secondary) 72% 100%)",
-            }}
-          >
-            <span className="grid size-full place-items-center rounded-full bg-card text-center">
-              <strong className="text-lg leading-none">
-                <CountUp value={72} cycle={cycle} suffix="%" />
-              </strong>
-            </span>
-          </span>
-          <div>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-              Emergency fund
-            </span>
-            <strong className="mt-1 block text-base">
-              <CountUp value={360000} cycle={cycle} prefix="PKR " />
-            </strong>
-            <small className="mt-1 block text-[11px] text-text-muted">
-              PKR 500,000 target
-            </small>
-          </div>
-        </div>
-      );
-
-    case "pos":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-                Sample sales today
-              </span>
-              <strong className="mt-1 block text-[clamp(1.35rem,2vw,1.8rem)] tracking-[-0.045em]">
-                <CountUp value={18240} cycle={cycle} prefix="PKR " />
-              </strong>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-[10px] font-bold text-success">
-              <i className="jv-live-dot size-1.5 rounded-full bg-success" />
-              Live
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <span className="rounded-xl bg-card p-2.5">
-              <small className="block text-[10px] text-text-muted">Orders</small>
-              <b className="mt-1 block text-sm">
-                <CountUp value={126} cycle={cycle} />
-              </b>
-            </span>
-            <span className="rounded-xl bg-card p-2.5">
-              <small className="block text-[10px] text-text-muted">Returns</small>
-              <b className="mt-1 block text-sm">
-                <CountUp value={4} cycle={cycle} />
-              </b>
-            </span>
-          </div>
-        </div>
-      );
-
-    case "inventory":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-              Stock attention
-            </span>
-            <span className="rounded-full bg-warning-soft px-2.5 py-1 text-[10px] font-bold text-warning">
-              Review
-            </span>
-          </div>
-          <strong className="mt-2 block text-[clamp(1.35rem,2vw,1.8rem)] tracking-[-0.045em]">
-            <CountUp value={12} cycle={cycle} suffix=" items" />
-          </strong>
-          <small className="mt-1 block text-[11px] text-text-muted">
-            Low stock or reorder threshold reached
-          </small>
-          <MiniBars warning />
-        </div>
-      );
-
-    case "crm":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-                Active leads
-              </span>
-              <strong className="mt-1 block text-[clamp(1.35rem,2vw,1.8rem)] tracking-[-0.045em]">
-                <CountUp value={18} cycle={cycle} />
-              </strong>
-            </div>
-            <span className="text-[11px] font-semibold text-success">5 due today</span>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold">
-            <span className="rounded-lg bg-card px-2 py-2 text-text-secondary">
-              New 8
-            </span>
-            <span className="rounded-lg bg-success-soft px-2 py-2 text-success">
-              Active 7
-            </span>
-            <span className="rounded-lg bg-card px-2 py-2 text-text-secondary">
-              Won 3
-            </span>
-          </div>
-          <MiniBars />
-        </div>
-      );
-
-    case "accounting":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-            Sample operating profit
-          </span>
-          <strong className="mt-1 block text-[clamp(1.35rem,2vw,1.8rem)] tracking-[-0.045em]">
-            <CountUp value={68420} cycle={cycle} prefix="PKR " />
-          </strong>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <span className="rounded-xl bg-card p-2.5">
-              <small className="block text-[10px] text-text-muted">Revenue</small>
-              <b className="mt-1 block text-xs">PKR 184k</b>
-            </span>
-            <span className="rounded-xl bg-card p-2.5">
-              <small className="block text-[10px] text-text-muted">Expenses</small>
-              <b className="mt-1 block text-xs">PKR 116k</b>
-            </span>
-          </div>
-          <MiniBars />
-        </div>
-      );
-
-    case "team":
-      return (
-        <div className="rounded-2xl border border-border bg-surface-soft p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-              Pending approvals
-            </span>
-            <Clock3 className="size-4 text-warning" />
-          </div>
-          <strong className="mt-2 block text-[clamp(1.35rem,2vw,1.8rem)] tracking-[-0.045em]">
-            <CountUp value={6} cycle={cycle} />
-          </strong>
-          <div className="mt-3 flex -space-x-2" aria-hidden="true">
-            {["JM", "SA", "AK", "HM"].map((initials) => (
-              <span
-                key={initials}
-                className="grid size-8 place-items-center rounded-full border-2 border-card bg-success-soft text-[9px] font-bold text-success"
-              >
-                {initials}
-              </span>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[11px] font-semibold text-text-secondary">
-            <CheckCircle2 className="size-4 text-success" />
-            Payroll checks ready
-          </div>
-        </div>
-      );
-  }
-}
-
-function UseCaseCard({
-  card,
-  cycle,
-}: {
-  card: UseCase;
-  cycle: number;
-}) {
+function UseCaseCard({ card, cycle, preview = false }: { card: UseCase; cycle: number; preview?: boolean }) {
   const Icon = card.icon;
+  const TrendIcon = card.trendDirection === "down" ? TrendingDown : TrendingUp;
+  const tone = card.tone ?? "success";
 
   return (
-    <article className="jv-usecase-card relative flex h-[246px] w-[min(82vw,282px)] shrink-0 flex-col overflow-hidden rounded-[26px] border border-border bg-card p-5 text-text-primary sm:h-[280px] sm:w-[300px] xl:h-[310px] xl:w-[320px]">
+    <article
+      className={`jv-usecase-card relative flex h-[clamp(330px,50svh,470px)] w-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-border bg-card p-5 text-text-primary sm:p-6 ${
+        preview ? "jv-usecase-card-preview" : ""
+      }`}
+    >
       <span
-        className={`absolute -right-14 -top-14 size-36 rounded-full blur-2xl ${
-          card.warning ? "bg-warning-soft" : "bg-success-soft"
+        className={`absolute -right-16 -top-16 size-44 rounded-full blur-3xl ${
+          tone === "warning" ? "bg-warning-soft" : "bg-success-soft"
         }`}
         aria-hidden="true"
       />
 
       <div className="relative flex items-start justify-between gap-3">
         <span
-          className={`grid size-11 place-items-center rounded-[14px] ${
-            card.warning
+          className={`grid size-12 shrink-0 place-items-center rounded-[15px] ${
+            tone === "warning"
               ? "bg-warning-soft text-warning"
               : "bg-success-soft text-success"
           }`}
         >
-          <Icon className="size-5" />
+          <Icon className="size-[22px]" />
         </span>
-        <span className="rounded-full border border-border bg-surface-soft px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-text-muted">
+        <span className="rounded-full border border-border bg-surface-soft px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-text-muted">
           {card.kicker}
         </span>
       </div>
 
-      <h3 className="relative mt-4 text-[1.05rem] font-bold leading-[1.18] tracking-[-0.025em] sm:text-[1.15rem]">
+      <h3 className="relative mt-5 text-[clamp(1.2rem,2vw,1.55rem)] font-bold leading-[1.14] tracking-[-0.035em] text-text-primary">
         {card.title}
       </h3>
-      <p className="jv-card-description relative mt-2 text-xs leading-5 text-text-secondary">
+      <p className="jv-card-description relative mt-2 text-xs leading-5 text-text-secondary sm:text-[13px]">
         {card.description}
       </p>
 
-      <div className="relative mt-auto pt-4">
-        <UseCaseData id={card.id} cycle={cycle} />
+      <div className="jv-card-scroll relative mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+        <div className="grid gap-3 pb-1">
+          <section className="rounded-2xl border border-border bg-surface-soft p-4">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
+              {card.headlineLabel}
+            </span>
+            <strong className="mt-1 block text-[clamp(1.65rem,2.5vw,2.25rem)] tracking-[-0.045em] text-text-primary">
+              <CountUp
+                value={card.headlineValue}
+                cycle={cycle}
+                prefix={card.headlinePrefix}
+                suffix={card.headlineSuffix}
+                decimals={card.headlineDecimals}
+              />
+            </strong>
+            <div
+              className={`mt-1 flex items-center gap-1.5 text-[11px] font-semibold ${
+                card.trendDirection === "down" ? "text-warning" : "text-success"
+              }`}
+            >
+              <TrendIcon className="size-3.5" />
+              {card.trend}
+            </div>
+            {card.progress === undefined ? (
+              <Sparkline direction={card.trendDirection} />
+            ) : (
+              <ProgressBar value={card.progress} tone={tone} />
+            )}
+          </section>
+
+          <div className="grid grid-cols-3 gap-2">
+            {card.metrics.map(([label, value, detail]) => (
+              <span key={label} className="rounded-xl border border-border/70 bg-card p-3">
+                <small className="block text-[9px] font-semibold uppercase tracking-[0.07em] text-text-muted">
+                  {label}
+                </small>
+                <b className="mt-1.5 block text-xs text-text-primary sm:text-sm">{value}</b>
+                {detail ? (
+                  <small className="mt-1 block text-[9px] leading-4 text-text-muted">{detail}</small>
+                ) : null}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid gap-2">
+            {card.rows.map(([label, detail, value, rowTone = "success"]) => (
+              <span
+                key={label}
+                className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border/70 bg-card p-3"
+              >
+                <i
+                  className={`grid size-[34px] place-items-center rounded-[10px] ${
+                    rowTone === "warning"
+                      ? "bg-warning-soft text-warning"
+                      : "bg-success-soft text-success"
+                  }`}
+                >
+                  {rowTone === "warning" ? (
+                    <Clock3 className="size-4" />
+                  ) : (
+                    <CheckCircle2 className="size-4" />
+                  )}
+                </i>
+                <span className="min-w-0">
+                  <b className="block truncate text-[11px] text-text-primary">{label}</b>
+                  <small className="mt-0.5 block truncate text-[10px] text-text-muted">{detail}</small>
+                </span>
+                <strong className="text-[11px] text-text-primary">{value}</strong>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-3 flex items-center justify-between border-t border-border pt-3 text-[9px] font-semibold text-text-muted">
+        <span>Illustrative sample</span>
+        <span>Scroll inside card</span>
       </div>
     </article>
   );
 }
 
 export function HeroUseCaseCarousel() {
+  const [activeIndex, setActiveIndex] = useState(0);
   const [cycle, setCycle] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const activeCard = useCases[activeIndex];
+  const nextCard = useCases[(activeIndex + 1) % useCases.length];
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const interval = window.setInterval(
-      () => setCycle((current) => current + 1),
-      12000,
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timeout = window.setTimeout(() => {
+      setActiveIndex((current) => (current + 1) % useCases.length);
+      setCycle((current) => current + 1);
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeIndex, paused]);
+
+  const move = (direction: -1 | 1) => {
+    setActiveIndex(
+      (current) => (current + direction + useCases.length) % useCases.length,
     );
-    return () => window.clearInterval(interval);
-  }, []);
+    setCycle((current) => current + 1);
+  };
 
   return (
     <figure className="jv-enter-late m-0 min-w-0">
@@ -481,47 +469,67 @@ export function HeroUseCaseCarousel() {
             Eight connected use cases
           </p>
           <strong className="mt-1 block text-sm text-text-primary sm:text-base">
-            See where Jalvoro can fit into your day
+            One focused view at a time
           </strong>
         </div>
-        <span className="hidden items-center gap-2 text-[10px] font-semibold text-text-muted sm:inline-flex">
-          <i className="jv-live-dot size-1.5 rounded-full bg-success" />
-          Auto preview
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="mr-1 hidden items-center gap-2 text-[10px] font-semibold text-text-muted sm:inline-flex">
+            <i className="jv-live-dot size-1.5 rounded-full bg-success" />
+            Changes every 5 seconds
+          </span>
+          <button
+            type="button"
+            onClick={() => move(-1)}
+            className="grid size-10 place-items-center rounded-xl border border-border bg-card text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong"
+            aria-label="Show previous Jalvoro use case"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => move(1)}
+            className="grid size-10 place-items-center rounded-xl border border-border bg-card text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong"
+            aria-label="Show next Jalvoro use case"
+          >
+            <ArrowRight className="size-4" />
+          </button>
+        </div>
       </div>
 
       <div
-        className="jv-usecase-viewport rounded-[28px] py-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25"
+        className="jv-usecase-viewport relative max-w-[780px] overflow-hidden rounded-[30px] p-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25"
         tabIndex={0}
         role="region"
         aria-roledescription="carousel"
-        aria-label="Eight animated Jalvoro use cases. Animation pauses while focused or hovered."
+        aria-label={`Jalvoro use case ${activeIndex + 1} of ${useCases.length}: ${activeCard.title}`}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocusCapture={() => setPaused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
+        }}
       >
-        <div className="jv-usecase-track">
-          <div className="flex gap-3 pr-3 sm:gap-4 sm:pr-4">
-            {useCases.map((card) => (
-              <UseCaseCard key={card.id} card={card} cycle={cycle} />
-            ))}
+        <div className="jv-single-card-stage flex items-stretch gap-4">
+          <div className="jv-active-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(76%,560px)]">
+            <UseCaseCard key={`${activeCard.id}-${cycle}`} card={activeCard} cycle={cycle} />
           </div>
           <div
-            className="jv-usecase-copy flex gap-3 pr-3 sm:gap-4 sm:pr-4"
+            className="jv-next-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(76%,560px)]"
             aria-hidden="true"
           >
-            {useCases.map((card) => (
-              <UseCaseCard
-                key={`copy-${card.id}`}
-                card={card}
-                cycle={cycle}
-              />
-            ))}
+            <UseCaseCard key={`next-${nextCard.id}`} card={nextCard} cycle={cycle} preview />
           </div>
         </div>
       </div>
 
-      <figcaption className="mt-2 px-1 text-[10px] leading-4 text-text-muted sm:text-[11px]">
-        Illustrative interface and sample values only. No live customer data is
-        shown.
-      </figcaption>
+      <div className="mt-3 flex items-center justify-between gap-4 px-1">
+        <figcaption className="text-[10px] leading-4 text-text-muted sm:text-[11px]">
+          Realistic illustrative data only. No live customer information is shown.
+        </figcaption>
+        <span className="shrink-0 text-[10px] font-bold tabular-nums text-text-muted">
+          {String(activeIndex + 1).padStart(2, "0")} / {String(useCases.length).padStart(2, "0")}
+        </span>
+      </div>
     </figure>
   );
 }
