@@ -65,7 +65,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.2.12",
     "shadcn": "3.8.3",
     "supabase": "2.110.0",
     "tailwindcss": "^4",
