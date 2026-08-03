@@ -140,6 +140,9 @@ export const landingStyles = String.raw`
   .jv-hero-grid { overflow: hidden; }
   .jv-enter { animation: jv-enter .68s cubic-bezier(.22,1,.36,1) both; }
   .jv-enter-late { animation: jv-enter .76s .08s cubic-bezier(.22,1,.36,1) both; }
+  .jv-usecase-viewport {
+    touch-action: pan-y;
+  }
   .jv-usecase-viewport::after {
     position: absolute;
     inset: 0 0 0 auto;
@@ -172,6 +175,8 @@ export const landingStyles = String.raw`
   .jv-card-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
   }
   .jv-card-scroll::-webkit-scrollbar { display: none; }
   .jv-usecase-card-preview .jv-card-scroll { overflow: hidden; }
@@ -186,22 +191,24 @@ export const landingStyles = String.raw`
     animation: jv-line-draw 1.65s .18s cubic-bezier(.22,1,.36,1) forwards;
   }
   .jv-live-dot { animation: jv-live 1.9s ease-in-out infinite; }
-  .jv-inverse-panel { color: #f5f8fc; }
+
+  .jv-inverse-panel {
+    color: #f5f8fc;
+  }
   .jv-inverse-panel :is(h1, h2, h3, h4, strong, b) {
     color: #f5f8fc !important;
   }
-  .jv-inverse-muted { color: #c7d1df !important; }
-  .jv-atomic [class*="bg-[#12211b]"] {
-    background-color: #0f1b2d !important;
-    color: #f5f8fc !important;
+  .jv-inverse-muted {
+    color: #c7d1df !important;
   }
-  .jv-atomic [class*="bg-[#12211b]"] :is(h1, h2, h3, h4, strong, b) {
-    color: #f5f8fc !important;
-  }
-  .jv-atomic [class*="bg-[#12211b]"] a[href="/start"] {
+  .jv-inverse-action {
     background: #f5f8fc !important;
     color: #12211b !important;
   }
+  .jv-inverse-action:hover {
+    background: #e9f8f1 !important;
+  }
+
   @media (hover: hover) and (pointer: fine) {
     .jv-usecase-card:not(.jv-usecase-card-preview):hover {
       transform: translateY(-3px);
@@ -228,6 +235,31 @@ export const landingStyles = String.raw`
     0%, 100% { opacity: .55; transform: scale(.78); }
     50% { opacity: 1; transform: scale(1); }
   }
+
+  @media (min-width: 900px) and (max-width: 1279px) and (max-height: 900px) {
+    .jv-hero-grid {
+      grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr) !important;
+      gap: clamp(1.75rem, 3vw, 3rem) !important;
+      padding-block: .9rem !important;
+    }
+    .jv-hero-grid > div:first-child {
+      margin-inline: 0 !important;
+      text-align: left !important;
+    }
+    .jv-hero-badge,
+    .jv-hero-copy,
+    .jv-hero-proof {
+      margin-left: 0 !important;
+    }
+    .jv-hero-actions,
+    .jv-hero-proof {
+      justify-content: flex-start !important;
+    }
+    .jv-hero-title {
+      font-size: clamp(2.35rem, 5vw, 4.25rem) !important;
+    }
+  }
+
   @media (max-width: 639px) {
     .jv-hero-badge { display: none !important; }
     .jv-hero-grid { padding-block: .55rem !important; gap: .55rem !important; }
@@ -261,7 +293,8 @@ export const landingStyles = String.raw`
     .jv-card-scroll { margin-top: .7rem !important; }
     .jv-usecase-viewport::after { width: 2.4rem; }
   }
-  @media (max-height: 760px) {
+
+  @media (max-height: 820px) {
     .jv-landing-header { padding-top: .5rem !important; }
     .jv-hero-grid { padding-block: .65rem !important; gap: .65rem !important; }
     .jv-hero-title {
@@ -271,9 +304,27 @@ export const landingStyles = String.raw`
     .jv-hero-copy { margin-top: .55rem !important; line-height: 1.4 !important; }
     .jv-hero-actions { margin-top: .7rem !important; }
     .jv-hero-proof { margin-top: .55rem !important; }
-    .jv-usecase-card { height: min(44svh, 340px) !important; }
+    .jv-usecase-card { height: min(44svh, 350px) !important; }
   }
-  @media (max-width: 639px) and (max-height: 760px) {
+
+  @media (min-width: 900px) and (max-width: 1279px) and (max-height: 820px) {
+    .jv-hero-title {
+      font-size: clamp(2rem, 4.2vw, 3.2rem) !important;
+      line-height: 1 !important;
+    }
+    .jv-hero-copy {
+      font-size: .9rem !important;
+      line-height: 1.42 !important;
+    }
+    .jv-hero-proof {
+      display: none !important;
+    }
+    .jv-usecase-card {
+      height: min(54svh, 410px) !important;
+    }
+  }
+
+  @media (max-width: 639px) and (max-height: 820px) {
     .jv-hero-grid { padding-block: .32rem !important; gap: .38rem !important; }
     .jv-hero-title {
       margin-top: 0 !important;
@@ -281,8 +332,9 @@ export const landingStyles = String.raw`
     }
     .jv-hero-copy { margin-top: .35rem !important; }
     .jv-hero-actions { margin-top: .45rem !important; }
-    .jv-usecase-card { height: min(39svh, 300px) !important; min-height: 248px; }
+    .jv-usecase-card { height: min(39svh, 305px) !important; min-height: 248px; }
   }
+
   @media (max-height: 660px) {
     .jv-hero-badge,
     .jv-hero-proof { display: none !important; }
@@ -291,9 +343,11 @@ export const landingStyles = String.raw`
     .jv-usecase-card { height: min(40svh, 275px) !important; min-height: 230px; }
     .jv-card-description { display: none !important; }
   }
+
   @media (max-width: 639px) and (max-height: 660px) {
     .jv-usecase-card { height: min(37svh, 248px) !important; min-height: 214px; }
   }
+
   @media (prefers-reduced-motion: reduce) {
     .jv-atomic *, .jv-atomic *::before, .jv-atomic *::after {
       animation-duration: .01ms !important;
