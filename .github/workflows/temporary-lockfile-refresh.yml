@@ -1,9 +1,8 @@
 name: Temporary lockfile refresh
 
 on:
-  push:
-    branches:
-      - agent/landing-hero-carousel-dark-mode
+  pull_request:
+    branches: [main]
     paths:
       - package.json
       - package-lock.json
