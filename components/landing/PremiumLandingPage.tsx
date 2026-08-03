@@ -272,7 +272,7 @@ export default function PremiumLandingPage() {
             <h1 className="mt-6 text-balance text-[clamp(2.8rem,5.15vw,6.15rem)] font-[735] leading-[.97] tracking-[-0.065em]">Run your money, shop, team, and business <span className="text-emerald-600">without the app chaos.</span></h1>
             <p className="mx-auto mt-6 max-w-[690px] text-[clamp(1rem,1.35vw,1.24rem)] leading-7 text-slate-600 lg:mx-0 lg:leading-8">{APP_NAME} connects the tools you use today with the operations you will need tomorrow—inside one clear, private, and responsive platform.</p>
             <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap sm:justify-center lg:justify-start">
-              <PrimaryLink href="/start">Start with Jalvoro</PrimaryLink>
+              <PrimaryLink href="/start">Start with {APP_NAME}</PrimaryLink>
               <Link href="#workspaces" className={`inline-flex min-h-14 items-center justify-center gap-2.5 rounded-2xl border border-[#12211b]/10 bg-white/75 px-6 text-sm font-bold transition hover:-translate-y-0.5 hover:border-[#12211b]/20 hover:bg-white ${focus}`}>Explore the platform<ChevronRight className="size-[18px]" /></Link>
             </div>
             <div className="mx-auto mt-7 grid w-max max-w-full justify-start gap-3 text-left text-xs font-semibold text-slate-600 sm:flex sm:flex-wrap sm:justify-center sm:gap-x-5 lg:mx-0 lg:justify-start">
