@@ -124,7 +124,7 @@ function LandingHero() {
           <PrimaryLink href="/start">Start with {APP_NAME}</PrimaryLink>
           <Link
             href="#workspaces"
-            className={`inline-flex min-h-12 items-center justify-center gap-2.5 rounded-2xl border border-border bg-card/80 px-5 text-sm font-bold text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong hover:bg-card sm:min-h-14 sm:px-6 ${focus}`}
+            className={`hidden min-h-12 items-center justify-center gap-2.5 rounded-2xl border border-border bg-card/80 px-5 text-sm font-bold text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong hover:bg-card sm:inline-flex sm:min-h-14 sm:px-6 ${focus}`}
           >
             See what it covers
             <ChevronRight className="size-[18px]" />
