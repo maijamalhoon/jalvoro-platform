@@ -1,0 +1,56 @@
+name: Temporary Hono lock refresh
+
+on:
+  push:
+    branches:
+      - agent/landing-final-quality-pass
+    paths:
+      - package.json
+      - .github/workflows/temporary-hono-lock-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Refresh package lock only
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify patched Hono lock entry
+        shell: bash
+        run: |
+          node <<'NODE'
+          const lock = require('./package-lock.json')
+          const versions = Object.entries(lock.packages ?? {})
+            .filter(([path]) => path.endsWith('/hono') || path === 'node_modules/hono')
+            .map(([path, entry]) => [path, entry.version])
+          console.log(versions)
+          if (versions.length === 0 || versions.some(([, version]) => version !== '4.12.34')) {
+            process.exit(1)
+          }
+          NODE
+
+      - name: Commit refreshed lockfile
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfile already current."
+          else
+            git commit -m "Refresh lockfile for patched Hono"
+            git push
+          fi
