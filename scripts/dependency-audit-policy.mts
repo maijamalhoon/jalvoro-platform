@@ -2,126 +2,251 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
-// Keep the CI exception narrow, auditable, and self-expiring.
-const TEMPORARY_ADVISORY_URL =
-  "https://github.com/advisories/GHSA-mh99-v99m-4gvg";
-const TEMPORARY_ADVISORY_SOURCE = 1124334;
-const TEMPORARY_EXCEPTION_EXPIRES_AT = "2026-08-01T00:00:00.000Z";
-const TRACKING_ISSUE =
-  "https://github.com/maijamalhoon/jalvoro-platform/issues/141";
-
-const ALLOWED_DEVELOPMENT_CHAIN = new Set([
-  "@eslint/config-array",
-  "@eslint/eslintrc",
-  "brace-expansion",
-  "eslint",
-  "eslint-config-next",
-  "eslint-plugin-import",
-  "eslint-plugin-jsx-a11y",
-  "eslint-plugin-react",
-  "minimatch",
-]);
-
-type AuditViaAdvisory = {
-  source?: number;
-  url?: string;
-};
-
-type AuditVulnerability = {
-  via?: Array<string | AuditViaAdvisory>;
-};
-
 export type AuditReport = {
-  auditReportVersion?: number;
-  vulnerabilities?: Record<string, AuditVulnerability>;
-  metadata?: {
-    vulnerabilities?: {
-      total?: number;
-      critical?: number;
-    };
-  };
+  auditReportVersion?: unknown;
+  vulnerabilities?: unknown;
+  metadata?: unknown;
+  [key: string]: unknown;
+};
+
+export type NpmAuditProcessResult = {
+  error?: Error;
+  signal: NodeJS.Signals | null;
+  status: number | null;
+  stdout: string;
+  stderr: string;
 };
 
 export type AuditDecision =
-  | { accepted: true; reason: "clean" | "temporary-development-exception" }
+  | { accepted: true; reason: "clean" }
   | { accepted: false; reason: string };
 
-function vulnerabilityNames(report: AuditReport): string[] {
-  return Object.keys(report.vulnerabilities ?? {}).sort();
+const VULNERABILITY_COUNTER_NAMES = [
+  "info",
+  "low",
+  "moderate",
+  "high",
+  "critical",
+  "total",
+] as const;
+
+type VulnerabilityCounterName = (typeof VULNERABILITY_COUNTER_NAMES)[number];
+type VulnerabilityCounters = Record<VulnerabilityCounterName, number>;
+type PlainObject = Record<string, unknown>;
+
+type AuditReportValidation =
+  | {
+      valid: true;
+      counters: VulnerabilityCounters;
+      vulnerabilities: PlainObject;
+    }
+  | { valid: false; reason: string };
+
+function isPlainObject(value: unknown): value is PlainObject {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
-function vulnerabilityTotal(report: AuditReport): number {
-  const metadataTotal = report.metadata?.vulnerabilities?.total;
-  return typeof metadataTotal === "number"
-    ? metadataTotal
-    : vulnerabilityNames(report).length;
+function validateAuditReport(report: AuditReport): AuditReportValidation {
+  if (report.auditReportVersion !== 2) {
+    return { valid: false, reason: "Unsupported npm audit report format." };
+  }
+
+  if (!isPlainObject(report.vulnerabilities)) {
+    return {
+      valid: false,
+      reason: "The vulnerabilities map must be a non-null plain object.",
+    };
+  }
+
+  if (!isPlainObject(report.metadata)) {
+    return {
+      valid: false,
+      reason: "The metadata object is missing or malformed.",
+    };
+  }
+
+  const vulnerabilityMetadata = report.metadata.vulnerabilities;
+  if (!isPlainObject(vulnerabilityMetadata)) {
+    return {
+      valid: false,
+      reason: "The metadata vulnerability counters are missing or malformed.",
+    };
+  }
+
+  const counters = {} as VulnerabilityCounters;
+  for (const name of VULNERABILITY_COUNTER_NAMES) {
+    const value = vulnerabilityMetadata[name];
+    if (
+      !Object.hasOwn(vulnerabilityMetadata, name) ||
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      !Number.isInteger(value) ||
+      value < 0
+    ) {
+      return {
+        valid: false,
+        reason: `The ${name} vulnerability counter must be a finite non-negative integer.`,
+      };
+    }
+
+    counters[name] = value;
+  }
+
+  const severityTotal =
+    counters.info +
+    counters.low +
+    counters.moderate +
+    counters.high +
+    counters.critical;
+
+  if (counters.total === 0 && severityTotal !== 0) {
+    return {
+      valid: false,
+      reason: "The total is zero while a severity counter is nonzero.",
+    };
+  }
+
+  if (counters.total !== severityTotal) {
+    return {
+      valid: false,
+      reason: "The total does not equal the sum of the severity counters.",
+    };
+  }
+
+  const vulnerabilityCount = Object.keys(report.vulnerabilities).length;
+  if (counters.total === 0 && vulnerabilityCount !== 0) {
+    return {
+      valid: false,
+      reason: "The vulnerability map is nonempty while the total is zero.",
+    };
+  }
+
+  if (counters.total > 0 && vulnerabilityCount === 0) {
+    return {
+      valid: false,
+      reason: "The vulnerability map is empty while the total is nonzero.",
+    };
+  }
+
+  return {
+    valid: true,
+    counters,
+    vulnerabilities: report.vulnerabilities,
+  };
+}
+
+function malformedAuditDecision(
+  label: "production" | "full",
+  reason: string,
+): AuditDecision {
+  if (reason === "Unsupported npm audit report format.") {
+    return { accepted: false, reason };
+  }
+
+  return {
+    accepted: false,
+    reason: `Malformed or inconsistent ${label} npm audit report: ${reason}`,
+  };
 }
 
 export function evaluateAuditReports(
   productionReport: AuditReport,
   fullReport: AuditReport,
-  now = new Date(),
 ): AuditDecision {
-  if (
-    productionReport.auditReportVersion !== 2 ||
-    fullReport.auditReportVersion !== 2
-  ) {
-    return { accepted: false, reason: "Unsupported npm audit report format." };
+  const productionValidation = validateAuditReport(productionReport);
+  if (!productionValidation.valid) {
+    return malformedAuditDecision("production", productionValidation.reason);
   }
 
-  if (vulnerabilityTotal(productionReport) !== 0) {
+  const fullValidation = validateAuditReport(fullReport);
+  if (!fullValidation.valid) {
+    return malformedAuditDecision("full", fullValidation.reason);
+  }
+
+  if (productionValidation.counters.total !== 0) {
     return {
       accepted: false,
       reason: "A production dependency vulnerability is present.",
     };
   }
 
-  if (vulnerabilityTotal(fullReport) === 0) {
-    return { accepted: true, reason: "clean" };
-  }
-
-  if (now.getTime() >= Date.parse(TEMPORARY_EXCEPTION_EXPIRES_AT)) {
+  if (fullValidation.counters.total !== 0) {
     return {
       accepted: false,
-      reason: "The temporary development advisory exception has expired.",
+      reason: "A dependency vulnerability is present in the full audit.",
     };
   }
 
-  if ((fullReport.metadata?.vulnerabilities?.critical ?? 0) > 0) {
-    return {
-      accepted: false,
-      reason: "A critical development dependency vulnerability is present.",
-    };
-  }
+  return { accepted: true, reason: "clean" };
+}
 
-  const names = vulnerabilityNames(fullReport);
+function reportVulnerabilities(label: string, report: AuditReport): void {
   if (
-    names.length === 0 ||
-    names.some((name) => !ALLOWED_DEVELOPMENT_CHAIN.has(name))
+    !isPlainObject(report.vulnerabilities) ||
+    Object.keys(report.vulnerabilities).length === 0
   ) {
-    return {
-      accepted: false,
-      reason: "The full audit contains an unapproved vulnerability chain.",
-    };
+    return;
   }
 
-  const braceExpansion = fullReport.vulnerabilities?.["brace-expansion"];
-  const advisory = braceExpansion?.via?.find(
-    (entry): entry is AuditViaAdvisory =>
-      typeof entry === "object" && entry !== null,
+  console.error(
+    `${label} audit vulnerabilities:\n${JSON.stringify(
+      report.vulnerabilities ?? {},
+      null,
+      2,
+    )}`,
   );
+}
 
-  if (
-    advisory?.source !== TEMPORARY_ADVISORY_SOURCE ||
-    advisory.url !== TEMPORARY_ADVISORY_URL
-  ) {
-    return {
-      accepted: false,
-      reason: "The development advisory identity does not match the exception.",
-    };
+export function parseNpmAuditProcessResult(
+  result: NpmAuditProcessResult,
+): AuditReport {
+  if (result.error) {
+    throw new Error(`npm audit could not start: ${result.error.message}`);
   }
 
-  return { accepted: true, reason: "temporary-development-exception" };
+  if (result.signal !== null) {
+    throw new Error(`npm audit was terminated by signal ${result.signal}.`);
+  }
+
+  if (result.status !== 0 && result.status !== 1) {
+    throw new Error(
+      `npm audit exited with unexpected status ${String(result.status)}.`,
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(result.stdout) as unknown;
+  } catch {
+    throw new Error("npm audit did not return valid JSON.");
+  }
+
+  if (!isPlainObject(parsed)) {
+    throw new Error("npm audit did not return a JSON report object.");
+  }
+
+  if (Object.hasOwn(parsed, "error")) {
+    throw new Error("npm audit returned a transport or configuration error.");
+  }
+
+  const report = parsed as AuditReport;
+  const validation = validateAuditReport(report);
+  if (
+    result.status === 1 &&
+    validation.valid &&
+    validation.counters.total === 0
+  ) {
+    throw new Error(
+      "npm audit exited with status 1 but reported zero vulnerabilities.",
+    );
+  }
+
+  return report;
 }
 
 function runNpmAudit(extraArguments: string[]): AuditReport {
@@ -139,18 +264,7 @@ function runNpmAudit(extraArguments: string[]): AuditReport {
     },
   );
 
-  if (result.error) {
-    throw new Error(`npm audit could not start: ${result.error.message}`);
-  }
-
-  try {
-    return JSON.parse(result.stdout) as AuditReport;
-  } catch {
-    const diagnostic = result.stderr.trim() || result.stdout.trim();
-    throw new Error(
-      `npm audit did not return valid JSON${diagnostic ? `: ${diagnostic}` : "."}`,
-    );
-  }
+  return parseNpmAuditProcessResult(result);
 }
 
 function main(): void {
@@ -160,25 +274,14 @@ function main(): void {
     const decision = evaluateAuditReports(productionReport, fullReport);
 
     if (!decision.accepted) {
+      reportVulnerabilities("Production", productionReport);
+      reportVulnerabilities("Full", fullReport);
       console.error(`Dependency audit rejected: ${decision.reason}`);
       process.exitCode = 1;
       return;
     }
 
-    if (decision.reason === "clean") {
-      console.log("Dependency audit passed with zero known vulnerabilities.");
-      return;
-    }
-
-    console.warn(
-      [
-        "Dependency audit passed with one time-bounded development-only exception:",
-        `- advisory: ${TEMPORARY_ADVISORY_URL}`,
-        `- expires: ${TEMPORARY_EXCEPTION_EXPIRES_AT}`,
-        `- tracking: ${TRACKING_ISSUE}`,
-        "- production dependency vulnerabilities: 0",
-      ].join("\n"),
-    );
+    console.log("Dependency audit passed with zero known vulnerabilities.");
   } catch (error) {
     console.error(
       `Dependency audit failed: ${
