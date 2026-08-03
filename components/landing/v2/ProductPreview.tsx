@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -50,7 +50,7 @@ const useCases: readonly UseCase[] = [
       "Accounts, spending, liabilities, savings, and net worth in one private view.",
     icon: WalletCards,
     headlineLabel: "Illustrative net worth",
-    headlineValue: 248500,
+    headlineValue: 224800,
     headlinePrefix: "PKR ",
     trend: "PKR 19,400 higher this month",
     metrics: [
@@ -146,16 +146,16 @@ const useCases: readonly UseCase[] = [
     headlineSuffix: " items",
     trend: "12 low stock · 3 out of stock",
     trendDirection: "down",
-    progress: 94.7,
+    progress: 98.8,
     metrics: [
       ["Active SKUs", "1,248", "Across all locations"],
       ["Stock value", "PKR 2.84m", "Illustrative estimate"],
-      ["Stock health", "94.7%", "Within threshold"],
+      ["Stock health", "98.8%", "Within threshold"],
     ],
     rows: [
-      ["Oil filter — standard", "Reorder point: 18", "9 left", "warning"],
+      ["Standard oil filter", "Reorder point: 18", "9 left", "warning"],
       ["Brake pad set", "Reorder point: 10", "4 left", "warning"],
-      ["Coolant 1 litre", "Delivery expected Friday", "0 left", "warning"],
+      ["Coolant — 1 litre", "Delivery expected Friday", "0 left", "warning"],
     ],
   },
   {
@@ -173,7 +173,7 @@ const useCases: readonly UseCase[] = [
     metrics: [
       ["New", "8", "Recently added"],
       ["Qualified", "7", "Active evaluation"],
-      ["Won", "3", "24.6% conversion"],
+      ["Won", "3", "16.7% conversion"],
     ],
     rows: [
       ["North branch setup", "Proposal review · due today", "PKR 420k"],
@@ -189,9 +189,9 @@ const useCases: readonly UseCase[] = [
       "Bring revenue, expenses, profit, reconciliation, and reporting together.",
     icon: BarChart3,
     headlineLabel: "Illustrative operating profit",
-    headlineValue: 684200,
+    headlineValue: 680000,
     headlinePrefix: "PKR ",
-    trend: "12.4% operating margin",
+    trend: "12.3% operating margin",
     metrics: [
       ["Revenue", "PKR 5.52m", "Current period"],
       ["Expenses", "PKR 4.84m", "Current period"],
@@ -215,7 +215,7 @@ const useCases: readonly UseCase[] = [
     headlineValue: 6,
     trend: "2 require action today",
     trendDirection: "down",
-    progress: 91,
+    progress: 91.7,
     metrics: [
       ["Team", "24", "Active members"],
       ["Present", "22", "Today’s attendance"],
@@ -314,14 +314,22 @@ function ProgressBar({ value, tone = "success" }: { value: number; tone?: Tone }
   );
 }
 
-function UseCaseCard({ card, cycle, preview = false }: { card: UseCase; cycle: number; preview?: boolean }) {
+function UseCaseCard({
+  card,
+  cycle,
+  preview = false,
+}: {
+  card: UseCase;
+  cycle: number;
+  preview?: boolean;
+}) {
   const Icon = card.icon;
   const TrendIcon = card.trendDirection === "down" ? TrendingDown : TrendingUp;
   const tone = card.tone ?? "success";
 
   return (
     <article
-      className={`jv-usecase-card relative flex h-[clamp(330px,50svh,470px)] w-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-border bg-card p-5 text-text-primary sm:p-6 ${
+      className={`jv-usecase-card relative flex h-[clamp(340px,51svh,480px)] w-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-border bg-card p-5 text-text-primary sm:p-6 ${
         preview ? "jv-usecase-card-preview" : ""
       }`}
     >
@@ -384,15 +392,19 @@ function UseCaseCard({ card, cycle, preview = false }: { card: UseCase; cycle: n
             )}
           </section>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {card.metrics.map(([label, value, detail]) => (
               <span key={label} className="rounded-xl border border-border/70 bg-card p-3">
                 <small className="block text-[9px] font-semibold uppercase tracking-[0.07em] text-text-muted">
                   {label}
                 </small>
-                <b className="mt-1.5 block text-xs text-text-primary sm:text-sm">{value}</b>
+                <b className="mt-1.5 block text-xs text-text-primary sm:text-sm">
+                  {value}
+                </b>
                 {detail ? (
-                  <small className="mt-1 block text-[9px] leading-4 text-text-muted">{detail}</small>
+                  <small className="mt-1 block text-[9px] leading-4 text-text-muted">
+                    {detail}
+                  </small>
                 ) : null}
               </span>
             ))}
@@ -402,10 +414,10 @@ function UseCaseCard({ card, cycle, preview = false }: { card: UseCase; cycle: n
             {card.rows.map(([label, detail, value, rowTone = "success"]) => (
               <span
                 key={label}
-                className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border/70 bg-card p-3"
+                className="grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 rounded-xl border border-border/70 bg-card p-3 sm:grid-cols-[34px_minmax(0,1fr)_auto]"
               >
                 <i
-                  className={`grid size-[34px] place-items-center rounded-[10px] ${
+                  className={`row-span-2 grid size-8 place-items-center rounded-[10px] sm:row-span-1 sm:size-[34px] ${
                     rowTone === "warning"
                       ? "bg-warning-soft text-warning"
                       : "bg-success-soft text-success"
@@ -418,10 +430,16 @@ function UseCaseCard({ card, cycle, preview = false }: { card: UseCase; cycle: n
                   )}
                 </i>
                 <span className="min-w-0">
-                  <b className="block truncate text-[11px] text-text-primary">{label}</b>
-                  <small className="mt-0.5 block truncate text-[10px] text-text-muted">{detail}</small>
+                  <b className="block truncate text-[11px] text-text-primary">
+                    {label}
+                  </b>
+                  <small className="mt-0.5 block truncate text-[10px] text-text-muted">
+                    {detail}
+                  </small>
                 </span>
-                <strong className="text-[11px] text-text-primary">{value}</strong>
+                <strong className="col-start-2 text-[11px] text-text-primary sm:col-start-auto">
+                  {value}
+                </strong>
               </span>
             ))}
           </div>
@@ -440,11 +458,14 @@ export function HeroUseCaseCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [cycle, setCycle] = useState(0);
   const [paused, setPaused] = useState(false);
+  const resumeTimerRef = useRef<number | null>(null);
   const activeCard = useCases[activeIndex];
   const nextCard = useCases[(activeIndex + 1) % useCases.length];
 
   useEffect(() => {
-    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
 
     const timeout = window.setTimeout(() => {
       setActiveIndex((current) => (current + 1) % useCases.length);
@@ -454,12 +475,42 @@ export function HeroUseCaseCarousel() {
     return () => window.clearTimeout(timeout);
   }, [activeIndex, paused]);
 
+  useEffect(
+    () => () => {
+      if (resumeTimerRef.current !== null) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const move = (direction: -1 | 1) => {
     setActiveIndex(
       (current) => (current + direction + useCases.length) % useCases.length,
     );
     setCycle((current) => current + 1);
   };
+
+  const beginTouchInteraction = () => {
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+    setPaused(true);
+  };
+
+  const endTouchInteraction = () => {
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+    }
+    resumeTimerRef.current = window.setTimeout(() => {
+      setPaused(false);
+      resumeTimerRef.current = null;
+    }, 2400);
+  };
+
+  const controlClass =
+    "grid size-12 place-items-center rounded-xl border border-border bg-card text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25";
 
   return (
     <figure className="jv-enter-late m-0 min-w-0">
@@ -480,24 +531,24 @@ export function HeroUseCaseCarousel() {
           <button
             type="button"
             onClick={() => move(-1)}
-            className="grid size-10 place-items-center rounded-xl border border-border bg-card text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong"
+            className={controlClass}
             aria-label="Show previous Jalvoro use case"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-[18px]" />
           </button>
           <button
             type="button"
             onClick={() => move(1)}
-            className="grid size-10 place-items-center rounded-xl border border-border bg-card text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong"
+            className={controlClass}
             aria-label="Show next Jalvoro use case"
           >
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-[18px]" />
           </button>
         </div>
       </div>
 
       <div
-        className="jv-usecase-viewport relative max-w-[780px] overflow-hidden rounded-[30px] p-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25"
+        className="jv-usecase-viewport relative max-w-[840px] overflow-hidden rounded-[30px] p-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25"
         tabIndex={0}
         role="region"
         aria-roledescription="carousel"
@@ -508,16 +559,28 @@ export function HeroUseCaseCarousel() {
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
         }}
+        onTouchStart={beginTouchInteraction}
+        onTouchEnd={endTouchInteraction}
+        onTouchCancel={endTouchInteraction}
       >
         <div className="jv-single-card-stage flex items-stretch gap-4">
-          <div className="jv-active-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(76%,560px)]">
-            <UseCaseCard key={`${activeCard.id}-${cycle}`} card={activeCard} cycle={cycle} />
+          <div className="jv-active-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(78%,600px)]">
+            <UseCaseCard
+              key={`${activeCard.id}-${cycle}`}
+              card={activeCard}
+              cycle={cycle}
+            />
           </div>
           <div
-            className="jv-next-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(76%,560px)]"
+            className="jv-next-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(78%,600px)]"
             aria-hidden="true"
           >
-            <UseCaseCard key={`next-${nextCard.id}`} card={nextCard} cycle={cycle} preview />
+            <UseCaseCard
+              key={`next-${nextCard.id}`}
+              card={nextCard}
+              cycle={cycle}
+              preview
+            />
           </div>
         </div>
       </div>
@@ -527,7 +590,8 @@ export function HeroUseCaseCarousel() {
           Realistic illustrative data only. No live customer information is shown.
         </figcaption>
         <span className="shrink-0 text-[10px] font-bold tabular-nums text-text-muted">
-          {String(activeIndex + 1).padStart(2, "0")} / {String(useCases.length).padStart(2, "0")}
+          {String(activeIndex + 1).padStart(2, "0")} /{" "}
+          {String(useCases.length).padStart(2, "0")}
         </span>
       </div>
     </figure>
