@@ -1,15 +1,15 @@
 name: Temporary lockfile refresh
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches:
+      - agent/landing-hero-carousel-dark-mode
     paths:
       - package.json
-      - package-lock.json
       - .github/workflows/temporary-lockfile-refresh.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh-lockfile:
@@ -18,7 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          persist-credentials: false
+          ref: agent/landing-hero-carousel-dark-mode
+          persist-credentials: true
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -43,10 +44,15 @@ jobs:
           if (!versions.some((line) => line.endsWith('brace-expansion: 5.0.9'))) process.exit(1)
           NODE
 
-      - name: Upload refreshed lockfile
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: landing-security-lockfile-${{ github.run_id }}
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit verified lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already matches the secure dependency graph."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "Refresh lockfile for patched transitive dependencies"
+          git push origin HEAD:agent/landing-hero-carousel-dark-mode
