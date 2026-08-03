@@ -133,8 +133,11 @@ export const landingStyles = String.raw`
   .jv-hero-viewport {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
-    min-height: 100svh;
+    width: 100%;
+    height: 100svh;
+    min-height: 0;
   }
+  .jv-hero-grid { overflow: hidden; }
   .jv-enter { animation: jv-enter .68s cubic-bezier(.22,1,.36,1) both; }
   .jv-enter-late { animation: jv-enter .76s .08s cubic-bezier(.22,1,.36,1) both; }
   .jv-usecase-viewport {
@@ -203,11 +206,36 @@ export const landingStyles = String.raw`
     50% { opacity: 1; transform: scale(1); }
   }
   @media (max-width: 639px) {
+    .jv-hero-badge { display: none !important; }
+    .jv-hero-grid { padding-block: .6rem !important; gap: .6rem !important; }
+    .jv-hero-title {
+      margin-top: 0 !important;
+      font-size: clamp(1.9rem, 9.4vw, 2.5rem) !important;
+      line-height: 1 !important;
+    }
+    .jv-hero-copy { margin-top: .6rem !important; font-size: .9rem !important; line-height: 1.42 !important; }
+    .jv-hero-actions { margin-top: .7rem !important; }
     .jv-usecase-viewport {
       -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
       mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
     }
     .jv-usecase-track { animation-duration: 42s; }
+    .jv-usecase-card {
+      height: 188px !important;
+      padding: .8rem !important;
+    }
+    .jv-usecase-card h3 {
+      margin-top: .55rem !important;
+      font-size: .92rem !important;
+      line-height: 1.12 !important;
+    }
+    .jv-usecase-card .jv-card-description { display: none !important; }
+    .jv-usecase-card > .mt-auto { padding-top: .45rem !important; }
+    .jv-usecase-card > .mt-auto > div { padding: .65rem !important; }
+    .jv-usecase-card svg.mt-3,
+    .jv-usecase-card .jv-mini-bar,
+    .jv-usecase-card .grid-cols-2,
+    .jv-usecase-card .grid-cols-3 { display: none !important; }
   }
   @media (max-height: 760px) {
     .jv-landing-header { padding-top: .5rem !important; }
@@ -219,13 +247,23 @@ export const landingStyles = String.raw`
     .jv-usecase-card { height: 220px !important; }
     .jv-card-description { display: none; }
   }
+  @media (max-width: 639px) and (max-height: 760px) {
+    .jv-hero-grid { padding-block: .4rem !important; gap: .45rem !important; }
+    .jv-hero-title { margin-top: 0 !important; font-size: clamp(1.82rem, 8.8vw, 2.3rem) !important; }
+    .jv-hero-copy { margin-top: .45rem !important; }
+    .jv-hero-actions { margin-top: .55rem !important; }
+    .jv-usecase-card { height: 178px !important; }
+  }
   @media (max-height: 660px) {
     .jv-hero-badge,
     .jv-hero-proof { display: none !important; }
-    .jv-hero-grid { padding-block: .5rem !important; }
+    .jv-hero-grid { padding-block: .35rem !important; }
     .jv-hero-title { margin-top: 0 !important; }
-    .jv-usecase-card { height: 198px !important; }
+    .jv-usecase-card { height: 190px !important; }
     .jv-card-compact-hide { display: none !important; }
+  }
+  @media (max-width: 639px) and (max-height: 660px) {
+    .jv-usecase-card { height: 166px !important; }
   }
   @media (prefers-reduced-motion: reduce) {
     .jv-atomic *, .jv-atomic *::before, .jv-atomic *::after {
