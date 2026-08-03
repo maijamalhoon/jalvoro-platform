@@ -307,6 +307,23 @@ export const landingStyles = String.raw`
     .jv-usecase-card { height: min(44svh, 350px) !important; }
   }
 
+  @media (min-width: 900px) and (max-width: 1279px) and (max-height: 820px) {
+    .jv-hero-title {
+      font-size: clamp(2rem, 4.2vw, 3.2rem) !important;
+      line-height: 1 !important;
+    }
+    .jv-hero-copy {
+      font-size: .9rem !important;
+      line-height: 1.42 !important;
+    }
+    .jv-hero-proof {
+      display: none !important;
+    }
+    .jv-usecase-card {
+      height: min(54svh, 410px) !important;
+    }
+  }
+
   @media (max-width: 639px) and (max-height: 820px) {
     .jv-hero-grid { padding-block: .32rem !important; gap: .38rem !important; }
     .jv-hero-title {
