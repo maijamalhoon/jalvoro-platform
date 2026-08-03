@@ -215,10 +215,10 @@ export function WorkflowSection() {
             })}
           </div>
 
-          <div className="relative mx-auto flex max-w-xl items-center gap-3 rounded-2xl bg-[#12211b] p-4 text-white shadow-premium dark:bg-surface-elevated dark:text-text-primary">
-            <FileBarChart className="size-7 shrink-0 text-emerald-300 dark:text-success" />
+          <div className="jv-inverse-panel relative mx-auto flex max-w-xl items-center gap-3 rounded-2xl bg-[#12211b] p-4 shadow-premium dark:bg-[#0b1320]">
+            <FileBarChart className="size-7 shrink-0 text-emerald-300" />
             <div className="grid gap-1">
-              <small className="text-[10px] text-slate-300 dark:text-text-muted">
+              <small className="jv-inverse-muted text-[10px]">
                 Connected reporting
               </small>
               <strong className="text-xs leading-5">
@@ -292,12 +292,12 @@ export function HowItWorksSection() {
 export function CoverageSection() {
   return (
     <section
-      className={`bg-[#12211b] text-white dark:bg-surface-secondary dark:text-text-primary ${sectionSpace}`}
+      className={`jv-inverse-panel bg-[#12211b] dark:bg-[#0b1320] ${sectionSpace}`}
     >
       <div className={container}>
         <div className="grid items-end gap-9 xl:grid-cols-[minmax(0,1.1fr)_minmax(330px,.65fr)] xl:gap-[clamp(3rem,6vw,6rem)]">
           <div>
-            <p className="m-0 text-xs font-bold uppercase tracking-[0.12em] text-emerald-300 dark:text-success">
+            <p className="m-0 text-xs font-bold uppercase tracking-[0.12em] text-emerald-300">
               Platform coverage
             </p>
             <h2 className="mt-3 text-balance text-[clamp(2.35rem,4vw,4.5rem)] font-[710] leading-[1.02] tracking-[-0.055em]">
@@ -305,7 +305,7 @@ export function CoverageSection() {
               ecosystem.
             </h2>
           </div>
-          <p className="m-0 text-base leading-7 text-slate-300 dark:text-text-secondary">
+          <p className="jv-inverse-muted m-0 text-base leading-7">
             Choose one starting point while Personal and Business data,
             permissions, and workflows remain clearly separated.
           </p>
@@ -317,17 +317,17 @@ export function CoverageSection() {
             return (
               <article
                 key={title}
-                className="min-h-[320px] rounded-3xl border border-white/10 bg-white/[0.045] p-7 dark:border-border dark:bg-surface-primary"
+                className="min-h-[320px] rounded-3xl border border-white/10 bg-white/[0.045] p-7 dark:bg-white/[0.035]"
               >
-                <span className="grid size-11 place-items-center rounded-[13px] bg-emerald-300/10 text-emerald-300 dark:bg-success-soft dark:text-success">
+                <span className="grid size-11 place-items-center rounded-[13px] bg-emerald-300/10 text-emerald-300">
                   <GroupIcon className="size-5" />
                 </span>
                 <h3 className="mt-12 text-xl font-bold">{title}</h3>
-                <ul className="mt-5 grid list-none gap-3 text-sm text-slate-300 dark:text-text-secondary">
+                <ul className="jv-inverse-muted mt-5 grid list-none gap-3 text-sm">
                   {items.map((item) => (
                     <li
                       key={item}
-                      className="before:mr-2.5 before:text-emerald-300 before:content-['•'] dark:before:text-success"
+                      className="before:mr-2.5 before:text-emerald-300 before:content-['•']"
                     >
                       {item}
                     </li>
