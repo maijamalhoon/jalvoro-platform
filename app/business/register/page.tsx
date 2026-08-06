@@ -32,6 +32,8 @@ type BusinessRegisterPageProps = {
   }>;
 };
 
+const landingSources = new Set(["landing-pos", "landing-business"]);
+
 const products = [
   {
     key: "solo_business" as const,
@@ -73,6 +75,10 @@ function isProductKey(value: string | undefined): value is ProductKey {
   return products.some((product) => product.key === value);
 }
 
+function landingSource(value: string | undefined) {
+  return value && landingSources.has(value) ? value : undefined;
+}
+
 function registrationHref(product: ProductKey, source?: string) {
   const next = `/business?setup=1&product=${product}`;
   const params = new URLSearchParams({
@@ -90,6 +96,7 @@ export default async function BusinessRegisterPage({
 }: BusinessRegisterPageProps) {
   const params = await searchParams;
   const selectedProduct = isProductKey(params.product) ? params.product : null;
+  const source = landingSource(params.source);
   const orderedProducts = selectedProduct
     ? [
         ...products.filter((product) => product.key === selectedProduct),
@@ -158,7 +165,7 @@ export default async function BusinessRegisterPage({
                 <p className="mt-1 text-sm font-bold text-primary">{product.audience}</p>
                 <p className="mt-3 text-sm leading-6 text-text-secondary">{product.copy}</p>
                 <Link
-                  href={registrationHref(product.key, params.source)}
+                  href={registrationHref(product.key, source)}
                   className="finance-focus mt-6 inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-button)] bg-primary px-4 text-sm font-black text-primary-foreground"
                 >
                   {isSelected ? `Continue with ${product.title}` : `Register ${product.title}`}
