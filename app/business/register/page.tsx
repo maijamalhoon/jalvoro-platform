@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Building2,
   BriefcaseBusiness,
+  CheckCircle2,
   Network,
   ShieldCheck,
   Store,
@@ -23,6 +24,13 @@ type ProductKey =
   | "retail_pos"
   | "growing_business"
   | "enterprise";
+
+type BusinessRegisterPageProps = {
+  searchParams: Promise<{
+    product?: string;
+    source?: string;
+  }>;
+};
 
 const products = [
   {
@@ -61,25 +69,46 @@ const products = [
   icon: typeof Building2;
 }>;
 
-function registrationHref(product: ProductKey) {
+function isProductKey(value: string | undefined): value is ProductKey {
+  return products.some((product) => product.key === value);
+}
+
+function registrationHref(product: ProductKey, source?: string) {
   const next = `/business?setup=1&product=${product}`;
   const params = new URLSearchParams({
     product,
     next,
   });
+
+  if (source) params.set("source", source);
+
   return `/business/signup?${params.toString()}`;
 }
 
-export default function BusinessRegisterPage() {
+export default async function BusinessRegisterPage({
+  searchParams,
+}: BusinessRegisterPageProps) {
+  const params = await searchParams;
+  const selectedProduct = isProductKey(params.product) ? params.product : null;
+  const orderedProducts = selectedProduct
+    ? [
+        ...products.filter((product) => product.key === selectedProduct),
+        ...products.filter((product) => product.key !== selectedProduct),
+      ]
+    : products;
+  const selectedTitle = selectedProduct
+    ? products.find((product) => product.key === selectedProduct)?.title
+    : null;
+
   return (
     <main className="min-h-dvh bg-background px-4 py-6 text-foreground sm:px-6 sm:py-10 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/start"
+            href="/#workspaces"
             className="finance-focus inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-button)] px-2 text-sm font-bold text-text-secondary hover:text-text-primary"
           >
-            <ArrowLeft className="size-4" aria-hidden="true" /> Product selection
+            <ArrowLeft className="size-4" aria-hidden="true" /> Back to workspaces
           </Link>
           <Link
             href="/business/login"
@@ -94,23 +123,34 @@ export default function BusinessRegisterPage() {
             <ShieldCheck className="size-4" aria-hidden="true" /> Authorized representative only
           </span>
           <h1 className="mt-4 text-3xl font-black tracking-tight text-text-primary sm:text-5xl">
-            Choose the Business product your organization needs.
+            {selectedTitle
+              ? `${selectedTitle} is ready to continue.`
+              : "Choose the Business product your organization needs."}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-text-secondary sm:text-base">
-            Registration creates the Organization Owner account. Managers, administrators, IT,
-            HR, finance teams, auditors, and employees are then invited or provisioned from inside
-            the organization.
+            {selectedTitle
+              ? "Your landing-page choice is preserved below. Review it or compare the other Business products before registration."
+              : "Registration creates the Organization Owner account. Managers, administrators, IT, HR, finance teams, auditors, and employees are then invited or provisioned from inside the organization."}
           </p>
         </header>
 
         <section className="mt-10 grid gap-4 md:grid-cols-2" aria-label="Business products">
-          {products.map((product) => {
+          {orderedProducts.map((product) => {
             const Icon = product.icon;
+            const isSelected = product.key === selectedProduct;
+
             return (
               <article
                 key={product.key}
-                className="rounded-[var(--radius-card)] bg-surface p-5 shadow-[var(--shadow-sm)] sm:p-6"
+                className={`relative rounded-[var(--radius-card)] bg-surface p-5 shadow-[var(--shadow-sm)] sm:p-6 ${
+                  isSelected ? "ring-2 ring-success ring-offset-4 ring-offset-background" : ""
+                }`}
               >
+                {isSelected ? (
+                  <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-xs font-black text-success">
+                    <CheckCircle2 className="size-3.5" aria-hidden="true" /> Selected
+                  </span>
+                ) : null}
                 <span className="inline-flex size-11 items-center justify-center rounded-[var(--radius-button)] bg-primary-soft text-primary">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
@@ -118,10 +158,11 @@ export default function BusinessRegisterPage() {
                 <p className="mt-1 text-sm font-bold text-primary">{product.audience}</p>
                 <p className="mt-3 text-sm leading-6 text-text-secondary">{product.copy}</p>
                 <Link
-                  href={registrationHref(product.key)}
+                  href={registrationHref(product.key, params.source)}
                   className="finance-focus mt-6 inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-button)] bg-primary px-4 text-sm font-black text-primary-foreground"
                 >
-                  Register {product.title} <ArrowRight className="size-4" aria-hidden="true" />
+                  {isSelected ? `Continue with ${product.title}` : `Register ${product.title}`}
+                  <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               </article>
             );
