@@ -244,6 +244,7 @@ export function HeroUseCaseCarousel() {
         role="tabpanel"
         tabIndex={0}
         aria-labelledby={`product-tab-${active.id}`}
+        aria-describedby="product-preview-note"
         className="jv-product-preview jv-preview-enter relative overflow-hidden rounded-[30px] border border-border bg-card p-5 text-text-primary shadow-premium sm:p-6 lg:p-7"
       >
         <span
@@ -333,9 +334,9 @@ export function HeroUseCaseCarousel() {
         </div>
 
         <div className="relative mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <figcaption className="text-xs leading-5 text-text-muted">
+          <p id="product-preview-note" className="text-xs leading-5 text-text-muted">
             Realistic illustrative data only. No live customer information is shown.
-          </figcaption>
+          </p>
           <Link
             href={active.href}
             prefetch={false}
