@@ -1,599 +1,352 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { useState, type KeyboardEvent } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   BarChart3,
-  BrainCircuit,
   Building2,
   CheckCircle2,
-  Clock3,
-  Goal,
+  CircleDollarSign,
   PackageSearch,
   ShoppingCart,
-  TrendingDown,
-  TrendingUp,
   Users,
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
 
-type Tone = "success" | "warning";
-type TrendDirection = "up" | "down";
+import { focus } from "@/components/landing/v2/config";
 
-type UseCase = {
-  id: string;
+type ProductPreview = {
+  id: "personal" | "pos" | "business";
+  label: string;
   kicker: string;
   title: string;
   description: string;
   icon: LucideIcon;
-  tone?: Tone;
+  href: string;
+  cta: string;
   headlineLabel: string;
-  headlineValue: number;
-  headlinePrefix?: string;
-  headlineSuffix?: string;
-  headlineDecimals?: number;
-  trend: string;
-  trendDirection?: TrendDirection;
-  progress?: number;
-  metrics: readonly [string, string, string?][];
-  rows: readonly [string, string, string, Tone?][];
+  headlineValue: string;
+  headlineDetail: string;
+  metrics: readonly {
+    label: string;
+    value: string;
+    detail: string;
+  }[];
+  rows: readonly {
+    label: string;
+    detail: string;
+    value: string;
+    icon: LucideIcon;
+  }[];
 };
 
-const useCases: readonly UseCase[] = [
+const previews: readonly ProductPreview[] = [
   {
-    id: "overview",
-    kicker: "Personal overview",
+    id: "personal",
+    label: "Personal",
+    kicker: "Personal finance",
     title: "See your complete money picture",
     description:
-      "Accounts, spending, liabilities, savings, and net worth in one private view.",
+      "Keep accounts, spending, goals, liabilities, and AI-assisted insights inside one private Individual workspace.",
     icon: WalletCards,
+    href: "/individual/signup?source=landing-personal",
+    cta: "Start with Personal",
     headlineLabel: "Illustrative net worth",
-    headlineValue: 224800,
-    headlinePrefix: "PKR ",
-    trend: "PKR 19,400 higher this month",
+    headlineValue: "PKR 224,800",
+    headlineDetail: "PKR 19,400 higher this month",
     metrics: [
-      ["Income", "PKR 185,000", "Salary + side income"],
-      ["Spending", "PKR 112,600", "61% of income"],
-      ["Saved", "PKR 72,400", "39% savings rate"],
+      { label: "Income", value: "PKR 185,000", detail: "Salary + side income" },
+      { label: "Spending", value: "PKR 112,600", detail: "61% of income" },
+      { label: "Saved", value: "PKR 72,400", detail: "39% savings rate" },
     ],
     rows: [
-      ["Primary bank", "Available balance", "PKR 126,800"],
-      ["Savings account", "Emergency reserve", "PKR 152,000"],
-      ["Credit card", "Payment due in 8 days", "PKR 54,000", "warning"],
-    ],
-  },
-  {
-    id: "insights",
-    kicker: "Personal insights",
-    title: "Understand what changed and why",
-    description:
-      "Turn verified personal activity into useful guidance without invented data.",
-    icon: BrainCircuit,
-    headlineLabel: "Spending below recent average",
-    headlineValue: 11,
-    headlineSuffix: "%",
-    trend: "92% confidence from verified records",
-    trendDirection: "down",
-    progress: 92,
-    metrics: [
-      ["Dining", "−PKR 6,240", "Largest reduction"],
-      ["Transport", "−PKR 3,180", "Fuel + rides"],
-      ["Categorized", "96%", "Transactions covered"],
-    ],
-    rows: [
-      ["Essential bills", "Within normal range", "On track"],
-      ["Subscriptions", "One possible duplicate", "Review", "warning"],
-      ["Unverified records", "Need confirmation", "2", "warning"],
-    ],
-  },
-  {
-    id: "goals",
-    kicker: "Goals and wealth",
-    title: "Track progress without spreadsheets",
-    description:
-      "Keep goals, investments, and liabilities connected to real cash flow.",
-    icon: Goal,
-    headlineLabel: "Emergency fund complete",
-    headlineValue: 72,
-    headlineSuffix: "%",
-    trend: "PKR 360,000 of PKR 500,000",
-    progress: 72,
-    metrics: [
-      ["Home deposit", "38%", "PKR 760,000 saved"],
-      ["Debt cleared", "61%", "PKR 94,000 remains"],
-      ["Coverage", "4.8 mo", "Essential expenses"],
-    ],
-    rows: [
-      ["Next contribution", "Emergency fund · 5 Sep", "PKR 25,000"],
-      ["Investment plan", "Monthly contribution", "PKR 18,000"],
-      ["Debt payment", "Scheduled · 12 Sep", "PKR 16,500"],
+      {
+        label: "Primary bank",
+        detail: "Available balance",
+        value: "PKR 126,800",
+        icon: CircleDollarSign,
+      },
+      {
+        label: "Emergency fund",
+        detail: "72% of target",
+        value: "PKR 360,000",
+        icon: CheckCircle2,
+      },
+      {
+        label: "Spending insight",
+        detail: "Below recent average",
+        value: "−11%",
+        icon: BarChart3,
+      },
     ],
   },
   {
     id: "pos",
-    kicker: "Retail POS",
+    label: "Retail POS",
+    kicker: "Retail and counters",
     title: "Run every sale with less friction",
     description:
-      "Connect checkout, returns, payments, daily cash, and stock movement.",
+      "Connect checkout, returns, payments, daily cash, and stock movement without rebuilding the workflow later.",
     icon: ShoppingCart,
+    href: "/business/register?product=retail_pos&source=landing-pos",
+    cta: "Set up Retail POS",
     headlineLabel: "Illustrative sales today",
-    headlineValue: 184250,
-    headlinePrefix: "PKR ",
-    trend: "8.6% above today’s target",
+    headlineValue: "PKR 184,250",
+    headlineDetail: "8.6% above today’s target",
     metrics: [
-      ["Orders", "126", "Average ticket PKR 1,462"],
-      ["Card/wallet", "54%", "PKR 99,495"],
-      ["Cash", "46%", "PKR 84,755"],
+      { label: "Orders", value: "126", detail: "Average ticket PKR 1,462" },
+      { label: "Card / wallet", value: "54%", detail: "PKR 99,495" },
+      { label: "Cash", value: "46%", detail: "PKR 84,755" },
     ],
     rows: [
-      ["Top selling line", "24 units sold", "PKR 31,200"],
-      ["Returns", "4 completed today", "PKR 5,840", "warning"],
-      ["Closing cash", "Expected drawer amount", "PKR 84,755"],
+      {
+        label: "Top selling line",
+        detail: "24 units sold",
+        value: "PKR 31,200",
+        icon: ShoppingCart,
+      },
+      {
+        label: "Stock attention",
+        detail: "12 low-stock items",
+        value: "Review",
+        icon: PackageSearch,
+      },
+      {
+        label: "Closing cash",
+        detail: "Expected drawer amount",
+        value: "PKR 84,755",
+        icon: CheckCircle2,
+      },
     ],
   },
   {
-    id: "inventory",
-    kicker: "Inventory control",
-    title: "Know what is available and what needs action",
+    id: "business",
+    label: "Business",
+    kicker: "Growing operations",
+    title: "Keep money, customers, and teams aligned",
     description:
-      "Watch stock movement, low-stock items, and reorder attention in one place.",
-    icon: PackageSearch,
-    tone: "warning",
-    headlineLabel: "Items needing attention",
-    headlineValue: 15,
-    headlineSuffix: " items",
-    trend: "12 low stock · 3 out of stock",
-    trendDirection: "down",
-    progress: 98.8,
-    metrics: [
-      ["Active SKUs", "1,248", "Across all locations"],
-      ["Stock value", "PKR 2.84m", "Illustrative estimate"],
-      ["Stock health", "98.8%", "Within threshold"],
-    ],
-    rows: [
-      ["Standard oil filter", "Reorder point: 18", "9 left", "warning"],
-      ["Brake pad set", "Reorder point: 10", "4 left", "warning"],
-      ["Coolant — 1 litre", "Delivery expected Friday", "0 left", "warning"],
-    ],
-  },
-  {
-    id: "crm",
-    kicker: "Customers and CRM",
-    title: "Keep every opportunity moving",
-    description:
-      "Connect leads, customers, ownership, follow-ups, and pipeline progress.",
-    icon: Users,
-    headlineLabel: "Illustrative active pipeline",
-    headlineValue: 1920000,
-    headlinePrefix: "PKR ",
-    trend: "18 opportunities · 5 due today",
-    progress: 68,
-    metrics: [
-      ["New", "8", "Recently added"],
-      ["Qualified", "7", "Active evaluation"],
-      ["Won", "3", "16.7% conversion"],
-    ],
-    rows: [
-      ["North branch setup", "Proposal review · due today", "PKR 420k"],
-      ["Retail expansion", "Follow-up · 2:30 PM", "PKR 285k", "warning"],
-      ["Annual service plan", "Contract approved", "PKR 180k"],
-    ],
-  },
-  {
-    id: "accounting",
-    kicker: "Accounting and reports",
-    title: "Read the numbers behind the work",
-    description:
-      "Bring revenue, expenses, profit, reconciliation, and reporting together.",
-    icon: BarChart3,
-    headlineLabel: "Illustrative operating profit",
-    headlineValue: 680000,
-    headlinePrefix: "PKR ",
-    trend: "12.3% operating margin",
-    metrics: [
-      ["Revenue", "PKR 5.52m", "Current period"],
-      ["Expenses", "PKR 4.84m", "Current period"],
-      ["Reconciled", "98%", "148 of 151 entries"],
-    ],
-    rows: [
-      ["Receivables", "7 invoices outstanding", "PKR 462k", "warning"],
-      ["Payables", "4 bills due this week", "PKR 278k", "warning"],
-      ["Bank reconciliation", "3 entries to review", "98%"],
-    ],
-  },
-  {
-    id: "team",
-    kicker: "Teams and approvals",
-    title: "Keep people and controls aligned",
-    description:
-      "Manage roles, payroll status, pending approvals, and operational ownership.",
+      "Bring accounting, CRM, inventory, payroll, branches, approvals, and reporting into one organization-controlled workspace.",
     icon: Building2,
-    tone: "warning",
-    headlineLabel: "Pending approvals",
-    headlineValue: 6,
-    trend: "2 require action today",
-    trendDirection: "down",
-    progress: 91.7,
+    href: "/business/register?product=growing_business&source=landing-business",
+    cta: "Explore Business",
+    headlineLabel: "Illustrative operating profit",
+    headlineValue: "PKR 680,000",
+    headlineDetail: "12.3% operating margin",
     metrics: [
-      ["Team", "24", "Active members"],
-      ["Present", "22", "Today’s attendance"],
-      ["Payroll", "Ready", "24 records checked"],
+      { label: "Revenue", value: "PKR 5.52m", detail: "Current period" },
+      { label: "Pipeline", value: "PKR 1.92m", detail: "18 opportunities" },
+      { label: "Reconciled", value: "98%", detail: "148 of 151 entries" },
     ],
     rows: [
-      ["Supplier payment", "Finance approval required", "PKR 148k", "warning"],
-      ["Role change", "Inventory supervisor", "Review", "warning"],
-      ["Payroll checks", "All records validated", "Ready"],
+      {
+        label: "Receivables",
+        detail: "7 invoices outstanding",
+        value: "PKR 462k",
+        icon: CircleDollarSign,
+      },
+      {
+        label: "Customer follow-ups",
+        detail: "5 due today",
+        value: "Open",
+        icon: Users,
+      },
+      {
+        label: "Pending approvals",
+        detail: "2 require action today",
+        value: "6 total",
+        icon: CheckCircle2,
+      },
     ],
   },
 ];
 
-function CountUp({
-  value,
-  cycle,
-  prefix = "",
-  suffix = "",
-  decimals = 0,
-}: {
-  value: number;
-  cycle: number;
-  prefix?: string;
-  suffix?: string;
-  decimals?: number;
-}) {
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setDisplay(value);
-      return;
-    }
-
-    let frame = 0;
-    const startedAt = performance.now();
-    const animate = (time: number) => {
-      const progress = Math.min((time - startedAt) / 920, 1);
-      setDisplay(value * (1 - Math.pow(1 - progress, 3)));
-      if (progress < 1) frame = requestAnimationFrame(animate);
-    };
-
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [cycle, value]);
-
-  return (
-    <>
-      {prefix}
-      {new Intl.NumberFormat("en-PK", {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      }).format(display)}
-      {suffix}
-    </>
-  );
-}
-
-function Sparkline({ direction = "up" }: { direction?: TrendDirection }) {
-  return (
-    <svg
-      className={`mt-3 h-14 w-full overflow-visible ${
-        direction === "down" ? "text-warning" : "text-success"
-      }`}
-      viewBox="0 0 320 64"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path
-        d={
-          direction === "down"
-            ? "M0 12 C34 17 44 30 78 27 C112 24 127 45 161 41 C199 37 218 53 252 49 C283 45 300 55 320 58"
-            : "M0 55 C31 51 48 38 76 41 C109 45 126 26 160 30 C194 34 213 12 248 18 C282 24 299 9 320 5"
-        }
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="3"
-        className="jv-spark-line"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
-
-function ProgressBar({ value, tone = "success" }: { value: number; tone?: Tone }) {
-  return (
-    <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-surface-secondary">
-      <span
-        className={`jv-progress-fill block h-full rounded-full ${
-          tone === "warning" ? "bg-warning" : "bg-success"
-        }`}
-        style={{ "--jv-progress": `${value}%` } as CSSProperties}
-      />
-    </span>
-  );
-}
-
-function UseCaseCard({
-  card,
-  cycle,
-  preview = false,
-}: {
-  card: UseCase;
-  cycle: number;
-  preview?: boolean;
-}) {
-  const Icon = card.icon;
-  const TrendIcon = card.trendDirection === "down" ? TrendingDown : TrendingUp;
-  const tone = card.tone ?? "success";
-
-  return (
-    <article
-      className={`jv-usecase-card relative flex h-[clamp(340px,51svh,480px)] w-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-border bg-card p-5 text-text-primary sm:p-6 ${
-        preview ? "jv-usecase-card-preview" : ""
-      }`}
-    >
-      <span
-        className={`absolute -right-16 -top-16 size-44 rounded-full blur-3xl ${
-          tone === "warning" ? "bg-warning-soft" : "bg-success-soft"
-        }`}
-        aria-hidden="true"
-      />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <span
-          className={`grid size-12 shrink-0 place-items-center rounded-[15px] ${
-            tone === "warning"
-              ? "bg-warning-soft text-warning"
-              : "bg-success-soft text-success"
-          }`}
-        >
-          <Icon className="size-[22px]" />
-        </span>
-        <span className="rounded-full border border-border bg-surface-soft px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-text-muted">
-          {card.kicker}
-        </span>
-      </div>
-
-      <h3 className="relative mt-5 text-[clamp(1.2rem,2vw,1.55rem)] font-bold leading-[1.14] tracking-[-0.035em] text-text-primary">
-        {card.title}
-      </h3>
-      <p className="jv-card-description relative mt-2 text-xs leading-5 text-text-secondary sm:text-[13px]">
-        {card.description}
-      </p>
-
-      <div className="jv-card-scroll relative mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-        <div className="grid gap-3 pb-1">
-          <section className="rounded-2xl border border-border bg-surface-soft p-4">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-text-muted">
-              {card.headlineLabel}
-            </span>
-            <strong className="mt-1 block text-[clamp(1.65rem,2.5vw,2.25rem)] tracking-[-0.045em] text-text-primary">
-              <CountUp
-                value={card.headlineValue}
-                cycle={cycle}
-                prefix={card.headlinePrefix}
-                suffix={card.headlineSuffix}
-                decimals={card.headlineDecimals}
-              />
-            </strong>
-            <div
-              className={`mt-1 flex items-center gap-1.5 text-[11px] font-semibold ${
-                card.trendDirection === "down" ? "text-warning" : "text-success"
-              }`}
-            >
-              <TrendIcon className="size-3.5" />
-              {card.trend}
-            </div>
-            {card.progress === undefined ? (
-              <Sparkline direction={card.trendDirection} />
-            ) : (
-              <ProgressBar value={card.progress} tone={tone} />
-            )}
-          </section>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {card.metrics.map(([label, value, detail]) => (
-              <span key={label} className="rounded-xl border border-border/70 bg-card p-3">
-                <small className="block text-[9px] font-semibold uppercase tracking-[0.07em] text-text-muted">
-                  {label}
-                </small>
-                <b className="mt-1.5 block text-xs text-text-primary sm:text-sm">
-                  {value}
-                </b>
-                {detail ? (
-                  <small className="mt-1 block text-[9px] leading-4 text-text-muted">
-                    {detail}
-                  </small>
-                ) : null}
-              </span>
-            ))}
-          </div>
-
-          <div className="grid gap-2">
-            {card.rows.map(([label, detail, value, rowTone = "success"]) => (
-              <span
-                key={label}
-                className="grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 rounded-xl border border-border/70 bg-card p-3 sm:grid-cols-[34px_minmax(0,1fr)_auto]"
-              >
-                <i
-                  className={`row-span-2 grid size-8 place-items-center rounded-[10px] sm:row-span-1 sm:size-[34px] ${
-                    rowTone === "warning"
-                      ? "bg-warning-soft text-warning"
-                      : "bg-success-soft text-success"
-                  }`}
-                >
-                  {rowTone === "warning" ? (
-                    <Clock3 className="size-4" />
-                  ) : (
-                    <CheckCircle2 className="size-4" />
-                  )}
-                </i>
-                <span className="min-w-0">
-                  <b className="block truncate text-[11px] text-text-primary">
-                    {label}
-                  </b>
-                  <small className="mt-0.5 block truncate text-[10px] text-text-muted">
-                    {detail}
-                  </small>
-                </span>
-                <strong className="col-start-2 text-[11px] text-text-primary sm:col-start-auto">
-                  {value}
-                </strong>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative mt-3 flex items-center justify-between border-t border-border pt-3 text-[9px] font-semibold text-text-muted">
-        <span>Illustrative sample</span>
-        <span>Scroll inside card</span>
-      </div>
-    </article>
-  );
-}
-
 export function HeroUseCaseCarousel() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [cycle, setCycle] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const resumeTimerRef = useRef<number | null>(null);
-  const activeCard = useCases[activeIndex];
-  const nextCard = useCases[(activeIndex + 1) % useCases.length];
+  const [activeId, setActiveId] = useState<ProductPreview["id"]>("personal");
+  const active = previews.find((preview) => preview.id === activeId) ?? previews[0];
+  const ActiveIcon = active.icon;
 
-  useEffect(() => {
-    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setActiveIndex((current) => (current + 1) % useCases.length);
-      setCycle((current) => current + 1);
-    }, 5000);
-
-    return () => window.clearTimeout(timeout);
-  }, [activeIndex, paused]);
-
-  useEffect(
-    () => () => {
-      if (resumeTimerRef.current !== null) {
-        window.clearTimeout(resumeTimerRef.current);
-      }
-    },
-    [],
-  );
-
-  const move = (direction: -1 | 1) => {
-    setActiveIndex(
-      (current) => (current + direction + useCases.length) % useCases.length,
-    );
-    setCycle((current) => current + 1);
+  const focusTab = (id: ProductPreview["id"]) => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`product-tab-${id}`)?.focus();
+    });
   };
 
-  const beginTouchInteraction = () => {
-    if (resumeTimerRef.current !== null) {
-      window.clearTimeout(resumeTimerRef.current);
-      resumeTimerRef.current = null;
-    }
-    setPaused(true);
-  };
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    let nextIndex: number | null = null;
 
-  const endTouchInteraction = () => {
-    if (resumeTimerRef.current !== null) {
-      window.clearTimeout(resumeTimerRef.current);
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % previews.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + previews.length) % previews.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = previews.length - 1;
     }
-    resumeTimerRef.current = window.setTimeout(() => {
-      setPaused(false);
-      resumeTimerRef.current = null;
-    }, 2400);
-  };
 
-  const controlClass =
-    "grid size-12 place-items-center rounded-xl border border-border bg-card text-text-primary shadow-theme transition hover:-translate-y-0.5 hover:border-border-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25";
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextPreview = previews[nextIndex];
+    setActiveId(nextPreview.id);
+    focusTab(nextPreview.id);
+  };
 
   return (
     <figure className="jv-enter-late m-0 min-w-0">
-      <div className="mb-3 flex items-end justify-between gap-4 px-1 sm:mb-4">
+      <div className="mb-4 grid gap-4 px-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div>
-          <p className="m-0 text-[10px] font-bold uppercase tracking-[0.12em] text-success">
-            Eight connected use cases
+          <p className="m-0 text-xs font-bold uppercase tracking-[0.12em] text-success">
+            Three focused starting points
           </p>
-          <strong className="mt-1 block text-sm text-text-primary sm:text-base">
-            One focused view at a time
+          <strong className="mt-1 block text-base text-text-primary sm:text-lg">
+            Preview the workspace that matches today’s job
           </strong>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="mr-1 hidden items-center gap-2 text-[10px] font-semibold text-text-muted sm:inline-flex">
-            <i className="jv-live-dot size-1.5 rounded-full bg-success" />
-            Changes every 5 seconds
-          </span>
-          <button
-            type="button"
-            onClick={() => move(-1)}
-            className={controlClass}
-            aria-label="Show previous Jalvoro use case"
-          >
-            <ArrowLeft className="size-[18px]" />
-          </button>
-          <button
-            type="button"
-            onClick={() => move(1)}
-            className={controlClass}
-            aria-label="Show next Jalvoro use case"
-          >
-            <ArrowRight className="size-[18px]" />
-          </button>
+
+        <div
+          className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-surface-soft p-1"
+          role="tablist"
+          aria-label="Jalvoro product previews"
+          aria-orientation="horizontal"
+        >
+          {previews.map((preview, index) => (
+            <button
+              key={preview.id}
+              id={`product-tab-${preview.id}`}
+              type="button"
+              role="tab"
+              tabIndex={activeId === preview.id ? 0 : -1}
+              aria-selected={activeId === preview.id}
+              aria-controls={`product-panel-${preview.id}`}
+              onClick={() => setActiveId(preview.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
+              className={`min-h-11 rounded-xl px-3 text-xs font-bold transition sm:px-4 sm:text-sm ${focus} ${
+                activeId === preview.id
+                  ? "bg-card text-text-primary shadow-theme"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              {preview.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div
-        className="jv-usecase-viewport relative max-w-[840px] overflow-hidden rounded-[30px] p-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring/25"
+      <section
+        key={active.id}
+        id={`product-panel-${active.id}`}
+        role="tabpanel"
         tabIndex={0}
-        role="region"
-        aria-roledescription="carousel"
-        aria-label={`Jalvoro use case ${activeIndex + 1} of ${useCases.length}: ${activeCard.title}`}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
-        }}
-        onTouchStart={beginTouchInteraction}
-        onTouchEnd={endTouchInteraction}
-        onTouchCancel={endTouchInteraction}
+        aria-labelledby={`product-tab-${active.id}`}
+        aria-describedby="product-preview-note"
+        className="jv-product-preview jv-preview-enter relative overflow-hidden rounded-[30px] border border-border bg-card p-5 text-text-primary shadow-premium sm:p-6 lg:p-7"
       >
-        <div className="jv-single-card-stage flex items-stretch gap-4">
-          <div className="jv-active-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(78%,600px)]">
-            <UseCaseCard
-              key={`${activeCard.id}-${cycle}`}
-              card={activeCard}
-              cycle={cycle}
-            />
+        <span
+          className="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-success-soft/80 blur-3xl"
+          aria-hidden="true"
+        />
+
+        <div className="relative flex items-start justify-between gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-[15px] bg-success-soft text-success">
+            <ActiveIcon className="size-[22px]" aria-hidden="true" />
+          </span>
+          <span className="rounded-full border border-border bg-surface-soft px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">
+            {active.kicker}
+          </span>
+        </div>
+
+        <div className="relative mt-5 grid gap-5 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] xl:items-start">
+          <div>
+            <h3 className="text-[clamp(1.45rem,2.2vw,2rem)] font-bold leading-[1.08] tracking-[-0.04em] text-text-primary">
+              {active.title}
+            </h3>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">
+              {active.description}
+            </p>
+
+            <div className="mt-5 rounded-2xl border border-border bg-surface-soft p-5">
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
+                {active.headlineLabel}
+              </span>
+              <strong className="mt-2 block text-[clamp(2rem,3vw,2.8rem)] tracking-[-0.045em] text-text-primary">
+                {active.headlineValue}
+              </strong>
+              <span className="mt-2 flex items-center gap-2 text-sm font-semibold text-success">
+                <BarChart3 className="size-4" aria-hidden="true" />
+                {active.headlineDetail}
+              </span>
+            </div>
           </div>
-          <div
-            className="jv-next-card-wrap w-[calc(100%-3.25rem)] shrink-0 sm:w-[min(78%,600px)]"
-            aria-hidden="true"
-          >
-            <UseCaseCard
-              key={`next-${nextCard.id}`}
-              card={nextCard}
-              cycle={cycle}
-              preview
-            />
+
+          <div className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {active.metrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-2xl border border-border/70 bg-surface-soft p-4"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-[0.06em] text-text-muted">
+                    {metric.label}
+                  </span>
+                  <strong className="mt-2 block text-base text-text-primary">
+                    {metric.value}
+                  </strong>
+                  <small className="mt-1 block text-xs leading-5 text-text-muted">
+                    {metric.detail}
+                  </small>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-2">
+              {active.rows.map((row) => {
+                const RowIcon = row.icon;
+                return (
+                  <div
+                    key={row.label}
+                    className="grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border/70 bg-card p-3.5"
+                  >
+                    <span className="grid size-[38px] place-items-center rounded-xl bg-success-soft text-success">
+                      <RowIcon className="size-[18px]" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <b className="block truncate text-sm text-text-primary">
+                        {row.label}
+                      </b>
+                      <small className="mt-0.5 block truncate text-xs text-text-muted">
+                        {row.detail}
+                      </small>
+                    </span>
+                    <strong className="text-right text-xs text-text-primary sm:text-sm">
+                      {row.value}
+                    </strong>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-3 flex items-center justify-between gap-4 px-1">
-        <figcaption className="text-[10px] leading-4 text-text-muted sm:text-[11px]">
-          Realistic illustrative data only. No live customer information is shown.
-        </figcaption>
-        <span className="shrink-0 text-[10px] font-bold tabular-nums text-text-muted">
-          {String(activeIndex + 1).padStart(2, "0")} /{" "}
-          {String(useCases.length).padStart(2, "0")}
-        </span>
-      </div>
+        <div className="relative mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p id="product-preview-note" className="text-xs leading-5 text-text-muted">
+            Realistic illustrative data only. No live customer information is shown.
+          </p>
+          <Link
+            href={active.href}
+            prefetch={false}
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-text-primary px-4 text-sm font-bold text-text-inverse transition hover:-translate-y-0.5 hover:opacity-90 ${focus}`}
+          >
+            {active.cta}
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
     </figure>
   );
 }

@@ -5,6 +5,12 @@ const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
 const landing = read("../components/landing/PremiumLandingPage.tsx");
+const landingConfig = read("../components/landing/v2/config.tsx");
+const landingPreview = read("../components/landing/v2/ProductPreview.tsx");
+const landingWorkspaces = read("../components/landing/v2/WorkspaceSection.tsx");
+const landingClosing = read("../components/landing/v2/ClosingSections.tsx");
+const landingEntry = read("../app/page.tsx");
+const landingStyles = read("../app/landing-v2.css");
 const startPage = read("../app/start/page.tsx");
 const businessRegistration = read("../app/business/register/page.tsx");
 const productAuth = read("../components/auth/ProductRealmAuth.tsx");
@@ -17,12 +23,58 @@ const migration = read(
 );
 
 describe("product entry and Business registration contract", () => {
-  it("routes landing authentication through product selection", () => {
-    expect(landing).toContain('href="/start"');
+  it("routes landing visitors through explicit Personal, POS, and Business choices", () => {
+    expect(landing).toContain('href="#workspaces"');
     expect(landing).toContain('href="/start?mode=login"');
-    expect(landing).toContain('prefetch={false}');
-    expect(landing).toContain("with {APP_NAME}");
+    expect(landing).toContain("Choose your workspace");
+    expect(landingConfig).toContain('href: "/individual/signup?source=landing-personal"');
+    expect(landingConfig).toContain(
+      'href: "/business/register?product=retail_pos&source=landing-pos"',
+    );
+    expect(landingConfig).toContain(
+      'href: "/business/register?product=growing_business&source=landing-business"',
+    );
+    expect(landingWorkspaces).toContain("workspace.href");
+    expect(landingWorkspaces).toContain("workspace.cta");
     expect(landing).not.toContain('href="/login?mode=signup"');
+  });
+
+  it("keeps the hero preview manual, complete, and keyboard operable", () => {
+    expect(landingPreview).toContain('role="tablist"');
+    expect(landingPreview).toContain('role="tabpanel"');
+    expect(landingPreview).toContain('aria-orientation="horizontal"');
+    expect(landingPreview).toContain("handleTabKeyDown");
+    expect(landingPreview).toContain('event.key === "ArrowRight"');
+    expect(landingPreview).toContain('event.key === "ArrowLeft"');
+    expect(landingPreview).toContain('event.key === "Home"');
+    expect(landingPreview).toContain('event.key === "End"');
+    expect(landingPreview).toContain("tabIndex={activeId === preview.id ? 0 : -1}");
+    expect(landingPreview).toContain("Three focused starting points");
+    expect(landingPreview).not.toContain("setTimeout");
+    expect(landingPreview).not.toContain("overflow-y-auto");
+    expect(landingPreview).not.toContain("Scroll inside card");
+  });
+
+  it("uses one route-owned landing stylesheet and accessible anchor navigation", () => {
+    expect(landingEntry).toContain('import "./landing-v2.css"');
+    expect(landingConfig).not.toContain("landingStyles");
+    expect(landing).not.toContain("dangerouslySetInnerHTML");
+    expect(landing).toContain("Skip to main content");
+    expect(landingStyles).toContain("scroll-margin-top");
+    expect(landingStyles).toContain(".jv-skip-link:focus");
+  });
+
+  it("does not load legacy landing-only runtime helpers on the public entry route", () => {
+    expect(landingEntry).not.toContain("LandingScrollReveal");
+    expect(landingEntry).not.toContain("LandingChartMotion");
+    expect(landingEntry).not.toContain("MathSymbolField");
+    expect(landingEntry).not.toContain("landing-responsive.css");
+  });
+
+  it("keeps privacy and support evidence actionable without duplicate CTA code", () => {
+    expect(landingClosing).toContain('href="/privacy"');
+    expect(landingClosing).toContain('href="/support"');
+    expect(landingClosing).not.toContain("export function FinalCtaSection");
   });
 
   it("keeps Individual and Business entry paths explicit", () => {
@@ -31,6 +83,17 @@ describe("product entry and Business registration contract", () => {
     expect(startPage).toContain('"/individual/signup"');
     expect(startPage).toContain('href="/business/login"');
     expect(startPage).toContain('href="/business/register"');
+  });
+
+  it("preserves a landing-selected Business product through registration", () => {
+    expect(businessRegistration).toContain("searchParams");
+    expect(businessRegistration).toContain("selectedProduct");
+    expect(businessRegistration).toContain("orderedProducts");
+    expect(businessRegistration).toContain("landingSources");
+    expect(businessRegistration).toContain("landingSource(params.source)");
+    expect(businessRegistration).toContain('params.set("source", source)');
+    expect(businessRegistration).toContain("Your landing-page choice is preserved below.");
+    expect(businessRegistration).toContain("Continue with ${product.title}");
   });
 
   it("offers the four approved Business products", () => {

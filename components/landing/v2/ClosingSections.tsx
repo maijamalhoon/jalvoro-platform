@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   Database,
   LockKeyhole,
   ShieldCheck,
@@ -28,7 +27,7 @@ export function SecuritySection() {
     <section id="security" className={`${container} ${sectionSpace}`}>
       <div className="grid items-center gap-7 rounded-[30px] border border-border bg-card p-[clamp(2rem,5vw,4.4rem)] text-text-primary shadow-premium xl:grid-cols-[auto_minmax(0,1fr)_minmax(250px,.45fr)] xl:gap-[clamp(2rem,4vw,4rem)]">
         <span className="grid size-20 place-items-center rounded-3xl bg-success-soft text-success">
-          <LockKeyhole className="size-8" />
+          <LockKeyhole className="size-8" aria-hidden="true" />
         </span>
 
         <div>
@@ -40,6 +39,20 @@ export function SecuritySection() {
             Personal and Business records stay in their own workspaces, with
             verified access, clear permissions, and honest data states.
           </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/privacy"
+              className={`inline-flex min-h-11 items-center rounded-xl border border-border bg-surface-soft px-4 text-sm font-bold text-text-primary transition hover:border-border-strong hover:bg-surface-secondary ${focus}`}
+            >
+              Read privacy policy
+            </Link>
+            <Link
+              href="/support"
+              className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-bold text-text-secondary transition hover:text-text-primary ${focus}`}
+            >
+              Contact support
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
@@ -50,47 +63,13 @@ export function SecuritySection() {
                 key={label}
                 className="flex min-h-14 items-center gap-3 rounded-2xl border border-border/70 bg-surface-soft px-4 text-xs font-bold text-text-secondary"
               >
-                <SecurityIcon className="size-[18px] text-success" />
+                <SecurityIcon className="size-[18px] text-success" aria-hidden="true" />
                 {label}
               </span>
             );
           })}
         </div>
       </div>
-    </section>
-  );
-}
-
-export function FinalCtaSection() {
-  return (
-    <section
-      className={`${container} jv-inverse-panel mb-[clamp(3.5rem,7vw,6.25rem)] grid items-center gap-10 overflow-hidden rounded-[32px] bg-[#12211b] p-[clamp(2.5rem,6vw,4.8rem)] shadow-premium dark:border dark:border-white/10 dark:bg-[#0b1320] xl:grid-cols-[minmax(0,1fr)_auto]`}
-    >
-      <div className="relative">
-        <span
-          className="pointer-events-none absolute -left-16 -top-24 size-56 rounded-full bg-emerald-300/10 blur-3xl"
-          aria-hidden="true"
-        />
-        <p className="relative m-0 text-xs font-bold uppercase tracking-[0.1em] text-emerald-300">
-          {APP_TAGLINE}
-        </p>
-        <h2 className="relative mt-3 max-w-4xl text-balance text-[clamp(2.2rem,3.6vw,4rem)] font-[710] leading-[1.02] tracking-[-0.055em]">
-          Bring scattered work into one connected system.
-        </h2>
-        <span className="jv-inverse-muted relative mt-5 block max-w-3xl text-base leading-7">
-          Start with the Jalvoro workspace that solves today&apos;s problem and
-          keep room for tomorrow&apos;s growth.
-        </span>
-      </div>
-
-      <Link
-        href="/start"
-        prefetch={false}
-        className={`jv-inverse-action inline-flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl px-6 text-sm font-bold shadow-soft transition hover:-translate-y-0.5 sm:w-max xl:min-w-[220px] ${focus}`}
-      >
-        Choose your workspace
-        <ArrowRight className="size-[18px]" />
-      </Link>
     </section>
   );
 }
