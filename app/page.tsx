@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import PremiumLandingPage from "@/components/landing/PremiumLandingPage";
 import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
+import "./landing-v2.css";
+
 const title = `${APP_NAME} — ${APP_TAGLINE}`;
 
 export const metadata: Metadata = {
