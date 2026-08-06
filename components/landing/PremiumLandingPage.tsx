@@ -18,7 +18,6 @@ import { WorkspaceSection } from "@/components/landing/v2/WorkspaceSection";
 import {
   container,
   focus,
-  landingStyles,
   navigation,
 } from "@/components/landing/v2/config";
 
@@ -95,6 +94,7 @@ function LandingHero() {
   return (
     <section
       id="overview"
+      tabIndex={-1}
       className={`${container} jv-hero-grid grid content-center items-center gap-8 py-10 sm:gap-10 sm:py-14 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] xl:gap-[clamp(2.75rem,4vw,5rem)] xl:py-12`}
     >
       <div className="jv-enter mx-auto max-w-[720px] text-center xl:mx-0 xl:text-left">
@@ -146,32 +146,32 @@ function LandingHero() {
 
 export default function PremiumLandingPage() {
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: landingStyles }} />
-      <main className="jv-atomic relative isolate min-h-screen overflow-x-clip bg-background font-sans text-text-primary">
-        <LandingHeader />
+    <main className="jv-atomic relative isolate min-h-screen overflow-x-clip bg-background font-sans text-text-primary">
+      <a href="#overview" className="jv-skip-link">
+        Skip to main content
+      </a>
+      <LandingHeader />
 
-        <div className="jv-hero-viewport relative isolate overflow-hidden">
-          <div
-            className="pointer-events-none absolute -right-[12vw] -top-[18vw] -z-10 size-[min(60vw,760px)] rounded-full bg-success-soft/70 blur-3xl"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute -left-[15vw] top-[22vh] -z-10 size-[min(42vw,520px)] rounded-full bg-surface-secondary/80 blur-3xl"
-            aria-hidden="true"
-          />
-          <LandingHero />
-        </div>
+      <div className="jv-hero-viewport relative isolate overflow-hidden">
+        <div
+          className="pointer-events-none absolute -right-[12vw] -top-[18vw] -z-10 size-[min(60vw,760px)] rounded-full bg-success-soft/70 blur-3xl"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -left-[15vw] top-[22vh] -z-10 size-[min(42vw,520px)] rounded-full bg-surface-secondary/80 blur-3xl"
+          aria-hidden="true"
+        />
+        <LandingHero />
+      </div>
 
-        <TrustRail />
-        <WorkspaceSection />
-        <WorkflowSection />
-        <HowItWorksSection />
-        <CoverageSection />
-        <SecuritySection />
-        <FinalCtaSection />
-        <LandingFooter />
-      </main>
-    </>
+      <TrustRail />
+      <WorkspaceSection />
+      <WorkflowSection />
+      <HowItWorksSection />
+      <CoverageSection />
+      <SecuritySection />
+      <FinalCtaSection />
+      <LandingFooter />
+    </main>
   );
 }
