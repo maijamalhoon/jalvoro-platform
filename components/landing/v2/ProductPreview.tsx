@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -167,6 +167,36 @@ export function HeroUseCaseCarousel() {
   const active = previews.find((preview) => preview.id === activeId) ?? previews[0];
   const ActiveIcon = active.icon;
 
+  const focusTab = (id: ProductPreview["id"]) => {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`product-tab-${id}`)?.focus();
+    });
+  };
+
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % previews.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + previews.length) % previews.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = previews.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextPreview = previews[nextIndex];
+    setActiveId(nextPreview.id);
+    focusTab(nextPreview.id);
+  };
+
   return (
     <figure className="jv-enter-late m-0 min-w-0">
       <div className="mb-4 grid gap-4 px-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -183,16 +213,19 @@ export function HeroUseCaseCarousel() {
           className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-surface-soft p-1"
           role="tablist"
           aria-label="Jalvoro product previews"
+          aria-orientation="horizontal"
         >
-          {previews.map((preview) => (
+          {previews.map((preview, index) => (
             <button
               key={preview.id}
               id={`product-tab-${preview.id}`}
               type="button"
               role="tab"
+              tabIndex={activeId === preview.id ? 0 : -1}
               aria-selected={activeId === preview.id}
               aria-controls={`product-panel-${preview.id}`}
               onClick={() => setActiveId(preview.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={`min-h-11 rounded-xl px-3 text-xs font-bold transition sm:px-4 sm:text-sm ${focus} ${
                 activeId === preview.id
                   ? "bg-card text-text-primary shadow-theme"
@@ -209,6 +242,7 @@ export function HeroUseCaseCarousel() {
         key={active.id}
         id={`product-panel-${active.id}`}
         role="tabpanel"
+        tabIndex={0}
         aria-labelledby={`product-tab-${active.id}`}
         className="jv-product-preview jv-preview-enter relative overflow-hidden rounded-[30px] border border-border bg-card p-5 text-text-primary shadow-premium sm:p-6 lg:p-7"
       >
