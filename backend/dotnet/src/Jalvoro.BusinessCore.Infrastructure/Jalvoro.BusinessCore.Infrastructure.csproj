@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Jalvoro.BusinessCore.Infrastructure</AssemblyName>
+    <RootNamespace>Jalvoro.BusinessCore.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\Jalvoro.BusinessCore.Application\Jalvoro.BusinessCore.Application.csproj" />
+  </ItemGroup>
+</Project>

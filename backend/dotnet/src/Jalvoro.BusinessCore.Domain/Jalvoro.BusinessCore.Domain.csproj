@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Jalvoro.BusinessCore.Domain</AssemblyName>
+    <RootNamespace>Jalvoro.BusinessCore.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>

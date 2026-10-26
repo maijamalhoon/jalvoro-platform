@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Jalvoro.BusinessCore.Api</AssemblyName>
+    <RootNamespace>Jalvoro.BusinessCore.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Jalvoro.BusinessCore.Application\Jalvoro.BusinessCore.Application.csproj" />
+    <ProjectReference Include="..\Jalvoro.BusinessCore.Infrastructure\Jalvoro.BusinessCore.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

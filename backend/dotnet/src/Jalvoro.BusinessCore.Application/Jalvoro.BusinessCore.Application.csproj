@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Jalvoro.BusinessCore.Application</AssemblyName>
+    <RootNamespace>Jalvoro.BusinessCore.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Jalvoro.BusinessCore.Domain\Jalvoro.BusinessCore.Domain.csproj" />
+  </ItemGroup>
+</Project>
