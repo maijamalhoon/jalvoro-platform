@@ -1,5 +1,6 @@
 package com.jamalsfinance.nativeapp.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,37 +9,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jamalsfinance.shared.auth.AuthRepository
-import com.jamalsfinance.shared.auth.AuthResult
 import com.jamalsfinance.shared.auth.AuthState
 import com.jamalsfinance.shared.finance.FinanceRepository
 import com.jamalsfinance.shared.goals.GoalsPayablesRepository
@@ -46,7 +36,6 @@ import com.jamalsfinance.shared.investments.InvestmentsAnalyticsRepository
 import com.jamalsfinance.shared.personal.PersonalPlatformRepository
 import com.jamalsfinance.shared.reports.ReportsInsightsRepository
 import com.jamalsfinance.shared.resilience.NetworkMonitor
-import kotlinx.coroutines.launch
 
 @Composable
 fun JamalsFinanceNativeApp(
@@ -59,52 +48,74 @@ fun JamalsFinanceNativeApp(
     nativePreferences: AndroidNativePreferences,
     networkMonitor: NetworkMonitor,
     onSecureWindowChanged: (Boolean) -> Unit,
+    onSystemBarsChanged: (Boolean) -> Unit,
 ) {
     val localPreferences by nativePreferences.state.collectAsStateWithLifecycle()
     val online by networkMonitor.online.collectAsStateWithLifecycle()
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (localPreferences.themeMode) {
+        NativeThemeMode.System -> systemDark
+        NativeThemeMode.Light -> false
+        NativeThemeMode.Dark -> true
+    }
 
     LaunchedEffect(localPreferences.blockScreenshots, onSecureWindowChanged) {
         onSecureWindowChanged(localPreferences.blockScreenshots)
+    }
+    LaunchedEffect(darkTheme, onSystemBarsChanged) {
+        onSystemBarsChanged(darkTheme)
     }
 
     JamalsFinanceTheme(
         themeMode = localPreferences.themeMode,
         highContrast = localPreferences.highContrast,
     ) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (!online) OfflineModeBanner()
-                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    if (
-                        authRepository == null ||
-                        financeRepository == null ||
-                        goalsPayablesRepository == null ||
-                        investmentsAnalyticsRepository == null ||
-                        reportsInsightsRepository == null ||
-                        personalPlatformRepository == null
-                    ) {
-                        ConfigurationRequired()
-                    } else {
-                        val state by authRepository.state.collectAsStateWithLifecycle()
-                        LaunchedEffect(authRepository) { authRepository.restoreSession() }
-                        when (val current = state) {
-                            AuthState.Restoring -> CenteredProgress("Restoring your secure session")
-                            AuthState.SignedOut -> LoginScreen(authRepository)
-                            is AuthState.SignedIn -> NativeAppLockGate(
-                                preferences = nativePreferences,
-                            ) {
-                                NativeModuleRootShell(
-                                    email = current.session.user.email ?: "Signed in",
-                                    financeRepository = financeRepository,
-                                    goalsPayablesRepository = goalsPayablesRepository,
-                                    investmentsAnalyticsRepository = investmentsAnalyticsRepository,
-                                    reportsInsightsRepository = reportsInsightsRepository,
-                                    personalPlatformRepository = personalPlatformRepository,
-                                    nativePreferences = nativePreferences,
-                                    onSignOut = { authRepository.signOut() },
+        JalvoroMotionProvider(mode = localPreferences.motionMode) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                if (
+                    authRepository == null ||
+                    financeRepository == null ||
+                    goalsPayablesRepository == null ||
+                    investmentsAnalyticsRepository == null ||
+                    reportsInsightsRepository == null ||
+                    personalPlatformRepository == null
+                ) {
+                    ConfigurationRequired()
+                } else {
+                    val state by authRepository.state.collectAsStateWithLifecycle()
+                    LaunchedEffect(authRepository) { authRepository.restoreSession() }
+
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (!online && state is AuthState.SignedIn) {
+                            OfflineModeBanner()
+                        }
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            when (val current = state) {
+                                AuthState.Restoring -> CenteredProgress("Restoring your secure session")
+                                AuthState.SignedOut -> NativeAuthScreen(
+                                    repository = authRepository,
+                                    online = online,
+                                )
+                                is AuthState.SignedIn -> NativeAppLockGate(
+                                    preferences = nativePreferences,
+                                ) {
+                                    JalvoroWebsiteModuleRootShell(
+                                        email = current.session.user.email ?: "Signed in",
+                                        financeRepository = financeRepository,
+                                        goalsPayablesRepository = goalsPayablesRepository,
+                                        investmentsAnalyticsRepository = investmentsAnalyticsRepository,
+                                        reportsInsightsRepository = reportsInsightsRepository,
+                                        personalPlatformRepository = personalPlatformRepository,
+                                        nativePreferences = nativePreferences,
+                                        onSignOut = { authRepository.signOut() },
+                                    )
+                                }
+                                is AuthState.Failure -> NativeAuthScreen(
+                                    repository = authRepository,
+                                    online = online,
+                                    initialMessage = current.message,
                                 )
                             }
-                            is AuthState.Failure -> LoginScreen(authRepository, current.message)
                         }
                     }
                 }
@@ -131,112 +142,34 @@ private fun OfflineModeBanner() {
 }
 
 @Composable
-private fun LoginScreen(repository: AuthRepository, initialMessage: String? = null) {
-    val scope = rememberCoroutineScope()
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
-    var message by remember(initialMessage) { mutableStateOf(initialMessage) }
-
-    Box(Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
-        Column(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp),
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                "Jamal's Finance",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                "True native personal finance",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(28.dp))
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it; message = null },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Email") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it; message = null },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Password") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            )
-            message?.let {
-                Spacer(Modifier.height(12.dp))
+private fun ConfigurationRequired() {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        JalvoroSurfaceCard(modifier = Modifier.fillMaxWidth().widthIn(max = 560.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                JalvoroBrandLockup()
                 Text(
-                    it,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    text = "Native configuration required",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Add JAMALS_SUPABASE_URL and JAMALS_SUPABASE_PUBLISHABLE_KEY to native/local.properties.",
+                    modifier = Modifier.semantics {
+                        liveRegion = LiveRegionMode.Assertive
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
             }
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    scope.launch {
-                        loading = true
-                        message = when (val result = repository.signIn(email, password)) {
-                            is AuthResult.Success -> null
-                            is AuthResult.ConfirmationRequired -> "Confirm ${result.email} first."
-                            is AuthResult.Failure -> result.message
-                        }
-                        loading = false
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        stateDescription = if (loading) "Signing in" else "Ready"
-                    },
-                enabled = !loading,
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                if (loading) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.semantics { contentDescription = "Signing in" },
-                    )
-                } else {
-                    Text("Sign in")
-                }
-            }
-            TextButton(
-                onClick = {
-                    scope.launch {
-                        loading = true
-                        message = when (val result = repository.signUp(email, password)) {
-                            is AuthResult.Success -> null
-                            is AuthResult.ConfirmationRequired -> "Confirmation email sent to ${result.email}."
-                            is AuthResult.Failure -> result.message
-                        }
-                        loading = false
-                    }
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                enabled = !loading,
-            ) { Text("Create account") }
         }
-    }
-}
-
-@Composable
-private fun ConfigurationRequired() {
-    Box(Modifier.fillMaxSize().padding(28.dp), contentAlignment = Alignment.Center) {
-        Text(
-            "Native configuration is missing. Add JAMALS_SUPABASE_URL and " +
-                "JAMALS_SUPABASE_PUBLISHABLE_KEY to native/local.properties.",
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-        )
     }
 }
 
@@ -251,6 +184,19 @@ private fun CenteredProgress(label: String) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            JalvoroBrandMark(modifier = Modifier.size(56.dp))
+            Spacer(Modifier.height(22.dp))
+            CircularProgressIndicator(strokeWidth = 2.5.dp)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

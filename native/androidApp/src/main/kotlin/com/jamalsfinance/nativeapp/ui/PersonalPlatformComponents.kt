@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -25,6 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -37,20 +43,115 @@ import com.jamalsfinance.shared.personal.PersonalPlatformSnapshot
 @Composable
 internal fun PersonalSectionLabel(title: String) {
     Text(
-        title,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        title.uppercase(),
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).semantics { heading() },
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Black,
+        color = MaterialTheme.colorScheme.primary,
     )
 }
 
 @Composable
 private fun PersonalPanel(content: @Composable () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().jalvoroAnimateContentSize(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 1.dp,
     ) { content() }
+}
+
+@Composable
+internal fun PersonalSettingsSummaryCard(
+    snapshot: PersonalPlatformSnapshot,
+    local: NativeLocalPreferences,
+) {
+    PersonalPanel {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                JalvoroBrandMark(
+                    modifier = Modifier.size(48.dp),
+                    contentDescription = "JALVORO logo",
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "JALVORO Personal Settings",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        "Account, alerts, local display and portable finance data",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SettingsStatusChip(
+                    label = "Account",
+                    value = snapshot.profile.preferredCurrency,
+                    modifier = Modifier.weight(1f),
+                )
+                SettingsStatusChip(
+                    label = "Alerts",
+                    value = if (snapshot.unreadAlertCount == 0) "Clear" else "${snapshot.unreadAlertCount} unread",
+                    modifier = Modifier.weight(1f),
+                )
+                SettingsStatusChip(
+                    label = "Theme",
+                    value = when (local.themeMode) {
+                        NativeThemeMode.System -> "System"
+                        NativeThemeMode.Light -> "Light"
+                        NativeThemeMode.Dark -> "Dark"
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                "Profile, currency and alert preferences sync through your authenticated account. Theme, date format and spacing stay on this Android device.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsStatusChip(label: String, value: String, modifier: Modifier) {
+    Surface(
+        modifier = modifier.semantics { contentDescription = "$label: $value" },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 11.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            JalvoroAnimatedSwap(
+                targetState = value,
+                label = "settings-status-$label",
+            ) { current ->
+                Text(current, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+    }
 }
 
 @Composable
@@ -64,7 +165,7 @@ internal fun PersonalProfileCard(
     PersonalPanel {
         Column(
             modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -72,7 +173,10 @@ internal fun PersonalProfileCard(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Surface(
-                    modifier = Modifier.size(66.dp).clickable(enabled = !busy, onClick = onChoosePhoto),
+                    modifier = Modifier
+                        .size(70.dp)
+                        .semantics { contentDescription = "Change profile image" }
+                        .clickable(enabled = !busy, onClick = onChoosePhoto),
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
@@ -80,6 +184,7 @@ internal fun PersonalProfileCard(
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 initials(snapshot.profile.displayName),
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
@@ -87,20 +192,25 @@ internal fun PersonalProfileCard(
                     } else {
                         Image(
                             bitmap = avatarBitmap,
-                            contentDescription = "Profile image",
+                            contentDescription = "Profile image for ${snapshot.profile.displayName}",
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(66.dp),
+                            modifier = Modifier.size(70.dp),
                         )
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        snapshot.profile.displayName,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    JalvoroAnimatedSwap(
+                        targetState = snapshot.profile.displayName,
+                        label = "settings-display-name",
+                    ) { displayName ->
+                        Text(
+                            displayName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Text(
                         snapshot.profile.email,
                         style = MaterialTheme.typography.bodySmall,
@@ -108,8 +218,27 @@ internal fun PersonalProfileCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Text(
+                        "Authenticated personal account",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
-                OutlinedButton(onClick = onEditName, enabled = !busy) { Text("Edit") }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onEditName,
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Edit display name") }
+                OutlinedButton(
+                    onClick = onChoosePhoto,
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Change photo") }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -133,12 +262,21 @@ internal fun PersonalProfileCard(
 
 @Composable
 private fun Stat(label: String, value: Any, modifier: Modifier) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(16.dp)) {
+    Surface(
+        modifier = modifier.semantics { contentDescription = "$label: $value" },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
         Column(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 11.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(value.toString(), fontWeight = FontWeight.Bold, maxLines = 1)
+            JalvoroAnimatedSwap(
+                targetState = value.toString(),
+                label = "settings-stat-$label",
+            ) { current ->
+                Text(current, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
@@ -161,24 +299,49 @@ internal fun PersonalPreferencesCard(
 ) {
     PersonalPanel {
         Column {
-            ActionRow("Currency", "Account default on every device", snapshot.profile.preferredCurrency, !busy, onCurrency)
-            HorizontalDivider(modifier = Modifier.padding(start = 18.dp))
+            PersonalCardHeading(
+                title = "Account and device preferences",
+                description = "Cloud-synced finance defaults are separated from local display choices.",
+            )
+            HorizontalDivider()
             ActionRow(
-                "Theme",
-                "System, light or dark appearance",
-                local.themeMode.name,
-                !busy,
-                onTheme,
+                title = "Preferred currency",
+                description = "Cloud-synced account default used by Personal finance views",
+                value = snapshot.profile.preferredCurrency,
+                badge = "SYNCED",
+                enabled = !busy,
+                onClick = onCurrency,
             )
             HorizontalDivider(modifier = Modifier.padding(start = 18.dp))
-            ActionRow("Date format", "How dates appear on this device", local.dateFormat.sample, !busy, onDateFormat)
+            ActionRow(
+                title = "Appearance",
+                description = "System, light or dark theme on this Android device",
+                value = when (local.themeMode) {
+                    NativeThemeMode.System -> "System"
+                    NativeThemeMode.Light -> "Light"
+                    NativeThemeMode.Dark -> "Dark"
+                },
+                badge = "DEVICE",
+                enabled = !busy,
+                onClick = onTheme,
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 18.dp))
+            ActionRow(
+                title = "Date format",
+                description = "Changes how dates are presented on this device",
+                value = local.dateFormat.sample,
+                badge = "DEVICE",
+                enabled = !busy,
+                onClick = onDateFormat,
+            )
             HorizontalDivider(modifier = Modifier.padding(start = 18.dp))
             ToggleRow(
-                "Compact mode",
-                "Reduce spacing across the native app",
-                local.compactMode,
-                !busy,
-                onCompactChanged,
+                title = "Compact spacing",
+                description = "Reduce visual spacing while preserving minimum touch targets",
+                checked = local.compactMode,
+                enabled = !busy,
+                badge = "DEVICE",
+                onCheckedChange = onCompactChanged,
             )
         }
     }
@@ -194,37 +357,34 @@ internal fun PersonalNotificationCard(
 ) {
     PersonalPanel {
         Column {
+            PersonalCardHeading(
+                title = "Planning alerts",
+                description = "Derived from your owner-scoped goals and payables. No marketing notifications are configured here.",
+                trailing = if (snapshot.unreadAlertCount == 0) "ALL READ" else "${snapshot.unreadAlertCount} UNREAD",
+            )
+            HorizontalDivider()
             ToggleRow(
-                "Goal deadline alerts",
-                "Overdue, today and next 7 days",
-                snapshot.notificationPreferences.goalAlertsEnabled,
-                !busy,
-                onGoalAlerts,
+                title = "Goal deadline alerts",
+                description = "Overdue, due today and next-seven-day goal reminders",
+                checked = snapshot.notificationPreferences.goalAlertsEnabled,
+                enabled = !busy,
+                badge = "SYNCED",
+                onCheckedChange = onGoalAlerts,
             )
             HorizontalDivider(modifier = Modifier.padding(start = 18.dp))
             ToggleRow(
-                "Payable due alerts",
-                "Outstanding payables due within 7 days",
-                snapshot.notificationPreferences.payableAlertsEnabled,
-                !busy,
-                onPayableAlerts,
+                title = "Payable due alerts",
+                description = "Outstanding payables due within the next seven days",
+                checked = snapshot.notificationPreferences.payableAlertsEnabled,
+                enabled = !busy,
+                badge = "SYNCED",
+                onCheckedChange = onPayableAlerts,
             )
             HorizontalDivider()
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Current alerts", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (snapshot.unreadAlertCount > 0) Text(
-                    "${snapshot.unreadAlertCount} unread",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
             if (snapshot.alerts.isEmpty()) {
                 Text(
-                    "All caught up. No goal or payable alerts right now.",
-                    modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
+                    "All caught up. No goal or payable alerts are active right now.",
+                    modifier = Modifier.padding(18.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
@@ -244,46 +404,79 @@ private fun AlertRow(alert: PersonalAlert, enabled: Boolean, onClick: () -> Unit
         AlertTone.Warning -> MaterialTheme.colorScheme.tertiary
         AlertTone.Info -> MaterialTheme.colorScheme.primary
     }
+    val source = if (alert.source == AlertSource.Goal) "Goal" else "Payable"
+    val state = if (alert.read) "Read" else "Unread"
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick)
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "$state $source alert. ${alert.title}. ${urgency(alert.urgency)}. ${alert.dateKey}"
+            }
+            .clickable(enabled = enabled && !alert.read, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Surface(
-            modifier = Modifier.size(9.dp),
+            modifier = Modifier.size(10.dp),
             shape = CircleShape,
             color = if (alert.read) MaterialTheme.colorScheme.outlineVariant else color,
         ) {}
         Column(modifier = Modifier.weight(1f)) {
             Text(alert.title, fontWeight = if (alert.read) FontWeight.Medium else FontWeight.Bold)
             Text(
-                "${if (alert.source == AlertSource.Goal) "Goal" else "Payable"} · ${urgency(alert.urgency)} · ${alert.dateKey}",
+                "$source · ${urgency(alert.urgency)} · ${alert.dateKey}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (!alert.read) Text("New", style = MaterialTheme.typography.labelSmall, color = color)
+        JalvoroAnimatedSwap(
+            targetState = if (alert.read) "Read" else "Mark read",
+            label = "settings-alert-${alert.id}",
+        ) { current ->
+            Text(
+                current,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (alert.read) MaterialTheme.colorScheme.onSurfaceVariant else color,
+            )
+        }
     }
 }
 
 @Composable
 internal fun PersonalDataCard(busy: Boolean, onExport: () -> Unit, onImport: () -> Unit) {
     PersonalPanel {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text("Complete finance data", fontWeight = FontWeight.Bold)
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Text(
-                "Backup personal accounts, categories, transactions, goals, payables and investments. Restore is duplicate-safe.",
+                "Complete Personal finance backup",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                "Exports owner-scoped accounts, categories, transactions, goals, payables, investments and supported settings to a validated .jfinance file.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = onExport, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Export .jfinance backup")
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
+                Text(
+                    "Imports are additive and duplicate-safe. Existing finance records are not erased by this restore flow.",
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
-            Spacer(Modifier.height(8.dp))
+            Button(onClick = onExport, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                Text("Export validated .jfinance backup")
+            }
             OutlinedButton(onClick = onImport, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Import finance backup")
+                Text("Review and import a backup")
             }
         }
     }
@@ -297,16 +490,68 @@ internal fun PersonalSecurityCard(
     onSignOut: () -> Unit,
 ) {
     PersonalPanel {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "Account security",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() },
+            )
             Text("Signed in as", style = MaterialTheme.typography.labelSmall)
             Text(email, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(12.dp))
+            Text(
+                "Password changes apply to this authenticated JALVORO account. Sign out below ends the current device session only.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedButton(onClick = onPassword, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Change password")
+                Text("Change account password")
             }
-            Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = onSignOut, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Sign out")
+                Text("Sign out this device")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonalCardHeading(
+    title: String,
+    description: String,
+    trailing: String? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(18.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (trailing != null) {
+            JalvoroAnimatedSwap(
+                targetState = trailing,
+                label = "settings-heading-trailing",
+            ) { current ->
+                Text(
+                    current,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
@@ -317,19 +562,44 @@ private fun ActionRow(
     title: String,
     description: String,
     value: String,
+    badge: String,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick)
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "$title. $description. Current value $value. $badge setting." }
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                badge,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Black,
+            )
         }
-        Text(value, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        JalvoroAnimatedSwap(
+            targetState = value,
+            label = "settings-action-$title",
+        ) { current ->
+            Text(
+                current,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 2,
+            )
+        }
     }
 }
 
@@ -339,17 +609,44 @@ private fun ToggleRow(
     description: String,
     checked: Boolean,
     enabled: Boolean,
+    badge: String,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                stateDescription = if (checked) "$title enabled" else "$title disabled"
+            }
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                badge,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Black,
+            )
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            enabled = enabled,
+        )
     }
 }
 
@@ -358,7 +655,7 @@ private fun initials(name: String): String = name.trim().split(Regex("\\s+"))
     .take(2)
     .mapNotNull { it.firstOrNull()?.uppercaseChar() }
     .joinToString("")
-    .ifBlank { "JF" }
+    .ifBlank { "JP" }
 
 private fun urgency(value: AlertUrgency): String = when (value) {
     AlertUrgency.Overdue -> "Overdue"

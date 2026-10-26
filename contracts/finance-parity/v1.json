@@ -1,0 +1,214 @@
+{
+  "contractVersion": 1,
+  "baseCurrency": "PKR",
+  "today": "2026-07-23",
+  "rates": {
+    "USD": 1.0,
+    "PKR": 280.0,
+    "INR": 84.0,
+    "EUR": 0.8,
+    "GBP": 0.7,
+    "JPY": 140.0,
+    "CNY": 7.0
+  },
+  "monthRange": {
+    "currentStart": "2026-07-01",
+    "currentEnd": "2026-07-23",
+    "previousStart": "2026-06-01",
+    "previousEnd": "2026-06-23"
+  },
+  "transactions": [
+    {
+      "id": "current-income",
+      "amount": 1000.0,
+      "date": "2026-07-02",
+      "type": "income",
+      "categoryId": "salary",
+      "categoryName": "Salary",
+      "sourceName": "Employer"
+    },
+    {
+      "id": "current-expense",
+      "amount": 400.0,
+      "date": "2026-07-03",
+      "type": "expense",
+      "categoryId": "food",
+      "categoryName": "Food",
+      "itemName": "Dinner"
+    },
+    {
+      "id": "current-refund",
+      "amount": 100.0,
+      "date": "2026-07-04",
+      "type": "refund",
+      "categoryId": "food",
+      "categoryName": "Food",
+      "itemName": "Dinner refund"
+    },
+    {
+      "id": "previous-income",
+      "amount": 500.0,
+      "date": "2026-06-02",
+      "type": "income",
+      "categoryId": "salary",
+      "categoryName": "Salary",
+      "sourceName": "Employer"
+    },
+    {
+      "id": "previous-expense",
+      "amount": 300.0,
+      "date": "2026-06-03",
+      "type": "expense",
+      "categoryId": "food",
+      "categoryName": "Food",
+      "itemName": "Groceries"
+    },
+    {
+      "id": "previous-refund",
+      "amount": 50.0,
+      "date": "2026-06-04",
+      "type": "refund",
+      "categoryId": "food",
+      "categoryName": "Food",
+      "itemName": "Groceries refund"
+    }
+  ],
+  "transactionSummary": {
+    "currentIncome": 1000.0,
+    "currentExpenses": 300.0,
+    "currentNetSavings": 700.0,
+    "currentSavingsRate": 70.0,
+    "previousIncome": 500.0,
+    "previousExpenses": 250.0,
+    "previousNetSavings": 250.0,
+    "previousSavingsRate": 50.0
+  },
+  "investments": [
+    {
+      "quantity": 2.0,
+      "purchasePrice": 50000.0,
+      "currentPrice": 65000.0,
+      "expected": {
+        "totalInvested": 100000.0,
+        "currentValue": 130000.0,
+        "totalPnl": 30000.0,
+        "totalPnlPct": 30.0
+      }
+    },
+    {
+      "quantity": 3.0,
+      "purchasePrice": 200.0,
+      "currentPrice": 150.0,
+      "expected": {
+        "totalInvested": 600.0,
+        "currentValue": 450.0,
+        "totalPnl": -150.0,
+        "totalPnlPct": -25.0
+      }
+    }
+  ],
+  "currencyConversions": [
+    {
+      "amount": 1.0,
+      "from": "USD",
+      "to": "PKR",
+      "expected": 280.0
+    },
+    {
+      "amount": 1.0,
+      "from": "EUR",
+      "to": "PKR",
+      "expected": 350.0
+    },
+    {
+      "amount": 280.0,
+      "from": "PKR",
+      "to": "EUR",
+      "expected": 0.8
+    },
+    {
+      "amount": 84.0,
+      "from": "INR",
+      "to": "USD",
+      "expected": 1.0
+    }
+  ],
+  "goals": [
+    {
+      "current": 1250.0,
+      "target": 1000.0,
+      "expected": {
+        "ratio": 1.0,
+        "percentage": 100.0,
+        "remaining": 0.0,
+        "completed": true
+      }
+    },
+    {
+      "current": 250.0,
+      "target": 1000.0,
+      "expected": {
+        "ratio": 0.25,
+        "percentage": 25.0,
+        "remaining": 750.0,
+        "completed": false
+      }
+    },
+    {
+      "current": 100.0,
+      "target": 0.0,
+      "expected": {
+        "ratio": 0.0,
+        "percentage": 0.0,
+        "remaining": 0.0,
+        "completed": false
+      }
+    }
+  ],
+  "payables": [
+    {
+      "paid": 100.0,
+      "total": 100.0,
+      "remaining": 0.0,
+      "dueDate": "2026-01-01",
+      "expected": {
+        "ratio": 1.0,
+        "percentage": 100.0,
+        "status": "completed"
+      }
+    },
+    {
+      "paid": 0.0,
+      "total": 100.0,
+      "remaining": 100.0,
+      "dueDate": "2026-01-01",
+      "expected": {
+        "ratio": 0.0,
+        "percentage": 0.0,
+        "status": "overdue"
+      }
+    },
+    {
+      "paid": 20.0,
+      "total": 100.0,
+      "remaining": 80.0,
+      "dueDate": "2027-01-01",
+      "expected": {
+        "ratio": 0.2,
+        "percentage": 20.0,
+        "status": "partial"
+      }
+    },
+    {
+      "paid": 0.0,
+      "total": 100.0,
+      "remaining": 100.0,
+      "dueDate": null,
+      "expected": {
+        "ratio": 0.0,
+        "percentage": 0.0,
+        "status": "pending"
+      }
+    }
+  ]
+}

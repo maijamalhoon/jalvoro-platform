@@ -1,10 +1,13 @@
 package com.jamalsfinance.nativeapp
 
+import android.content.res.Configuration
+import android.graphics.Color
 import android.os.Bundle
 import android.os.StrictMode
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.view.WindowCompat
 import com.jamalsfinance.nativeapp.resilience.AndroidEncryptedSnapshotStore
 import com.jamalsfinance.nativeapp.resilience.AndroidNetworkMonitor
 import com.jamalsfinance.nativeapp.resilience.ResilientFinanceRepository
@@ -13,6 +16,7 @@ import com.jamalsfinance.nativeapp.resilience.ResilientInvestmentsAnalyticsRepos
 import com.jamalsfinance.nativeapp.security.AndroidKeystoreSessionStore
 import com.jamalsfinance.nativeapp.ui.AndroidNativePreferences
 import com.jamalsfinance.nativeapp.ui.JamalsFinanceNativeApp
+import com.jamalsfinance.nativeapp.ui.NativeThemeMode
 import com.jamalsfinance.shared.auth.SupabaseAuthRepository
 import com.jamalsfinance.shared.core.AppConfig
 import com.jamalsfinance.shared.finance.FinanceRepository
@@ -22,6 +26,8 @@ import com.jamalsfinance.shared.goals.SupabaseGoalsPayablesRepository
 import com.jamalsfinance.shared.investments.InvestmentsAnalyticsRepository
 import com.jamalsfinance.shared.investments.SupabaseInvestmentsAnalyticsRepository
 import com.jamalsfinance.shared.network.platformHttpClient
+import com.jamalsfinance.shared.personal.PersonalPlatformRepository
+import com.jamalsfinance.shared.personal.SealedBackupPersonalPlatformRepository
 import com.jamalsfinance.shared.personal.SupabasePersonalPlatformRepository
 import com.jamalsfinance.shared.reports.SupabaseReportsInsightsRepository
 
@@ -31,7 +37,7 @@ private data class NativeRepositories(
     val goalsPayables: GoalsPayablesRepository,
     val investmentsAnalytics: InvestmentsAnalyticsRepository,
     val reportsInsights: SupabaseReportsInsightsRepository,
-    val personalPlatform: SupabasePersonalPlatformRepository,
+    val personalPlatform: PersonalPlatformRepository,
 )
 
 class MainActivity : ComponentActivity() {
@@ -42,6 +48,11 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.DEBUG) enableDebugStrictMode()
 
         val nativePreferences = AndroidNativePreferences(applicationContext)
+        if (BuildConfig.DEBUG && nativePreferences.state.value.blockScreenshots) {
+            nativePreferences.setBlockScreenshots(false)
+        }
+        setSystemBars(resolveDarkTheme(nativePreferences.state.value.themeMode))
+
         val networkMonitor = AndroidNetworkMonitor(applicationContext).also {
             activeNetworkMonitor = it
         }
@@ -76,6 +87,11 @@ class MainActivity : ComponentActivity() {
                 config = config,
                 authRepository = authRepository,
             )
+            val personalDelegate = SupabasePersonalPlatformRepository(
+                baseClient = baseClient,
+                config = config,
+                authRepository = authRepository,
+            )
             NativeRepositories(
                 auth = authRepository,
                 finance = ResilientFinanceRepository(
@@ -101,10 +117,11 @@ class MainActivity : ComponentActivity() {
                     config = config,
                     authRepository = authRepository,
                 ),
-                personalPlatform = SupabasePersonalPlatformRepository(
+                personalPlatform = SealedBackupPersonalPlatformRepository(
                     baseClient = baseClient,
                     config = config,
                     authRepository = authRepository,
+                    delegate = personalDelegate,
                 ),
             )
         } else {
@@ -122,6 +139,7 @@ class MainActivity : ComponentActivity() {
                 nativePreferences = nativePreferences,
                 networkMonitor = networkMonitor,
                 onSecureWindowChanged = ::setSecureWindow,
+                onSystemBarsChanged = ::setSystemBars,
             )
         }
     }
@@ -145,6 +163,24 @@ class MainActivity : ComponentActivity() {
                 .penaltyLog()
                 .build(),
         )
+    }
+
+    private fun resolveDarkTheme(mode: NativeThemeMode): Boolean = when (mode) {
+        NativeThemeMode.System ->
+            resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                Configuration.UI_MODE_NIGHT_YES
+        NativeThemeMode.Light -> false
+        NativeThemeMode.Dark -> true
+    }
+
+    private fun setSystemBars(dark: Boolean) {
+        val barColor = if (dark) Color.rgb(10, 18, 32) else Color.rgb(246, 248, 252)
+        window.statusBarColor = barColor
+        window.navigationBarColor = barColor
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
     }
 
     private fun setSecureWindow(enabled: Boolean) {

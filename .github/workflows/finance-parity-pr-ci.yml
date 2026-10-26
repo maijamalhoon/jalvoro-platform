@@ -1,0 +1,93 @@
+name: Finance parity contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "contracts/finance-parity/**"
+      - "lib/analytics/**"
+      - "lib/currency.ts"
+      - "lib/investments/**"
+      - "lib/planning/**"
+      - "lib/finance-parity-contract.test.ts"
+      - "native/shared/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/finance-parity-pr-ci.yml"
+      - ".github/scripts/setup-android-sdk.ps1"
+      - ".github/scripts/setup-android-sdk.cmd"
+      - ".github/scripts/setup-gradle.cmd"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-parity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  website-and-native-parity:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          clean: false
+
+      - name: Verify installed Node.js
+        shell: cmd
+        run: |
+          "C:\Program Files\nodejs\node.exe" --version
+          call "C:\Program Files\nodejs\npm.cmd" --version
+
+      - name: Install website dependencies
+        shell: cmd
+        run: call "C:\Program Files\nodejs\npm.cmd" ci --silent
+
+      - name: Run website finance parity contract
+        shell: cmd
+        run: call "C:\Program Files\nodejs\npm.cmd" run test:parity
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK 36
+        shell: cmd
+        run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-android-sdk.cmd"
+
+      - name: Set up Gradle 9.3.1
+        shell: cmd
+        run: call "%GITHUB_WORKSPACE%\.github\scripts\setup-gradle.cmd"
+
+      - name: Run native finance parity contract
+        shell: cmd
+        working-directory: native
+        run: |
+          call gradle.bat :shared:testAndroidHostTest --stacktrace > finance-parity-native.log 2>&1
+          set "GRADLE_EXIT=%ERRORLEVEL%"
+          type finance-parity-native.log
+          exit /b %GRADLE_EXIT%
+
+      - name: Upload parity diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-parity-log-${{ github.run_id }}
+          path: |
+            native/finance-parity-native.log
+            native/android-sdk-setup.log
+          if-no-files-found: ignore
+          retention-days: 3

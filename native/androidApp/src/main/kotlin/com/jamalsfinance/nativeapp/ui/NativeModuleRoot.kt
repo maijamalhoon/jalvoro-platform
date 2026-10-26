@@ -9,20 +9,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -48,7 +49,7 @@ import com.jamalsfinance.shared.reports.ReportsInsightsRepository
 import kotlinx.coroutines.launch
 
 private enum class NativeWorkspace {
-    Launcher,
+    Overview,
     AccountsTransactions,
     GoalsPayables,
     InvestmentsAnalytics,
@@ -56,12 +57,15 @@ private enum class NativeWorkspace {
     PersonalPlatform,
     PrivacySecurity,
     AccessibilityDisplay,
+    MotionInteractions,
+    More,
 }
 
 private data class NativeModuleItem(
     val title: String,
     val description: String,
     val action: String,
+    val icon: ImageVector,
     val onClick: () -> Unit,
 )
 
@@ -76,61 +80,92 @@ fun NativeModuleRootShell(
     nativePreferences: AndroidNativePreferences,
     onSignOut: suspend () -> Unit,
 ) {
-    var workspace by remember { mutableStateOf(NativeWorkspace.Launcher) }
-    BackHandler(enabled = workspace != NativeWorkspace.Launcher) {
-        workspace = NativeWorkspace.Launcher
+    var workspace by remember { mutableStateOf(NativeWorkspace.Overview) }
+    BackHandler(enabled = workspace != NativeWorkspace.Overview) {
+        workspace = if (workspace == NativeWorkspace.MotionInteractions) {
+            NativeWorkspace.More
+        } else {
+            NativeWorkspace.Overview
+        }
     }
 
-    when (workspace) {
-        NativeWorkspace.Launcher -> NativeModuleLauncher(
-            email = email,
-            onAccountsTransactions = { workspace = NativeWorkspace.AccountsTransactions },
-            onGoalsPayables = { workspace = NativeWorkspace.GoalsPayables },
-            onInvestmentsAnalytics = { workspace = NativeWorkspace.InvestmentsAnalytics },
-            onReportsInsights = { workspace = NativeWorkspace.ReportsInsights },
-            onPersonalPlatform = { workspace = NativeWorkspace.PersonalPlatform },
-            onPrivacySecurity = { workspace = NativeWorkspace.PrivacySecurity },
-            onAccessibilityDisplay = { workspace = NativeWorkspace.AccessibilityDisplay },
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.AccountsTransactions -> NativeDashboardShell(
-            email = email,
-            financeRepository = financeRepository,
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
-            repository = goalsPayablesRepository,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.InvestmentsAnalytics -> InvestmentsAnalyticsDashboard(
-            repository = investmentsAnalyticsRepository,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.ReportsInsights -> ReportsInsightsDashboard(
-            repository = reportsInsightsRepository,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.PersonalPlatform -> PersonalPlatformDashboard(
-            repository = personalPlatformRepository,
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Launcher },
-            onSignOut = onSignOut,
-        )
-        NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
-        NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
-            preferences = nativePreferences,
-            onBack = { workspace = NativeWorkspace.Launcher },
-        )
+    JalvoroAnimatedWorkspace(
+        targetState = workspace,
+        modifier = Modifier.fillMaxSize(),
+    ) { currentWorkspace ->
+        when (currentWorkspace) {
+            NativeWorkspace.Overview -> JalvoroOverviewDashboard(
+                email = email,
+                financeRepository = financeRepository,
+                goalsPayablesRepository = goalsPayablesRepository,
+                investmentsAnalyticsRepository = investmentsAnalyticsRepository,
+                onOpenFinance = { workspace = NativeWorkspace.AccountsTransactions },
+                onOpenPlanning = { workspace = NativeWorkspace.GoalsPayables },
+                onOpenInvestments = { workspace = NativeWorkspace.InvestmentsAnalytics },
+                onOpenReports = { workspace = NativeWorkspace.ReportsInsights },
+                onOpenSettings = { workspace = NativeWorkspace.PersonalPlatform },
+                onOpenMore = { workspace = NativeWorkspace.More },
+            )
+            NativeWorkspace.AccountsTransactions -> JalvoroFinanceDashboard(
+                email = email,
+                financeRepository = financeRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+                onSignOut = onSignOut,
+            )
+            NativeWorkspace.GoalsPayables -> GoalsPayablesDashboard(
+                repository = goalsPayablesRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.InvestmentsAnalytics -> JalvoroInvestmentsAnalyticsDashboard(
+                repository = investmentsAnalyticsRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.ReportsInsights -> ReportsInsightsDashboard(
+                repository = reportsInsightsRepository,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.PersonalPlatform -> PersonalPlatformDashboard(
+                repository = personalPlatformRepository,
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.Overview },
+                onSignOut = onSignOut,
+            )
+            NativeWorkspace.PrivacySecurity -> PrivacySecurityDashboard(
+                email = email,
+                repository = personalPlatformRepository,
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.Overview },
+                onSignOut = onSignOut,
+            )
+            NativeWorkspace.AccessibilityDisplay -> AccessibilityDisplayDashboard(
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.Overview },
+            )
+            NativeWorkspace.MotionInteractions -> JalvoroMotionSettingsDashboard(
+                preferences = nativePreferences,
+                onBack = { workspace = NativeWorkspace.More },
+            )
+            NativeWorkspace.More -> NativeModuleLauncher(
+                email = email,
+                onOverview = { workspace = NativeWorkspace.Overview },
+                onAccountsTransactions = { workspace = NativeWorkspace.AccountsTransactions },
+                onGoalsPayables = { workspace = NativeWorkspace.GoalsPayables },
+                onInvestmentsAnalytics = { workspace = NativeWorkspace.InvestmentsAnalytics },
+                onReportsInsights = { workspace = NativeWorkspace.ReportsInsights },
+                onPersonalPlatform = { workspace = NativeWorkspace.PersonalPlatform },
+                onPrivacySecurity = { workspace = NativeWorkspace.PrivacySecurity },
+                onAccessibilityDisplay = { workspace = NativeWorkspace.AccessibilityDisplay },
+                onMotionInteractions = { workspace = NativeWorkspace.MotionInteractions },
+                onSignOut = onSignOut,
+            )
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NativeModuleLauncher(
     email: String,
+    onOverview: () -> Unit,
     onAccountsTransactions: () -> Unit,
     onGoalsPayables: () -> Unit,
     onInvestmentsAnalytics: () -> Unit,
@@ -138,72 +173,91 @@ private fun NativeModuleLauncher(
     onPersonalPlatform: () -> Unit,
     onPrivacySecurity: () -> Unit,
     onAccessibilityDisplay: () -> Unit,
+    onMotionInteractions: () -> Unit,
     onSignOut: suspend () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val modules = listOf(
         NativeModuleItem(
-            title = "Accounts & Transactions",
+            title = "Accounts & transactions",
             description = "Accounts, balances, income, expenses, transfers, search and deleted history.",
             action = "Open core finance",
+            icon = JalvoroIcons.Transactions,
             onClick = onAccountsTransactions,
         ),
         NativeModuleItem(
-            title = "Goals & Payables",
+            title = "Goals & payables",
             description = "Savings goals, contribution history, payables, repayments and due-status tracking.",
-            action = "Open goals & payables",
+            action = "Open planning",
+            icon = JalvoroIcons.Target,
             onClick = onGoalsPayables,
         ),
         NativeModuleItem(
-            title = "Investments & Analytics",
+            title = "Investments & analytics",
             description = "Portfolio lots, live market prices, profit/loss, cash out, cash-flow and spending intelligence.",
-            action = "Open investments & analytics",
+            action = "Open growth",
+            icon = JalvoroIcons.Investments,
             onClick = onInvestmentsAnalytics,
         ),
         NativeModuleItem(
-            title = "Reports & AI Insights",
+            title = "Reports & AI insights",
             description = "Date-range reports, native CSV export, financial health, secure insights and finance chat.",
-            action = "Open reports & AI insights",
+            action = "Open intelligence",
+            icon = JalvoroIcons.Reports,
             onClick = onReportsInsights,
         ),
         NativeModuleItem(
-            title = "Profile, Alerts & Data",
-            description = "Profile image and name, currency, theme, deadline alerts, password and complete backup/restore.",
-            action = "Open personal settings",
+            title = "Profile, alerts & data",
+            description = "Profile, currency, theme, deadline alerts, password and complete backup or restore.",
+            action = "Open settings",
+            icon = JalvoroIcons.Settings,
             onClick = onPersonalPlatform,
         ),
         NativeModuleItem(
-            title = "Privacy & App Lock",
-            description = "Biometric or device-credential lock, auto-lock timing, secure screenshots and recent-app protection.",
-            action = "Open privacy protection",
+            title = "Privacy & security",
+            description = "Privacy posture, account security, data export, processing choices, App Lock and screenshot protection.",
+            action = "Open privacy",
+            icon = JalvoroIcons.Privacy,
             onClick = onPrivacySecurity,
         ),
         NativeModuleItem(
-            title = "Accessibility & Display",
+            title = "Accessibility & display",
             description = "High contrast, adaptive tablet layout, large-text protection and Android accessibility controls.",
-            action = "Open accessibility settings",
+            action = "Open accessibility",
+            icon = JalvoroIcons.Accessibility,
             onClick = onAccessibilityDisplay,
+        ),
+        NativeModuleItem(
+            title = "Motion & interactions",
+            description = "Website-equivalent transitions, progress reveals, fast motion and a no-animation accessibility mode.",
+            action = "Open motion settings",
+            icon = JalvoroIcons.Refresh,
+            onClick = onMotionInteractions,
         ),
     )
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "Jamal's Finance",
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                        Text(
-                            "Native personal finance",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-            )
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shadowElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    JalvoroIconAction(
+                        icon = JalvoroIcons.ArrowLeft,
+                        label = "Back to overview",
+                        onClick = onOverview,
+                    )
+                    JalvoroBrandLockup(
+                        modifier = Modifier.weight(1f),
+                        subtitle = "All personal workspaces",
+                        compact = true,
+                    )
+                }
+            }
         },
     ) { padding ->
         BoxWithConstraints(
@@ -225,53 +279,73 @@ private fun NativeModuleLauncher(
                 contentPadding = PaddingValues(
                     start = horizontalPadding,
                     end = horizontalPadding,
-                    top = 16.dp,
+                    top = 18.dp,
                     bottom = 28.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
-                    Text("Signed in as", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        email,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { contentDescription = "Signed in as $email" },
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Choose a personal finance workspace. Business software is intentionally separate.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                items(moduleRows, key = { row -> row.joinToString("|") { it.title } }) { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        row.forEach { item ->
-                            ModuleCard(
-                                title = item.title,
-                                description = item.description,
-                                action = item.action,
-                                onClick = item.onClick,
-                                modifier = Modifier.weight(1f),
+                    JalvoroEntrance(index = 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(
+                                text = "More",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                text = "Signed in as $email",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Signed in as $email"
+                                },
+                            )
+                            Text(
+                                text = "Every workspace uses real owner-scoped finance data. Business software remains separate from Jalvoro Personal.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        if (row.size == 1 && layout == PersonalAdaptiveLayout.TwoColumn) {
-                            Spacer(Modifier.weight(1f))
+                    }
+                }
+
+                items(
+                    items = moduleRows,
+                    key = { row -> row.joinToString("|") { it.title } },
+                ) { row ->
+                    JalvoroEntrance(index = moduleRows.indexOf(row) + 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            row.forEach { item ->
+                                ModuleCard(
+                                    item = item,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (row.size == 1 && layout == PersonalAdaptiveLayout.TwoColumn) {
+                                Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
                 }
 
                 item {
-                    OutlinedButton(
-                        onClick = { scope.launch { onSignOut() } },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                    ) {
-                        Text("Sign out")
+                    JalvoroEntrance(index = moduleRows.size + 1) {
+                        OutlinedButton(
+                            onClick = { scope.launch { onSignOut() } },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Icon(
+                                imageVector = JalvoroIcons.SignOut,
+                                contentDescription = null,
+                                modifier = Modifier.size(19.dp),
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text("Sign out")
+                        }
                     }
                 }
             }
@@ -281,40 +355,61 @@ private fun NativeModuleLauncher(
 
 @Composable
 private fun ModuleCard(
-    title: String,
-    description: String,
-    action: String,
-    onClick: () -> Unit,
+    item: NativeModuleItem,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        onClick = onClick,
+        onClick = item.onClick,
         modifier = modifier.semantics(mergeDescendants = true) {
-            contentDescription = "$title. $description. $action"
+            contentDescription = "${item.title}. ${item.description}. ${item.action}"
         },
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(13.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.primary,
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(10.dp).size(22.dp),
+                )
+            }
             Text(
-                title,
-                style = MaterialTheme.typography.titleLarge,
+                text = item.title,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() },
             )
-            Spacer(Modifier.height(8.dp))
             Text(
-                description,
+                text = item.description,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(Modifier.height(18.dp))
-            Text(
-                action,
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.action,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.size(6.dp))
+                Icon(
+                    imageVector = JalvoroIcons.ArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.util.Properties
+import org.gradle.api.tasks.Sync
 
 plugins {
     alias(libs.plugins.android.application)
@@ -75,11 +77,11 @@ android {
         getByName("debug") {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-debug"
-            resValue("string", "app_name", "Jamal’s Finance Native Dev")
+            resValue("string", "app_name", "JALVORO Personal Dev")
         }
         getByName("release") {
             applicationIdSuffix = ".rc"
-            resValue("string", "app_name", "Jamal’s Finance RC")
+            resValue("string", "app_name", "JALVORO Personal RC")
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
@@ -115,6 +117,28 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        tasks.register<Sync>("prepareDebugApkForCi") {
+            group = "build"
+            description = "Copies the AGP-produced debug APK into a deterministic CI directory."
+            from(variant.artifacts.get(SingleArtifact.APK)) {
+                include("**/*.apk")
+            }
+            into(layout.buildDirectory.dir("ci-artifacts/debug"))
+        }
+    }
+
+    onVariants(selector().withBuildType("release")) { variant ->
+        tasks.register<Sync>("prepareReleaseBundleForCi") {
+            group = "build"
+            description = "Copies the AGP-produced release bundle into a deterministic CI directory."
+            from(variant.artifacts.get(SingleArtifact.BUNDLE))
+            into(layout.buildDirectory.dir("ci-artifacts/release"))
+        }
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     implementation(libs.ktor.client.core)
@@ -123,6 +147,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.animation)
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime.compose)

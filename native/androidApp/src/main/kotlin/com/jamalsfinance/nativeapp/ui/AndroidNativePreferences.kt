@@ -24,6 +24,17 @@ enum class NativeThemeMode(val storageValue: String) {
     }
 }
 
+enum class NativeMotionMode(val storageValue: String) {
+    Standard("standard"),
+    Fast("fast"),
+    None("none");
+
+    companion object {
+        fun fromStorage(value: String?): NativeMotionMode =
+            entries.firstOrNull { it.storageValue == value } ?: Standard
+    }
+}
+
 enum class NativeDateFormat(val storageValue: String, val sample: String) {
     MonthFirst("MMM d, yyyy", "Jul 23, 2026"),
     DayFirst("dd MMM yyyy", "23 Jul 2026"),
@@ -37,6 +48,7 @@ enum class NativeDateFormat(val storageValue: String, val sample: String) {
 
 data class NativeLocalPreferences(
     val themeMode: NativeThemeMode = NativeThemeMode.System,
+    val motionMode: NativeMotionMode = NativeMotionMode.Standard,
     val dateFormat: NativeDateFormat = NativeDateFormat.MonthFirst,
     val compactMode: Boolean = false,
     val highContrast: Boolean = false,
@@ -66,6 +78,11 @@ class AndroidNativePreferences(context: Context) {
         mutableState.value = mutableState.value.copy(themeMode = value)
     }
 
+    fun setMotionMode(value: NativeMotionMode) {
+        storage.edit().putString(KEY_MOTION, value.storageValue).apply()
+        mutableState.value = mutableState.value.copy(motionMode = value)
+    }
+
     fun setDateFormat(value: NativeDateFormat) {
         storage.edit().putString(KEY_DATE_FORMAT, value.storageValue).apply()
         mutableState.value = mutableState.value.copy(dateFormat = value)
@@ -79,6 +96,21 @@ class AndroidNativePreferences(context: Context) {
     fun setHighContrast(value: Boolean) {
         storage.edit().putBoolean(KEY_HIGH_CONTRAST, value).apply()
         mutableState.value = mutableState.value.copy(highContrast = value)
+    }
+
+    fun resetAccessibilityDisplay() {
+        storage.edit()
+            .putString(KEY_THEME, NativeThemeMode.System.storageValue)
+            .putString(KEY_MOTION, NativeMotionMode.Standard.storageValue)
+            .putBoolean(KEY_COMPACT, false)
+            .putBoolean(KEY_HIGH_CONTRAST, false)
+            .apply()
+        mutableState.value = mutableState.value.copy(
+            themeMode = NativeThemeMode.System,
+            motionMode = NativeMotionMode.Standard,
+            compactMode = false,
+            highContrast = false,
+        )
     }
 
     fun setAppLockEnabled(value: Boolean) {
@@ -131,6 +163,7 @@ class AndroidNativePreferences(context: Context) {
 
     private fun read(): NativeLocalPreferences = NativeLocalPreferences(
         themeMode = NativeThemeMode.fromStorage(storage.getString(KEY_THEME, null)),
+        motionMode = NativeMotionMode.fromStorage(storage.getString(KEY_MOTION, null)),
         dateFormat = NativeDateFormat.fromStorage(storage.getString(KEY_DATE_FORMAT, null)),
         compactMode = storage.getBoolean(KEY_COMPACT, false),
         highContrast = storage.getBoolean(KEY_HIGH_CONTRAST, false),
@@ -143,6 +176,7 @@ class AndroidNativePreferences(context: Context) {
 
     private companion object {
         const val KEY_THEME = "theme-mode"
+        const val KEY_MOTION = "motion-mode"
         const val KEY_DATE_FORMAT = "date-format"
         const val KEY_COMPACT = "compact-mode"
         const val KEY_HIGH_CONTRAST = "high-contrast"
